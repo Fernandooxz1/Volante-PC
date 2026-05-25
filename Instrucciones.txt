@@ -1,4 +1,0 @@
-Idea del proyecto: Volante para PC con potenciometro para direccion, aceleracion y freno. Con Aruduino Nano con USB-C.
-Usamos Python para procesar los datos del Arduino, y asignarle los valores de entrada a una libreria de Python que virtualiza joysticks de PC.
-
-Arduino: Cada valor de cada potenciometro, es de 10 bits (1023 valores posibles)

@@ -4,7 +4,7 @@ Este proyecto te permite construir tu propio volante de carreras y pedalera para
 
 ---
 
-## 🛠️ Requisitos de Hardware
+## Requisitos de Hardware
 
 1. **Arduino Nano** (Preferiblemente con puerto USB-C).
 2. **3 Potenciómetros lineales de 10k Ohms**:
@@ -30,7 +30,7 @@ Todos los potenciómetros comparten la misma línea de alimentación de **5V** y
 
 ---
 
-## 💻 Instalación y Configuración de Software
+## Instalación y Configuración de Software
 
 ### 1. Programar el Arduino
 1. Abre el IDE de Arduino.
@@ -47,7 +47,7 @@ El script requiere Python 3 y dos librerías principales: `pyserial` y `vgamepad
    pip install -r python/requirements.txt
    ```
 
-#### 🐧 Configuración Especial para Linux (uinput)
+#### Configuración Especial para Linux (uinput)
 Para que el script pueda crear un dispositivo de juego virtual en Linux sin necesidad de permisos de superusuario (`sudo`), debes configurar las reglas de `udev` para el subsistema `uinput`:
 
 1. Agrega tu usuario al grupo `input`:
@@ -66,7 +66,7 @@ Para que el script pueda crear un dispositivo de juego virtual en Linux sin nece
 
 ---
 
-## 🚀 Ejecución del Emulador
+## Ejecución del Emulador
 
 Una vez programado el Arduino y configurado el sistema, ejecuta el script de Python:
 
@@ -101,7 +101,7 @@ Al mover el potenciómetro del volante o presionar los pedales, el indicador gr�
 
 ---
 
-## 🎮 Calibración y Verificación
+## Calibración y Verificación
 
 ### En Linux
 Puedes verificar que el joystick virtual es reconocido por el sistema utilizando herramientas GUI como:
