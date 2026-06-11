@@ -133,7 +133,7 @@ def main():
                             # 1. Dirección: 0-1023 a Eje X del Stick Izquierdo (-32768 a 32767)
                             val_eje_x = int((steer / 1023.0) * 65535) - 32768
                             val_eje_x = max(-32768, min(32767, val_eje_x))
-                            gamepad.left_joystick_axis(x_value=val_eje_x, y_value=0)
+                            gamepad.left_joystick(x_value=val_eje_x, y_value=0)
 
                             # 2. Acelerador: 0-1023 a Gatillo Derecho RT (0 a 255)
                             val_accel = int((accel / 1023.0) * 255)
