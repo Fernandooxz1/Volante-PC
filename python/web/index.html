@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volante PC - Racing Dashboard Pro</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="40 10 10 5" />
+                        <circle cx="12" cy="12" r="3" fill="currentColor" />
+                        <path d="M12 2v7M12 15v7M2 12h7M15 12h7" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>RACING WHEEL</h1>
+                    <span>CONTROL CENTER PRO</span>
+                </div>
+            </div>
+            <div class="connection-bar">
+                <div class="form-group-inline">
+                    <label for="port-select">Puerto:</label>
+                    <select id="port-select">
+                        <option value="">Buscando...</option>
+                    </select>
+                    <button id="btn-refresh" class="btn btn-secondary" title="Refrescar puertos">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
+                    </button>
+                </div>
+                <button id="btn-connect" class="btn btn-primary btn-start">
+                    <span class="icon">●</span>
+                    <span class="text">Iniciar Emulación</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT COLUMN: COCKPIT HUD VISUALIZERS -->
+            <section class="card cockpit-hud">
+                <div class="card-header">
+                    <h2>TELEMETRÍA EN VIVO</h2>
+                    <span class="badge" id="status-badge">DESCONECTADO</span>
+                </div>
+                
+                <div class="hud-container">
+                    <!-- Steering Wheel Gauge -->
+                    <div class="gauge-wrapper steer-gauge-wrapper">
+                        <div class="gauge-label">DIRECCIÓN</div>
+                        <div class="wheel-visual-container">
+                            <!-- SVG Steering Wheel -->
+                             <svg id="steering-wheel" viewBox="0 0 200 200" width="240" height="240">
+                                <defs>
+                                    <linearGradient id="wheel-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#1f242e" />
+                                        <stop offset="100%" stop-color="#0d1013" />
+                                    </linearGradient>
+                                    <linearGradient id="neon-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#00f2fe" />
+                                        <stop offset="100%" stop-color="#4facfe" />
+                                    </linearGradient>
+                                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <blur stdDeviation="4" result="blur" />
+                                        <composite in="SourceGraphic" in2="blur" operator="over" />
+                                    </filter>
+                                </defs>
+                                <!-- Outer Rim -->
+                                <circle cx="100" cy="100" r="85" stroke="#1f2937" stroke-width="12" fill="url(#wheel-grad)" />
+                                <!-- Neon Accent Ring -->
+                                <circle cx="100" cy="100" r="85" stroke="url(#neon-grad)" stroke-width="2" fill="none" stroke-dasharray="100 10 50 10" opacity="0.8" />
+                                <!-- Center Hub -->
+                                <circle cx="100" cy="100" r="25" fill="#111827" stroke="#1f2937" stroke-width="4" />
+                                <circle cx="100" cy="100" r="8" fill="#00f2fe" filter="url(#glow)" />
+                                <!-- Spokes -->
+                                <path d="M30 100h45M125 100h45M100 125v45" stroke="#1f2937" stroke-width="10" stroke-linecap="round" />
+                                <path d="M30 100h45M125 100h45M100 125v45" stroke="url(#neon-grad)" stroke-width="2" stroke-linecap="round" opacity="0.5" />
+                                <!-- 12 O'Clock Marker -->
+                                <path d="M100 15v10" stroke="#ff3366" stroke-width="6" stroke-linecap="round" filter="url(#glow)" />
+                            </svg>
+                            <div class="wheel-angle" id="steer-angle-display">0°</div>
+                        </div>
+                        <div class="axis-details">
+                            <span class="raw-val">Raw: <b id="raw-steer">512</b></span>
+                            <span class="mapped-val">Salida: <b id="mapped-steer">0</b></span>
+                        </div>
+                    </div>
+
+                    <!-- Pedals Indicators (Throttle and Brake) -->
+                    <div class="pedals-wrapper">
+                        <!-- Throttle -->
+                        <div class="pedal-gauge">
+                            <div class="pedal-label">ACELERADOR</div>
+                            <div class="pedal-bar-container">
+                                <div class="pedal-bar-fill throttle-fill" id="throttle-fill" style="height: 0%;"></div>
+                                <div class="pedal-value" id="throttle-display">0%</div>
+                                <div class="deadzone-marker" id="throttle-dz-marker" style="bottom: 0%;"></div>
+                            </div>
+                            <div class="axis-details">
+                                <span>In: <span id="raw-accel">0</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Brake -->
+                        <div class="pedal-gauge">
+                            <div class="pedal-label">FRENO</div>
+                            <div class="pedal-bar-container">
+                                <div class="pedal-bar-fill brake-fill" id="brake-fill" style="height: 0%;"></div>
+                                <div class="pedal-value" id="brake-display">0%</div>
+                                <div class="deadzone-marker" id="brake-dz-marker" style="bottom: 0%;"></div>
+                            </div>
+                            <div class="axis-details">
+                                <span>In: <span id="raw-brake">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Digital button state & virtual controller status -->
+                <div class="hud-footer">
+                    <div class="virtual-status">
+                        <span>Emulación Mando:</span>
+                        <span class="status-indicator active" id="gamepad-status">CONECTADO (X360)</span>
+                    </div>
+                    <div class="buttons-grid">
+                        <div class="btn-indicator-pill" id="btn-p2-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D2</span>
+                                <span class="pill-mapping" id="btn-p2-mapping">Start</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p3-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D3</span>
+                                <span class="pill-mapping" id="btn-p3-mapping">A</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p4-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D4</span>
+                                <span class="pill-mapping" id="btn-p4-mapping">B</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p5-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D5</span>
+                                <span class="pill-mapping" id="btn-p5-mapping">X</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p6-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D6</span>
+                                <span class="pill-mapping" id="btn-p6-mapping">Y</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p7-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D7</span>
+                                <span class="pill-mapping" id="btn-p7-mapping">LB</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p8-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D8</span>
+                                <span class="pill-mapping" id="btn-p8-mapping">RB</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p9-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D9</span>
+                                <span class="pill-mapping" id="btn-p9-mapping">Back</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT COLUMN: TUNING & CALIBRATION -->
+            <section class="card calibration-tuning">
+                <div class="card-header">
+                    <h2>CALIBRACIÓN Y AJUSTES</h2>
+                    <div class="preset-selector-wrapper">
+                        <label for="preset-select">Preset:</label>
+                        <select id="preset-select">
+                            <option value="F1 Series (F1 23/24) / Modern Racing">F1 Series / Modern</option>
+                            <option value="Gran Turismo 4 (PS2 / PCSX2)">Gran Turismo 4</option>
+                            <option value="Need for Speed Underground / PS2 Classic">NFS Underground</option>
+                            <option value="Personalizado" selected>Personalizado</option>
+                        </select>
+                        <button id="btn-save-preset" class="btn-icon" title="Guardar preset actual">💾</button>
+                        <button id="btn-delete-preset" class="btn-icon" title="Eliminar preset" style="display: none; background: rgba(255, 51, 102, 0.1); border-color: rgba(255, 51, 102, 0.2);">🗑️</button>
+                    </div>
+                </div>
+
+                <!-- Hardware Limits Calibration -->
+                <div class="hardware-calibration-section">
+                    <div class="calibration-section-header">
+                        <span>Calibración de Límites de Dirección (Hardware)</span>
+                        <button id="btn-cal-reset" class="btn btn-text btn-xs">Restablecer</button>
+                    </div>
+                    <div class="calibration-buttons-grid">
+                        <button id="btn-cal-left" class="btn btn-secondary btn-sm" title="Establecer límite izquierdo">◄ Izquierda Máx</button>
+                        <button id="btn-cal-center" class="btn btn-secondary btn-sm" title="Establecer posición central">● Guardar Centro</button>
+                        <button id="btn-cal-right" class="btn btn-secondary btn-sm" title="Establecer límite derecho">Derecha Máx ►</button>
+                    </div>
+                    <div class="calibration-values-display">
+                        <div class="cal-val-item">Mín: <span id="lbl-cal-min">0</span></div>
+                        <div class="cal-val-item highlight">Centro: <span id="lbl-cal-center">512</span></div>
+                        <div class="cal-val-item">Máx: <span id="lbl-cal-max">1023</span></div>
+                    </div>
+                </div>
+
+                <!-- Live Curve Mapping Graph -->
+                <div class="graph-container">
+                    <div class="graph-header">
+                        <span>Curva de Respuesta de Dirección</span>
+                        <span class="graph-tooltip">Eje X: Entrada Física | Eje Y: Mando Virtual</span>
+                    </div>
+                    <canvas id="curve-canvas" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Calibration Sliders -->
+                <div class="tuning-sliders">
+                    <!-- Sensitivity -->
+                    <div class="slider-group">
+                        <div class="slider-info">
+                            <label for="slider-sens">Sensibilidad del Volante</label>
+                            <span class="slider-value" id="val-sens">25%</span>
+                        </div>
+                        <input type="range" id="slider-sens" min="0.1" max="1.0" step="0.05" value="0.25">
+                        <div class="slider-desc">Controla el rango máximo del volante. Valores bajos requieren menos giro físico para máxima dirección.</div>
+                    </div>
+
+                    <!-- Slope -->
+                    <div class="slider-group">
+                        <div class="slider-info">
+                            <label for="slider-slope">Pendiente de Eje (Linealidad)</label>
+                            <span class="slider-value" id="val-slope">0.65x</span>
+                        </div>
+                        <input type="range" id="slider-slope" min="0.25" max="2.0" step="0.05" value="0.65">
+                        <div class="slider-desc">Ajusta la curva de progresión. Mayor que 1.0 da más precisión al centro; menor da respuesta rápida.</div>
+                    </div>
+
+                    <!-- Anti-Deadzone -->
+                    <div class="slider-group">
+                        <div class="slider-info">
+                            <label for="slider-anti-dz">Compensación de Zona Muerta (Anti-Deadzone)</label>
+                            <span class="slider-value" id="val-anti-dz">0%</span>
+                        </div>
+                        <input type="range" id="slider-anti-dz" min="0.0" max="0.5" step="0.01" value="0.0">
+                        <div class="slider-desc">Supera la zona muerta inicial del juego, haciendo que responda inmediatamente al mínimo toque.</div>
+                    </div>
+
+                    <!-- Pedals Deadzone -->
+                    <div class="slider-group">
+                        <div class="slider-info">
+                            <label for="slider-dz">Zona Muerta de Pedales</label>
+                            <span class="slider-value" id="val-dz">23%</span>
+                        </div>
+                        <input type="range" id="slider-dz" min="0.0" max="0.5" step="0.01" value="0.23">
+                        <div class="slider-desc">Filtra el inicio de los pedales para evitar que el freno o acelerador queden presionados por error.</div>
+                    </div>
+
+                    <!-- Anti-Noise Filter -->
+                    <div class="slider-group">
+                        <div class="slider-info">
+                            <label for="slider-filter">Filtro de Ruido (Anti-Jitter)</label>
+                            <span class="slider-value" id="val-filter">55%</span>
+                        </div>
+                        <input type="range" id="slider-filter" min="0.0" max="0.9" step="0.05" value="0.55">
+                        <div class="slider-desc">Filtro DSP para suavizar la señal analógica. Evita el temblor o vibraciones causadas por potenciómetros viejos.</div>
+                    </div>
+
+                    <!-- Separator -->
+                    <div class="config-separator">Mapeo de Botones (Digitales)</div>
+
+                    <div class="button-mappings-grid">
+                        <div class="mapping-row">
+                            <label for="map-p2">Pin D2 (Start):</label>
+                            <select id="map-p2" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p3">Pin D3 (A):</label>
+                            <select id="map-p3" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p4">Pin D4 (B):</label>
+                            <select id="map-p4" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p5">Pin D5 (X):</label>
+                            <select id="map-p5" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p6">Pin D6 (Y):</label>
+                            <select id="map-p6" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p7">Pin D7 (LB):</label>
+                            <select id="map-p7" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p8">Pin D8 (RB):</label>
+                            <select id="map-p8" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p9">Pin D9 (Back):</label>
+                            <select id="map-p9" class="select-sm"></select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- FOOTER / CONSOLE LOGS -->
+        <footer class="app-console">
+            <div class="console-header">
+                <h3>REGISTRO DE SISTEMA Y DIAGNÓSTICOS</h3>
+                <div class="console-actions">
+                    <button id="btn-clear-log" class="btn btn-text">Limpiar Registro</button>
+                </div>
+            </div>
+            <div class="console-body" id="console-output">
+                <div class="log-line log-info">Consola inicializada. Esperando conexión con el servidor de emulación...</div>
+                <div class="log-line log-warn">Asegúrate de tener conectado el Arduino (Uno/Nano) vía USB antes de iniciar.</div>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="dot yellow" id="ws-dot"></span>
+                    <span id="ws-status-text">WebSocket: Desconectado</span>
+                </div>
+                <div class="status-item">
+                    <span>Arduino: </span>
+                    <span id="arduino-port-text" class="value">Ninguno</span>
+                </div>
+                <div class="status-item">
+                    <span>Bauds: </span>
+                    <span class="value">115200 bps</span>
+                </div>
+                <div class="status-item logo-tiny">
+                    <span>ANTIGRAVITY TECHNOLOGY</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

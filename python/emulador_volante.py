@@ -7,7 +7,7 @@ import serial.tools.list_ports
 import vgamepad as vg
 
 def find_arduino_port():
-    """Busca puertos serie disponibles que puedan ser el Arduino Nano."""
+    """Busca puertos serie disponibles que puedan ser el Arduino (Uno/Nano)."""
     ports = serial.tools.list_ports.comports()
     arduino_ports = []
     
@@ -53,7 +53,7 @@ def draw_dashboard(steer, accel, brake):
     sys.stdout.flush()
 
 def main():
-    parser = argparse.ArgumentParser(description="Emulador de Volante PC usando Arduino Nano y vgamepad.")
+    parser = argparse.ArgumentParser(description="Emulador de Volante PC usando Arduino (Uno/Nano) y vgamepad.")
     parser.add_argument("-p", "--port", type=str, help="Puerto serie específico (ej: /dev/ttyUSB0, COM3). Auto-detecta por defecto.")
     parser.add_argument("-b", "--baud", type=int, default=115200, help="Velocidad en baudios (default: 115200).")
     args = parser.parse_args()
@@ -65,7 +65,7 @@ def main():
     # Selección de puerto serie
     port = args.port
     if not port:
-        print("Buscando Arduino Nano automáticamente...")
+        print("Buscando Arduino (Uno/Nano) automáticamente...")
         port = find_arduino_port()
         if port:
             print(f"-> Encontrado posible Arduino en: \033[92m{port}\033[0m")

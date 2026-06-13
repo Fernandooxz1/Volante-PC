@@ -68,17 +68,31 @@ Para que el script pueda crear un dispositivo de juego virtual en Linux sin nece
 
 ## Ejecución del Emulador
 
-Una vez programado el Arduino y configurado el sistema, ejecuta el script de Python:
+El proyecto cuenta con dos interfaces: un **Dashboard Web Profesional** con calibración interactiva de curvas (Recomendado) y el visor clásico por consola.
+
+### Opción A: Dashboard Web Profesional (Recomendado)
+
+Inicia el servidor local y la interfaz web ejecutando:
+
+```bash
+python python/gui_web.py
+```
+
+El script abrirá automáticamente tu navegador web por defecto con un panel de control interactivo de alta fidelidad. Desde allí podrás:
+- Auto-detectar y seleccionar el puerto serie del Arduino Nano en tiempo real.
+- Cargar presets pre-configurados para F1 23/24, Gran Turismo, NFS, o personalizar el tuyo.
+- Configurar visualmente la **sensibilidad, linealidad (pendiente), zona muerta de pedales y el filtro anti-ruido (Jitter)**.
+- Monitorear en vivo la curva de respuesta y ver el cursor dinámico conforme giras el volante físico.
+
+### Opción B: Dashboard Interactivo de la Terminal (Consola)
+
+Si deseas correr el script directamente en la consola sin interfaz gráfica:
 
 ```bash
 python python/emulador_volante.py
 ```
 
-El script buscará automáticamente el puerto donde está conectado tu Arduino Nano (ej: `/dev/ttyUSB0` o `/dev/ttyACM0`). Si no lo encuentra o tienes múltiples dispositivos, puedes especificar el puerto manualmente:
-
-```bash
-python python/emulador_volante.py -p /dev/ttyUSB0
-```
+Puedes especificar un puerto de manera manual usando `-p` (ej. `python python/emulador_volante.py -p /dev/ttyUSB0`).
 
 ### Dashboard Interactivo de la Terminal
 Al ejecutarse con éxito, verás una interfaz visual interactiva en la terminal en tiempo real:
@@ -110,6 +124,6 @@ Puedes verificar que el joystick virtual es reconocido por el sistema utilizando
 
 ### En Windows
 El script de Python también funciona en Windows.
-1. Necesitas tener instalado el driver de controladores virtuales [ViGEmBus](https://github.com/ViGEm/ViGEmBus/releases).
+1. Necesitas tener instalado el driver de controladores virtuales [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases).
 2. Ejecuta el script.
 3. Abre el menú Ejecutar (`Win + R`), escribe `joy.cpl` y presiona Enter para abrir la configuración de dispositivos de juego de Windows y ver el control de Xbox 360 emulado.

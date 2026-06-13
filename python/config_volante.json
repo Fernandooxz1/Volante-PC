@@ -1,0 +1,32 @@
+{
+    "sensitivity": 0.35,
+    "slope": 2,
+    "anti_deadzone": 0,
+    "deadzone": 0.13,
+    "filter": 0.2,
+    "steer_target": "Left Stick X",
+    "accel_target": "Right Trigger (RT)",
+    "brake_target": "Left Trigger (LT)",
+    "btn_d2_target": "Button Start",
+    "steer_min": 457,
+    "steer_center": 792,
+    "steer_max": 1022,
+    "btn_map_p2": "Button Start",
+    "btn_map_p3": "Button A",
+    "btn_map_p4": "Button B",
+    "btn_map_p5": "Button X",
+    "btn_map_p6": "Button Y",
+    "btn_map_p7": "Button LB (Left Shoulder)",
+    "btn_map_p8": "Button RB (Right Shoulder)",
+    "btn_map_p9": "Button Back",
+    "active_preset": "F1 RACING",
+    "custom_presets": {
+        "F1 RACING": {
+            "sensitivity": 0.35,
+            "slope": 2,
+            "anti_deadzone": 0,
+            "deadzone": 0.13,
+            "filter": 0.2
+        }
+    }
+}
