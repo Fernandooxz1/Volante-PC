@@ -1,5 +1,5 @@
 /**
- * Volante para PC - Firmware Arduino Nano (C++ PlatformIO: Multibotón Optimizado)
+ * Volante para PC - Firmware Arduino UNO (C++ PlatformIO: Multibotón Optimizado)
  * 
  * Versión optimizada con soporte para 8 botones (Pines del 2 al 9):
  *  - Cero operaciones de punto flotante.

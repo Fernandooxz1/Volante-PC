@@ -429,16 +429,17 @@ class VolanteGUI(ctk.CTk):
                 if b1 == b'\xaa':
                     b2 = self.serial_conn.read(1)
                     if b2 == b'\x55':
-                        # Leer los 4 bytes de datos empaquetados
-                        data_bytes = self.serial_conn.read(4)
-                        if len(data_bytes) == 4:
-                            val = int.from_bytes(data_bytes, byteorder='little')
+                        # Leer los 6 bytes de datos empaquetados (4 de ejes + 2 de botones)
+                        data_bytes = self.serial_conn.read(6)
+                        if len(data_bytes) == 6:
+                            val = int.from_bytes(data_bytes[0:4], byteorder='little')
+                            buttons_val = int.from_bytes(data_bytes[4:6], byteorder='little')
                             
-                            # Extraer campos de 10 bits y el botón D2
+                            # Extraer campos de 10 bits y el botón D2 (que corresponde al pin digital 2)
                             steer = val & 0x3FF
                             accel = (val >> 10) & 0x3FF
                             brake = (val >> 20) & 0x3FF
-                            btn_d2 = (val >> 30) & 0x01
+                            btn_d2 = buttons_val & 0x01
 
                             # Limitar rangos analógicos
                             steer = max(0, min(1023, steer))

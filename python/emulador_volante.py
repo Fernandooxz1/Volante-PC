@@ -7,7 +7,7 @@ import serial.tools.list_ports
 import vgamepad as vg
 
 def find_arduino_port():
-    """Busca puertos serie disponibles que puedan ser el Arduino (Uno/Nano)."""
+    """Busca puertos serie disponibles que puedan ser el Arduino UNO."""
     ports = serial.tools.list_ports.comports()
     arduino_ports = []
     
@@ -53,7 +53,7 @@ def draw_dashboard(steer, accel, brake):
     sys.stdout.flush()
 
 def main():
-    parser = argparse.ArgumentParser(description="Emulador de Volante PC usando Arduino (Uno/Nano) y vgamepad.")
+    parser = argparse.ArgumentParser(description="Emulador de Volante PC usando Arduino UNO y vgamepad.")
     parser.add_argument("-p", "--port", type=str, help="Puerto serie específico (ej: /dev/ttyUSB0, COM3). Auto-detecta por defecto.")
     parser.add_argument("-b", "--baud", type=int, default=115200, help="Velocidad en baudios (default: 115200).")
     args = parser.parse_args()
@@ -65,7 +65,7 @@ def main():
     # Selección de puerto serie
     port = args.port
     if not port:
-        print("Buscando Arduino (Uno/Nano) automáticamente...")
+        print("Buscando Arduino UNO automáticamente...")
         port = find_arduino_port()
         if port:
             print(f"-> Encontrado posible Arduino en: \033[92m{port}\033[0m")
@@ -112,11 +112,12 @@ def main():
                 if b1 == b'\xaa':
                     b2 = ser.read(1)
                     if b2 == b'\x55':
-                        # Leer los 4 bytes del paquete de datos empaquetados
-                        data_bytes = ser.read(4)
-                        if len(data_bytes) == 4:
-                            # Desempaquetar el entero de 32 bits (little-endian)
-                            val = int.from_bytes(data_bytes, byteorder='little')
+                        # Leer los 6 bytes del paquete de datos empaquetados (4 de ejes + 2 de botones)
+                        data_bytes = ser.read(6)
+                        if len(data_bytes) == 6:
+                            # Desempaquetar el entero de 32 bits (little-endian) y los botones
+                            val = int.from_bytes(data_bytes[0:4], byteorder='little')
+                            buttons_val = int.from_bytes(data_bytes[4:6], byteorder='little')
                             
                             # Extraer campos de 10 bits
                             steer = val & 0x3FF

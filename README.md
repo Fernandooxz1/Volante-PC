@@ -1,24 +1,24 @@
-# Volante para PC con Arduino Nano (USB-C) y Python
+# Volante para PC con Arduino UNO y Python
 
-Este proyecto te permite construir tu propio volante de carreras y pedalera para PC utilizando un **Arduino Nano con USB-C**, potenciómetros de 10k y un script de Python que emula un control virtual de Xbox 360 en tu computadora.
+Este proyecto te permite construir tu propio volante de carreras y pedalera para PC utilizando un **Arduino UNO**, potenciómetros de 10k y un script de Python que emula un control virtual de Xbox 360 en tu computadora.
 
 ---
 
 ## Requisitos de Hardware
 
-1. **Arduino Nano** (Preferiblemente con puerto USB-C).
+1. **Arduino UNO**.
 2. **3 Potenciómetros lineales de 10k Ohms**:
    - 1x para el **Volante** (Dirección).
    - 1x para el **Pedal de Acelerador**.
    - 1x para el **Pedal de Freno**.
 3. **Cables de conexión** y protoboard (o soldador para montaje final).
-4. **Cable USB-C** para conectar el Arduino a la PC.
+4. **Cable USB** (típicamente tipo B o tipo C, según tu modelo de placa UNO) para conectar el Arduino a la PC.
 
 ### Esquema de Conexiones
 
-Todos los potenciómetros comparten la misma línea de alimentación de **5V** y tierra (**GND**) provistos por el Arduino Nano. Los pines de señal (limpiador/pin central del potenciómetro) se conectan a los pines analógicos de la siguiente manera:
+Todos los potenciómetros comparten la misma línea de alimentación de **5V** y tierra (**GND**) provistos por el Arduino UNO. Los pines de señal (limpiador/pin central del potenciómetro) se conectan a los pines analógicos de la siguiente manera:
 
-| Componente | Pin del Potenciómetro | Pin en Arduino Nano |
+| Componente | Pin del Potenciómetro | Pin en Arduino UNO |
 | :--- | :--- | :--- |
 | **GND Común** | Pin Izquierdo | **GND** |
 | **5V Común** | Pin Derecho | **5V** o **VCC** |
@@ -34,8 +34,8 @@ Todos los potenciómetros comparten la misma línea de alimentación de **5V** y
 
 ### 1. Programar el Arduino
 1. Abre el IDE de Arduino.
-2. Abre el archivo [volante_nano.ino](arduino/volante_nano/volante_nano.ino).
-3. Selecciona tu placa **Arduino Nano** y el puerto correspondiente en el menú *Herramientas*.
+2. Abre el archivo [volante_uno.ino](arduino/volante_uno/volante_uno.ino).
+3. Selecciona tu placa **Arduino Uno** y el puerto correspondiente en el menú *Herramientas*.
 4. Sube (Upload) el programa al Arduino.
 5. Dado que el Arduino ahora transmite en un formato binario altamente optimizado para baja latencia y mínimo consumo de memoria, verás caracteres especiales ("ruido" binario) si abres el *Monitor Serie*. Esto es normal y esperado; el script de Python se encargará de decodificar este flujo de bytes.
 
@@ -79,7 +79,7 @@ python python/gui_web.py
 ```
 
 El script abrirá automáticamente tu navegador web por defecto con un panel de control interactivo de alta fidelidad. Desde allí podrás:
-- Auto-detectar y seleccionar el puerto serie del Arduino Nano en tiempo real.
+- Auto-detectar y seleccionar el puerto serie del Arduino UNO en tiempo real.
 - Cargar presets pre-configurados para F1 23/24, Gran Turismo, NFS, o personalizar el tuyo.
 - Configurar visualmente la **sensibilidad, linealidad (pendiente), zona muerta de pedales y el filtro anti-ruido (Jitter)**.
 - Monitorear en vivo la curva de respuesta y ver el cursor dinámico conforme giras el volante físico.
@@ -101,7 +101,7 @@ Al ejecutarse con éxito, verás una interfaz visual interactiva en la terminal 
 ===================================================
           EMULADOR DE VOLANTE Y PEDALES PC         
 ===================================================
-Buscando Arduino Nano automáticamente...
+Buscando Arduino UNO automáticamente...
 -> Encontrado posible Arduino en: /dev/ttyUSB0
 Inicializando gamepad virtual de Xbox 360...
 ¡Gamepad virtual creado correctamente!
