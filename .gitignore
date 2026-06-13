@@ -1,0 +1,40 @@
+# OpenGL Shader/Driver Cache
+GLCache/
+
+# Python virtual environments
+venv/
+python/venv/
+.venv/
+env/
+python/env/
+
+# Python compiled bytecode and cache
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
+Icon?
+ehthumbs.db
+
+# Local configuration files (calibration, settings)
+# Note: You can keep config_volante.json tracked if it serves as default settings,
+# but if you prefer to keep calibration private, uncomment the line below:
+# python/config_volante.json
+
+# Compiled executable binaries
+*.exe
+
+# IDE/Editor configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.project
+.settings/
