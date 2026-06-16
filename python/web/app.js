@@ -16,43 +16,27 @@ let config = {
     steer_target: "Left Stick X",
     accel_target: "Right Trigger (RT)",
     brake_target: "Left Trigger (LT)",
-    btn_d2_target: "Button Start",
+    btn_d2_target: "Ninguno",
     steer_min: 0,
     steer_center: 512,
     steer_max: 1023,
-    btn_map_p2: "Button Start",
-    btn_map_p3: "Button A",
-    btn_map_p4: "Button B",
-    btn_map_p5: "Button X",
-    btn_map_p6: "Button Y",
-    btn_map_p7: "Button LB (Left Shoulder)",
-    btn_map_p8: "Button RB (Right Shoulder)",
-    btn_map_p9: "Button Back"
+    btn_map_p2: "Ninguno",
+    btn_map_p3: "Ninguno",
+    btn_map_p4: "Ninguno",
+    btn_map_p5: "Ninguno",
+    btn_map_p6: "Ninguno",
+    btn_map_p7: "Ninguno",
+    btn_map_p8: "Ninguno",
+    btn_map_p9: "Ninguno",
+    btn_map_p10: "Ninguno",
+    btn_map_p11: "Ninguno",
+    preset_cycle_btn: "Ninguno",
+    active_preset: "Personalizado",
+    previous_preset: "Personalizado"
 };
 
 // Presets de Juego (Espejo de python para consistencia local y velocidad)
 const PRESETS = {
-    "F1 Series (F1 23/24) / Modern Racing": {
-        sensitivity: 0.25,
-        slope: 0.65,
-        anti_deadzone: 0.0,
-        deadzone: 0.23,
-        filter: 0.55
-    },
-    "Gran Turismo 4 (PS2 / PCSX2)": {
-        sensitivity: 0.40,
-        slope: 0.80,
-        anti_deadzone: 0.15,
-        deadzone: 0.10,
-        filter: 0.40
-    },
-    "Need for Speed Underground / PS2 Classic": {
-        sensitivity: 0.50,
-        slope: 1.00,
-        anti_deadzone: 0.25,
-        deadzone: 0.15,
-        filter: 0.30
-    },
     "Personalizado": null // Se mantiene el estado actual
 };
 
@@ -116,7 +100,9 @@ const dom = {
         document.getElementById('btn-p6-pill'),
         document.getElementById('btn-p7-pill'),
         document.getElementById('btn-p8-pill'),
-        document.getElementById('btn-p9-pill')
+        document.getElementById('btn-p9-pill'),
+        document.getElementById('btn-p10-pill'),
+        document.getElementById('btn-p11-pill')
     ],
     
     // Button mapping dropdowns
@@ -128,7 +114,9 @@ const dom = {
         document.getElementById('map-p6'),
         document.getElementById('map-p7'),
         document.getElementById('map-p8'),
-        document.getElementById('map-p9')
+        document.getElementById('map-p9'),
+        document.getElementById('map-p10'),
+        document.getElementById('map-p11')
     ],
     
     // Tuning
@@ -172,11 +160,14 @@ const ctx = dom.curveCanvas.getContext('2d');
 // WEBSOCKET: CONEXIÓN & COMUNICACIÓN
 // ==========================================================================
 function connectWebSocket() {
-    log("Conectando con el servidor backend (ws://localhost:8765)...", "info");
+    const urlParams = new URLSearchParams(window.location.search);
+    const wsPort = urlParams.get('ws_port') || '8765';
+    
+    log(`Conectando con el servidor backend (ws://localhost:${wsPort})...`, "info");
     dom.wsStatusText.innerText = "WebSocket: Conectando...";
     dom.wsDot.className = "dot yellow";
 
-    socket = new WebSocket("ws://localhost:8765");
+    socket = new WebSocket(`ws://localhost:${wsPort}`);
 
     socket.onopen = function() {
         isConnected = true;
@@ -294,9 +285,9 @@ function updateTelemetry(data) {
     dom.brakeDisplay.innerText = `${brakePct}%`;
     dom.rawBrake.innerText = data.raw.brake;
     
-    // --- 3. ACTUALIZAR ESTADO DE LOS 9 BOTONES ---
-    if (data.mapped.buttons && data.mapped.buttons.length === 9) {
-        for (let i = 0; i < 9; i++) {
+    // --- 3. ACTUALIZAR ESTADO DE LOS BOTONES ---
+    if (data.mapped.buttons && data.mapped.buttons.length === 10) {
+        for (let i = 0; i < 10; i++) {
             const pill = dom.btnPills[i];
             if (pill) {
                 if (data.mapped.buttons[i] === 1) {
@@ -522,7 +513,7 @@ function populatePresetsDropdown() {
         for (const name in config.custom_presets) {
             const opt = document.createElement("option");
             opt.value = name;
-            opt.textContent = `⭐ ${name}`;
+            opt.textContent = name;
             select.appendChild(opt);
         }
     }
@@ -592,15 +583,17 @@ function syncSlidersWithConfig() {
     dom.brakeDzMarker.style.bottom = `${dzPercent}%`;
 
     // Actualizar mapeos de botones en la UI
-    if (dom.mapSelects && dom.mapSelects.length === 8) {
-        const p2 = config.btn_map_p2 !== undefined ? config.btn_map_p2 : "Button Start";
-        const p3 = config.btn_map_p3 !== undefined ? config.btn_map_p3 : "Button A";
-        const p4 = config.btn_map_p4 !== undefined ? config.btn_map_p4 : "Button B";
-        const p5 = config.btn_map_p5 !== undefined ? config.btn_map_p5 : "Button X";
-        const p6 = config.btn_map_p6 !== undefined ? config.btn_map_p6 : "Button Y";
-        const p7 = config.btn_map_p7 !== undefined ? config.btn_map_p7 : "Button LB (Left Shoulder)";
-        const p8 = config.btn_map_p8 !== undefined ? config.btn_map_p8 : "Button RB (Right Shoulder)";
-        const p9 = config.btn_map_p9 !== undefined ? config.btn_map_p9 : "Button Back";
+    if (dom.mapSelects && dom.mapSelects.length === 10) {
+        const p2 = config.btn_map_p2 !== undefined ? config.btn_map_p2 : "Ninguno";
+        const p3 = config.btn_map_p3 !== undefined ? config.btn_map_p3 : "Ninguno";
+        const p4 = config.btn_map_p4 !== undefined ? config.btn_map_p4 : "Ninguno";
+        const p5 = config.btn_map_p5 !== undefined ? config.btn_map_p5 : "Ninguno";
+        const p6 = config.btn_map_p6 !== undefined ? config.btn_map_p6 : "Ninguno";
+        const p7 = config.btn_map_p7 !== undefined ? config.btn_map_p7 : "Ninguno";
+        const p8 = config.btn_map_p8 !== undefined ? config.btn_map_p8 : "Ninguno";
+        const p9 = config.btn_map_p9 !== undefined ? config.btn_map_p9 : "Ninguno";
+        const p10 = config.btn_map_p10 !== undefined ? config.btn_map_p10 : "Ninguno";
+        const p11 = config.btn_map_p11 !== undefined ? config.btn_map_p11 : "Ninguno";
 
         dom.mapSelects[0].value = p2;
         dom.mapSelects[1].value = p3;
@@ -610,6 +603,8 @@ function syncSlidersWithConfig() {
         dom.mapSelects[5].value = p7;
         dom.mapSelects[6].value = p8;
         dom.mapSelects[7].value = p9;
+        dom.mapSelects[8].value = p10;
+        dom.mapSelects[9].value = p11;
 
         // Actualizar etiquetas en las píldoras del HUD
         document.getElementById("btn-p2-mapping").innerText = getShortMappingLabel(p2);
@@ -620,6 +615,14 @@ function syncSlidersWithConfig() {
         document.getElementById("btn-p7-mapping").innerText = getShortMappingLabel(p7);
         document.getElementById("btn-p8-mapping").innerText = getShortMappingLabel(p8);
         document.getElementById("btn-p9-mapping").innerText = getShortMappingLabel(p9);
+        document.getElementById("btn-p10-mapping").innerText = getShortMappingLabel(p10);
+        document.getElementById("btn-p11-mapping").innerText = getShortMappingLabel(p11);
+    }
+    
+    // Sincronizar el select de alternar presets
+    const cycleBtnSelect = document.getElementById("preset-cycle-btn");
+    if (cycleBtnSelect) {
+        cycleBtnSelect.value = config.preset_cycle_btn !== undefined ? config.preset_cycle_btn : "Ninguno";
     }
     
     // Sincronizar selector de preset
@@ -633,6 +636,9 @@ function handleSliderChange(key, value, displayElement, suffix = "") {
     displayElement.innerText = suffix === "%" ? `${Math.round(config[key] * 100)}%` : `${config[key].toFixed(2)}${suffix}`;
     
     // Si cambiamos un slider manualmente, el preset cambia a Personalizado
+    if (config.active_preset !== "Personalizado") {
+        config.previous_preset = config.active_preset;
+    }
     config.active_preset = "Personalizado";
     if (dom.presetSelect) {
         dom.presetSelect.value = "Personalizado";
@@ -662,18 +668,42 @@ function loadPreset(presetName) {
     }
     
     if (preset) {
+        // Guardar actual como anterior antes de cambiar
+        if (config.active_preset !== presetName) {
+            config.previous_preset = config.active_preset;
+        }
+        
         // Copiar valores del preset a config
         config.sensitivity = preset.sensitivity;
         config.slope = preset.slope;
         config.anti_deadzone = preset.anti_deadzone;
         config.deadzone = preset.deadzone;
         config.filter = preset.filter;
+        
+        // Copiar targets y mapeos si existen en el preset
+        if (preset.steer_target !== undefined) config.steer_target = preset.steer_target;
+        if (preset.accel_target !== undefined) config.accel_target = preset.accel_target;
+        if (preset.brake_target !== undefined) config.brake_target = preset.brake_target;
+        
+        for (let i = 2; i <= 11; i++) {
+            const key = `btn_map_p${i}`;
+            if (preset[key] !== undefined) {
+                config[key] = preset[key];
+            }
+        }
+        if (preset.preset_cycle_btn !== undefined) {
+            config.preset_cycle_btn = preset.preset_cycle_btn;
+        }
+        
         config.active_preset = presetName;
         
         syncSlidersWithConfig();
         drawCurve();
         log(`Preset cargado: ${presetName}`, "info");
     } else if (presetName === "Personalizado") {
+        if (config.active_preset !== "Personalizado") {
+            config.previous_preset = config.active_preset;
+        }
         config.active_preset = "Personalizado";
         log("Preset cambiado a Personalizado", "info");
     }
@@ -759,22 +789,38 @@ function setupEventListeners() {
                 alert("Nombre de preset no válido.");
                 return;
             }
-            if (PRESETS[trimmedName] !== undefined) {
-                alert("No puedes sobrescribir los presets por defecto.");
-                return;
+            
+            if (config.custom_presets && config.custom_presets[trimmedName] !== undefined) {
+                if (!confirm(`El preset "${trimmedName}" ya existe. ¿Deseas sobrescribirlo con los ajustes actuales?`)) {
+                    return;
+                }
             }
             
             if (!config.custom_presets) {
                 config.custom_presets = {};
             }
             
-            // Guardar valores actuales
+            // Guardar valores actuales (ejes y botones)
             config.custom_presets[trimmedName] = {
                 sensitivity: config.sensitivity,
                 slope: config.slope,
                 anti_deadzone: config.anti_deadzone,
                 deadzone: config.deadzone,
-                filter: config.filter
+                filter: config.filter,
+                steer_target: config.steer_target || "Left Stick X",
+                accel_target: config.accel_target || "Right Trigger (RT)",
+                brake_target: config.brake_target || "Left Trigger (LT)",
+                btn_map_p2: config.btn_map_p2 || "Ninguno",
+                btn_map_p3: config.btn_map_p3 || "Ninguno",
+                btn_map_p4: config.btn_map_p4 || "Ninguno",
+                btn_map_p5: config.btn_map_p5 || "Ninguno",
+                btn_map_p6: config.btn_map_p6 || "Ninguno",
+                btn_map_p7: config.btn_map_p7 || "Ninguno",
+                btn_map_p8: config.btn_map_p8 || "Ninguno",
+                btn_map_p9: config.btn_map_p9 || "Ninguno",
+                btn_map_p10: config.btn_map_p10 || "Ninguno",
+                btn_map_p11: config.btn_map_p11 || "Ninguno",
+                preset_cycle_btn: config.preset_cycle_btn || "Ninguno"
             };
             config.active_preset = trimmedName;
             
@@ -859,11 +905,14 @@ function setupEventListeners() {
     });
 
     // Event listeners para mapeos de botones
-    if (dom.mapSelects && dom.mapSelects.length === 8) {
+    if (dom.mapSelects && dom.mapSelects.length === 10) {
         dom.mapSelects.forEach((select, index) => {
             select.addEventListener('change', (e) => {
                 const key = `btn_map_p${index + 2}`;
                 config[key] = e.target.value;
+                if (config.active_preset !== "Personalizado") {
+                    config.previous_preset = config.active_preset;
+                }
                 config.active_preset = "Personalizado";
                 dom.presetSelect.value = "Personalizado";
                 
@@ -879,6 +928,46 @@ function setupEventListeners() {
         });
     }
 
+    // Event listeners para Cruceta Virtual (Mapeo)
+    const btnDpadUp = document.getElementById('btn-dpad-up');
+    const btnDpadDown = document.getElementById('btn-dpad-down');
+    const btnDpadLeft = document.getElementById('btn-dpad-left');
+    const btnDpadRight = document.getElementById('btn-dpad-right');
+
+    if (btnDpadUp) {
+        btnDpadUp.addEventListener('click', () => {
+            sendMessage("command", "trigger_dpad", "D-Pad UP");
+            log("Simulando Cruceta Arriba (D-Pad UP) para mapeo...", "info");
+        });
+    }
+    if (btnDpadDown) {
+        btnDpadDown.addEventListener('click', () => {
+            sendMessage("command", "trigger_dpad", "D-Pad DOWN");
+            log("Simulando Cruceta Abajo (D-Pad DOWN) para mapeo...", "info");
+        });
+    }
+    if (btnDpadLeft) {
+        btnDpadLeft.addEventListener('click', () => {
+            sendMessage("command", "trigger_dpad", "D-Pad LEFT");
+            log("Simulando Cruceta Izquierda (D-Pad LEFT) para mapeo...", "info");
+        });
+    }
+    if (btnDpadRight) {
+        btnDpadRight.addEventListener('click', () => {
+            sendMessage("command", "trigger_dpad", "D-Pad RIGHT");
+            log("Simulando Cruceta Derecha (D-Pad RIGHT) para mapeo...", "info");
+        });
+    }
+
+    const cycleBtnSelect = document.getElementById('preset-cycle-btn');
+    if (cycleBtnSelect) {
+        cycleBtnSelect.addEventListener('change', (e) => {
+            config.preset_cycle_btn = e.target.value;
+            sendMessage("config", config);
+            log(`Botón de alternar presets configurado a: ${e.target.value}`, "info");
+        });
+    }
+
     // Limpiar Consola
     dom.btnClearLog.addEventListener('click', () => {
         dom.consoleOutput.innerHTML = "";
@@ -889,7 +978,7 @@ function setupEventListeners() {
 // Inicialización
 function init() {
     // 1. Popular selectores de botones dinámicamente antes de sincronizar
-    if (dom.mapSelects && dom.mapSelects.length === 8) {
+    if (dom.mapSelects && dom.mapSelects.length === 10) {
         dom.mapSelects.forEach((select) => {
             select.innerHTML = "";
             for (const [val, label] of Object.entries(MAP_OPTIONS)) {

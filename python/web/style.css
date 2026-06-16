@@ -948,3 +948,66 @@ input[type="range"]::-webkit-slider-thumb:hover {
         height: 130px;
     }
 }
+
+/* Virtual D-pad styling */
+.dpad-gauge-wrapper {
+    justify-content: center;
+}
+
+.dpad-visual-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    padding: 10px;
+}
+
+.dpad-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 6px;
+    transition: all var(--transition-speed) ease;
+    z-index: 3;
+}
+
+.dpad-btn:hover {
+    background: rgba(0, 242, 254, 0.1);
+    border-color: var(--neon-blue);
+    color: var(--neon-blue);
+    box-shadow: 0 0 8px var(--neon-blue-glow);
+}
+
+.dpad-btn:active {
+    background: var(--neon-blue);
+    color: black;
+}
+
+.dpad-row {
+    display: flex;
+    align-items: center;
+    gap: 32px; /* Space for center cap */
+}
+
+.dpad-center-cap {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    z-index: 2;
+}

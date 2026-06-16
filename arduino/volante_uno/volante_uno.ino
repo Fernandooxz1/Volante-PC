@@ -13,9 +13,9 @@ const int PIN_DIRECCION = A0;
 const int PIN_ACELERADOR = A1;
 const int PIN_FRENO = A2;
 
-// Pines digitales para botones (Pines del 2 al 9)
-const int NUM_BOTONES = 8;
-const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, 9};
+// Pines digitales para botones (Pines del 2 al 11)
+const int NUM_BOTONES = 10;
+const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 
 // Factor de suavizado para el filtro EMA en punto fijo (escala de 256)
 // 90/256 equivale aproximadamente a ALPHA = 0.35

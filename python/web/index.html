@@ -126,6 +126,23 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Virtual D-pad for mapping -->
+                    <div class="gauge-wrapper dpad-gauge-wrapper">
+                        <div class="gauge-label">CRUCETA VIRTUAL</div>
+                        <div class="dpad-visual-container">
+                            <button id="btn-dpad-up" class="dpad-btn up" title="Simular Cruceta Arriba para mapear">▲</button>
+                            <div class="dpad-row">
+                                <button id="btn-dpad-left" class="dpad-btn left" title="Simular Cruceta Izquierda para mapear">◀</button>
+                                <div class="dpad-center-cap"></div>
+                                <button id="btn-dpad-right" class="dpad-btn right" title="Simular Cruceta Derecha para mapear">▶</button>
+                            </div>
+                            <button id="btn-dpad-down" class="dpad-btn down" title="Simular Cruceta Abajo para mapear">▼</button>
+                        </div>
+                        <div class="axis-details">
+                            <span class="raw-val">Mapear sin flechas físicas</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Digital button state & virtual controller status -->
@@ -191,6 +208,20 @@
                                 <span class="pill-mapping" id="btn-p9-mapping">Back</span>
                             </div>
                         </div>
+                        <div class="btn-indicator-pill" id="btn-p10-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D10</span>
+                                <span class="pill-mapping" id="btn-p10-mapping">L3</span>
+                            </div>
+                        </div>
+                        <div class="btn-indicator-pill" id="btn-p11-pill">
+                            <span class="pill-dot"></span>
+                            <div class="pill-text-wrapper">
+                                <span class="pill-pin">D11</span>
+                                <span class="pill-mapping" id="btn-p11-mapping">R3</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -202,9 +233,8 @@
                     <div class="preset-selector-wrapper">
                         <label for="preset-select">Preset:</label>
                         <select id="preset-select">
-                            <option value="F1 Series (F1 23/24) / Modern Racing">F1 Series / Modern</option>
-                            <option value="Gran Turismo 4 (PS2 / PCSX2)">Gran Turismo 4</option>
-                            <option value="Need for Speed Underground / PS2 Classic">NFS Underground</option>
+                            <option value="F1 RACING">F1 RACING</option>
+                            <option value="F1 RACING CRUCETAS">F1 RACING CRUCETAS</option>
                             <option value="Personalizado" selected>Personalizado</option>
                         </select>
                         <button id="btn-save-preset" class="btn-icon" title="Guardar preset actual">💾</button>
@@ -295,6 +325,22 @@
                     <div class="config-separator">Mapeo de Botones (Digitales)</div>
 
                     <div class="button-mappings-grid">
+                        <div class="mapping-row" style="background: rgba(0, 242, 254, 0.03); border-color: rgba(0, 242, 254, 0.15); border-radius: 6px; padding: 4px 8px; margin-bottom: 8px;">
+                            <label for="preset-cycle-btn" style="color: var(--neon-blue); font-weight: 600;">Alternar Presets:</label>
+                            <select id="preset-cycle-btn" class="select-sm" style="border-color: rgba(0, 242, 254, 0.3);">
+                                <option value="Ninguno">Ninguno</option>
+                                <option value="Pin D2">Pin D2</option>
+                                <option value="Pin D3">Pin D3</option>
+                                <option value="Pin D4">Pin D4</option>
+                                <option value="Pin D5">Pin D5</option>
+                                <option value="Pin D6">Pin D6</option>
+                                <option value="Pin D7">Pin D7</option>
+                                <option value="Pin D8">Pin D8</option>
+                                <option value="Pin D9">Pin D9</option>
+                                <option value="Pin D10">Pin D10</option>
+                                <option value="Pin D11">Pin D11</option>
+                            </select>
+                        </div>
                         <div class="mapping-row">
                             <label for="map-p2">Pin D2 (Start):</label>
                             <select id="map-p2" class="select-sm"></select>
@@ -326,6 +372,14 @@
                         <div class="mapping-row">
                             <label for="map-p9">Pin D9 (Back):</label>
                             <select id="map-p9" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p10">Pin D10 (L3):</label>
+                            <select id="map-p10" class="select-sm"></select>
+                        </div>
+                        <div class="mapping-row">
+                            <label for="map-p11">Pin D11 (R3):</label>
+                            <select id="map-p11" class="select-sm"></select>
                         </div>
                     </div>
                 </div>

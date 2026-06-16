@@ -53,6 +53,14 @@ emulation_thread = None
 serial_conn = None
 virtual_gamepad = None
 
+# Estado de botones virtuales del D-pad para mapeo
+virtual_btn_states = {
+    "D-Pad UP": 0,
+    "D-Pad DOWN": 0,
+    "D-Pad LEFT": 0,
+    "D-Pad RIGHT": 0
+}
+
 # Ajustes de calibración activos
 calib_config = {
     "sensitivity": 0.25,
@@ -63,20 +71,24 @@ calib_config = {
     "steer_target": "Left Stick X",
     "accel_target": "Right Trigger (RT)",
     "brake_target": "Left Trigger (LT)",
-    "btn_d2_target": "Button Start",  # Mantenido por compatibilidad
+    "btn_d2_target": "Ninguno",  # Mantenido por compatibilidad
     "steer_min": 0,
     "steer_center": 512,
     "steer_max": 1023,
-    # Mapeo de botones individuales (Pines 2 al 9)
-    "btn_map_p2": "Button Start",
-    "btn_map_p3": "Button A",
-    "btn_map_p4": "Button B",
-    "btn_map_p5": "Button X",
-    "btn_map_p6": "Button Y",
-    "btn_map_p7": "Button LB (Left Shoulder)",
-    "btn_map_p8": "Button RB (Right Shoulder)",
-    "btn_map_p9": "Button Back",
+    # Mapeo de botones individuales (Pines 2 al 11)
+    "btn_map_p2": "Ninguno",
+    "btn_map_p3": "Ninguno",
+    "btn_map_p4": "Ninguno",
+    "btn_map_p5": "Ninguno",
+    "btn_map_p6": "Ninguno",
+    "btn_map_p7": "Ninguno",
+    "btn_map_p8": "Ninguno",
+    "btn_map_p9": "Ninguno",
+    "btn_map_p10": "Ninguno",
+    "btn_map_p11": "Ninguno",
+    "preset_cycle_btn": "Ninguno",
     "active_preset": "Personalizado",
+    "previous_preset": "Personalizado",
     "custom_presets": {}
 }
 
@@ -201,6 +213,54 @@ def init_virtual_gamepad():
         virtual_gamepad = None
         return False
 
+def cycle_presets_web():
+    global calib_config
+    with state_lock:
+        current_preset = calib_config.get("active_preset", "Personalizado")
+        prev_preset = calib_config.get("previous_preset", "Personalizado")
+        
+        # Obtener lista de presets disponibles de forma dinámica
+        presets_list = []
+        if "custom_presets" in calib_config and calib_config["custom_presets"]:
+            presets_list.extend(calib_config["custom_presets"].keys())
+        presets_list.append("Personalizado")
+        
+        # Si el preset anterior no es válido o es igual al actual, buscar uno diferente al actual
+        if prev_preset == current_preset or prev_preset not in presets_list:
+            other_presets = [p for p in presets_list if p != current_preset]
+            if other_presets:
+                prev_preset = other_presets[0]
+            else:
+                prev_preset = "Personalizado"
+        
+        next_preset = prev_preset
+        calib_config["previous_preset"] = current_preset
+        calib_config["active_preset"] = next_preset
+        
+        # Cargar todos los valores del preset seleccionado (ejes y botones)
+        if next_preset in calib_config.get("custom_presets", {}):
+            p_values = calib_config["custom_presets"][next_preset]
+            for k, v in p_values.items():
+                if k != "custom_presets" and k in calib_config:
+                    calib_config[k] = v
+            
+        log_to_gui(f"Alternando preset de {current_preset} a {next_preset}", "success")
+        
+    # Guardar la configuración y notificar a los websockets
+    save_config_to_json()
+    broadcast_status()
+
+def get_pin_state(pin_name, btn_states):
+    if pin_name and pin_name.startswith("Pin D"):
+        try:
+            pin_num = int(pin_name[5:])
+            idx = pin_num - 2
+            if 0 <= idx < len(btn_states):
+                return btn_states[idx]
+        except ValueError:
+            pass
+    return 0
+
 # ==========================================================================
 # BUCLE DE EMULACIÓN DE BAJA LATENCIA (RUNS IN BACKGROUND THREAD)
 # ==========================================================================
@@ -222,6 +282,7 @@ def emulation_loop(port):
     # Iniciar ciclo de lectura binaria
     pressed_buttons = set()
     last_ws_send_time = 0.0
+    last_btn_cycle_state = 0
 
     while True:
         with state_lock:
@@ -245,10 +306,19 @@ def emulation_loop(port):
                         accel_raw = (axes_val >> 10) & 0x3FF
                         brake_raw = (axes_val >> 20) & 0x3FF
                         
-                        # Extraer los 8 botones individuales (bits 0 a 7)
+                        # Extraer los 10 botones individuales (bits 0 a 9)
                         btn_states = []
-                        for i in range(8):
+                        for i in range(10):
                             btn_states.append((buttons_val >> i) & 0x01)
+                        
+                        # Detectar flanco de subida del botón de alternar preset
+                        with state_lock:
+                            cycle_btn_name = calib_config.get("preset_cycle_btn", "Ninguno")
+                        
+                        current_cycle_state = get_pin_state(cycle_btn_name, btn_states)
+                        if current_cycle_state == 1 and last_btn_cycle_state == 0:
+                            cycle_presets_web()
+                        last_btn_cycle_state = current_cycle_state
                         
                         # Clamp de seguridad
                         steer = max(0, min(1023, steer_raw))
@@ -278,6 +348,8 @@ def emulation_loop(port):
                             btn_map_p7 = calib_config["btn_map_p7"]
                             btn_map_p8 = calib_config["btn_map_p8"]
                             btn_map_p9 = calib_config["btn_map_p9"]
+                            btn_map_p10 = calib_config["btn_map_p10"]
+                            btn_map_p11 = calib_config["btn_map_p11"]
 
                         # 1. Filtro DSP Anti-Ruido (EMA)
                         if filter_strength > 0:
@@ -390,17 +462,25 @@ def emulation_loop(port):
                             virtual_gamepad.left_trigger(value=left_trigger_val)
                             virtual_gamepad.right_trigger(value=right_trigger_val)
                             
-                            # Mapear los 8 botones digitales de forma dinámica
+                            # Mapear los 10 botones digitales de forma dinámica
                             btn_mappings = [
                                 btn_map_p2, btn_map_p3, btn_map_p4, btn_map_p5, btn_map_p6,
-                                btn_map_p7, btn_map_p8, btn_map_p9
+                                btn_map_p7, btn_map_p8, btn_map_p9, btn_map_p10, btn_map_p11
                             ]
                             active_buttons = set()
-                            for i in range(8):
+                            for i in range(10):
                                 if btn_states[i] == 1:
                                     target = btn_mappings[i]
                                     if target in BUTTON_MAP and BUTTON_MAP[target] is not None:
                                         active_buttons.add(BUTTON_MAP[target])
+                                        
+                            # Agregar botones virtuales del D-pad para mapeo
+                            with state_lock:
+                                for v_btn, state in virtual_btn_states.items():
+                                    if state == 1:
+                                        target_button = BUTTON_MAP.get(v_btn)
+                                        if target_button is not None:
+                                            active_buttons.add(target_button)
                             
                             # Liberar viejos
                             to_release = [b for b in pressed_buttons if b not in active_buttons]
@@ -589,6 +669,18 @@ async def handle_websocket_message(websocket, message_str):
                     is_emulating = False
                 # El hilo detectará is_emulating=False y terminará limpio
                 log_to_gui("Deteniendo bucle de emulación...", "info")
+                                
+            elif msg_data == "trigger_dpad":
+                direction = msg_value  # "D-Pad UP", "D-Pad DOWN", etc.
+                with state_lock:
+                    virtual_btn_states[direction] = 1
+                
+                # Función para liberar después de 500ms
+                def release_later():
+                    time.sleep(0.5)
+                    with state_lock:
+                        virtual_btn_states[direction] = 0
+                threading.Thread(target=release_later, daemon=True).start()
                 
         elif msg_type == "config":
             # Actualizar configuración thread-safe
@@ -596,8 +688,11 @@ async def handle_websocket_message(websocket, message_str):
                 for k, v in msg_data.items():
                     if k in calib_config:
                         calib_config[k] = v
-            # Guardar la configuración en disco en background para evitar lag
-            threading.Thread(target=save_config_to_json, daemon=True).start()
+            # Guardar la configuración en disco en background y difundir cambios
+            def save_and_broadcast():
+                save_config_to_json()
+                broadcast_status()
+            threading.Thread(target=save_and_broadcast, daemon=True).start()
             
     except Exception as e:
         log_to_gui(f"Error procesando mensaje websocket: {e}", "error")
