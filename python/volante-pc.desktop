@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Volante PC
+GenericName=Racing Wheel Emulator
+Comment=Emulador de Volante y Pedalera Xbox 360 con Arduino UNO
+Exec=/home/fernandooxz/Documentos/Volante-PC/python/dist/VolantePC
+Path=/home/fernandooxz/Documentos/Volante-PC/python/dist
+Icon=input-gaming
+Terminal=false
+Type=Application
+Categories=Game;Utility;
+Keywords=volante;wheel;racing;gamepad;xbox;arduino;emulador;
+StartupNotify=true

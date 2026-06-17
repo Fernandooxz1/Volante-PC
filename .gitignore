@@ -38,3 +38,9 @@ ehthumbs.db
 *.swp
 .project
 .settings/
+
+# PyInstaller builds, specs, and virtual environments
+python/build/
+python/dist/
+python/*.spec
+python/.build_venv/

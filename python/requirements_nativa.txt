@@ -1,0 +1,5 @@
+# Dependencias para la versión App Nativa (PyWebView)
+# Instalar con: pip install -r requirements_nativa.txt
+pyserial>=3.5
+vgamepad>=0.1.0
+pywebview>=5.0

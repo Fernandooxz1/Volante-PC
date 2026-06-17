@@ -1,4 +1,12 @@
 // ==========================================================================
+// MODO NATIVO (PyWebView) - Detección y Comunicación
+// ==========================================================================
+let nativeMode = false;
+let pyApi = null;
+let telemetryPollTimer = null;
+let logPollTimer = null;
+
+// ==========================================================================
 // CONFIGURACIÓN Y VARIABLES DE ESTADO
 // ==========================================================================
 let socket = null;
@@ -211,9 +219,109 @@ function connectWebSocket() {
 }
 
 function sendMessage(type, data, value = null) {
+    if (nativeMode) {
+        nativeSendMessage(type, data, value);
+        return;
+    }
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type, data, value }));
     }
+}
+
+async function nativeSendMessage(type, data, value) {
+    try {
+        let result;
+        if (type === "command") {
+            switch (data) {
+                case "get_status":
+                    result = await pyApi.get_status();
+                    break;
+                case "refresh_ports":
+                    result = await pyApi.refresh_ports();
+                    break;
+                case "select_port":
+                    await pyApi.select_port(value);
+                    return;
+                case "start":
+                    result = await pyApi.start_emulation(value);
+                    break;
+                case "stop":
+                    result = await pyApi.stop_emulation();
+                    break;
+                case "trigger_dpad":
+                    await pyApi.trigger_dpad(value);
+                    return;
+            }
+        } else if (type === "config") {
+            result = await pyApi.update_config(JSON.stringify(data));
+        }
+        if (result) {
+            handleServerMessage(JSON.parse(result));
+        }
+    } catch (e) {
+        console.error("Error en comunicación nativa:", e);
+    }
+}
+
+function initNativeMode() {
+    nativeMode = true;
+    pyApi = window.pywebview.api;
+    
+    log("Modo aplicación nativa detectado (PyWebView).", "success");
+    dom.wsStatusText.innerText = "App Nativa: Conectado";
+    dom.wsDot.className = "dot green";
+    isConnected = true;
+    
+    // Solicitar estado inicial
+    sendMessage("command", "get_status");
+    sendMessage("command", "refresh_ports");
+    
+    // Iniciar polling de telemetría (60 FPS)
+    telemetryPollTimer = setInterval(async () => {
+        if (!nativeMode || !isEmulating) return;
+        try {
+            const data = await pyApi.get_telemetry();
+            if (data) {
+                const telemetry = JSON.parse(data);
+                if (telemetry) {
+                    updateTelemetry(telemetry);
+                }
+            }
+        } catch (e) { /* silenciar errores de polling */ }
+    }, 16);
+    
+    // Iniciar polling de logs (5 veces por segundo)
+    logPollTimer = setInterval(async () => {
+        if (!nativeMode) return;
+        try {
+            const data = await pyApi.get_logs();
+            if (data) {
+                const logs = JSON.parse(data);
+                if (logs && logs.length > 0) {
+                    logs.forEach(l => log(l.text, l.level));
+                }
+            }
+        } catch (e) { /* silenciar errores de polling */ }
+    }, 200);
+    
+    // Polling de estado periódico (para detectar cambios de preset por botón físico)
+    setInterval(async () => {
+        if (!nativeMode) return;
+        try {
+            const result = await pyApi.get_status();
+            if (result) {
+                const msg = JSON.parse(result);
+                // Solo actualizar config si cambió el preset activo
+                if (msg.data && msg.data.config && msg.data.config.active_preset !== config.active_preset) {
+                    handleServerMessage(msg);
+                }
+                // Actualizar estado de emulación
+                if (msg.data && msg.data.emulating !== isEmulating) {
+                    handleServerMessage(msg);
+                }
+            }
+        } catch (e) { /* silenciar */ }
+    }, 1000);
 }
 
 // ==========================================================================
@@ -991,7 +1099,24 @@ function init() {
     }
 
     setupEventListeners();
-    connectWebSocket();
+    // Detectar modo nativo (PyWebView) o web (WebSocket)
+    if (window.pywebview && window.pywebview.api) {
+        initNativeMode();
+    } else {
+        // Esperar evento pywebviewready o caer a WebSocket
+        let nativeTimeout = setTimeout(() => {
+            if (!nativeMode) {
+                connectWebSocket();
+            }
+        }, 600);
+        
+        window.addEventListener('pywebviewready', () => {
+            clearTimeout(nativeTimeout);
+            if (!nativeMode) {
+                initNativeMode();
+            }
+        });
+    }
     
     // Ajustar dimensiones del Canvas por el escalado de retina
     const dpr = window.devicePixelRatio || 1;
