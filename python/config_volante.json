@@ -1,6 +1,6 @@
 {
-    "sensitivity": 0.5,
-    "slope": 2,
+    "sensitivity": 1,
+    "slope": 1.85,
     "anti_deadzone": 0,
     "deadzone": 0.13,
     "filter": 0,
@@ -22,8 +22,8 @@
     "btn_map_p10": "D-Pad DOWN",
     "btn_map_p11": "D-Pad UP",
     "preset_cycle_btn": "Pin D2",
-    "active_preset": "F1 RACING CRUCETAS",
-    "previous_preset": "F1 RACING",
+    "active_preset": "Personalizado",
+    "previous_preset": "F1 RACING CRUCETAS",
     "custom_presets": {
         "F1 RACING": {
             "sensitivity": 0.5,

@@ -80,7 +80,6 @@ const dom = {
     btnRefresh: document.getElementById('btn-refresh'),
     btnConnect: document.getElementById('btn-connect'),
     statusBadge: document.getElementById('status-badge'),
-    gamepadStatus: document.getElementById('gamepad-status'),
     
     // Gauges
     steeringWheel: document.getElementById('steering-wheel'),
@@ -462,8 +461,13 @@ function updateEmulationUIState(emulating) {
 // ==========================================================================
 function getMappedSteerValue(x, sensitivity, slope, antiDeadzone) {
     // x va de -1.0 a 1.0 (Entrada normalizada)
-    // 1. Aplicar pendiente y sensibilidad
-    let x_sloped = x * slope * sensitivity;
+    // 1. Aplicar Exponencial: x_expo = sign(x) * (|x| ^ slope)
+    let abs_x_raw = Math.abs(x);
+    let sign_x_raw = Math.sign(x);
+    let x_expo = abs_x_raw === 0 ? 0.0 : sign_x_raw * Math.pow(abs_x_raw, slope);
+
+    // Aplicar sensibilidad
+    let x_sloped = x_expo * sensitivity;
     x_sloped = Math.max(-1.0, Math.min(1.0, x_sloped));
 
     // 2. Aplicar Anti-Zona Muerta
@@ -482,8 +486,8 @@ function getMappedSteerValue(x, sensitivity, slope, antiDeadzone) {
 }
 
 function drawCurve() {
-    const width = dom.curveCanvas.width;
-    const height = dom.curveCanvas.height;
+    const width = dom.curveCanvas.clientWidth;
+    const height = dom.curveCanvas.clientHeight;
     
     // Limpiar canvas
     ctx.clearRect(0, 0, width, height);
@@ -736,6 +740,11 @@ function syncSlidersWithConfig() {
     // Sincronizar selector de preset
     if (dom.presetSelect) {
         dom.presetSelect.value = config.active_preset !== undefined ? config.active_preset : "Personalizado";
+    }
+
+    // Actualizar los dropdowns personalizados
+    if (typeof updateCustomSelects === 'function') {
+        updateCustomSelects();
     }
 }
 
@@ -1134,6 +1143,112 @@ function init() {
         dom.curveCanvas.height = dom.curveCanvas.clientHeight * dpr;
         ctx.scale(dpr, dpr);
         drawCurve();
+    });
+
+    // Convertir todos los selectores de botones a custom selects para evitar problemas de visualización en PyWebView
+    document.querySelectorAll('.select-sm').forEach(convertToCustomSelect);
+}
+
+// --- Custom Dropdown Logic for PyWebView GTK clipping fix ---
+function convertToCustomSelect(selectElement) {
+    if (selectElement.style.display === 'none') return; // Evitar doble conversión
+    
+    selectElement.style.display = 'none';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select-wrapper';
+    selectElement.parentNode.insertBefore(wrapper, selectElement.nextSibling);
+
+    const trigger = document.createElement('div');
+    trigger.className = 'custom-select-trigger';
+    const triggerText = document.createElement('span');
+    triggerText.innerText = selectElement.options[selectElement.selectedIndex]?.text || '';
+    trigger.appendChild(triggerText);
+    
+    const arrow = document.createElement('span');
+    arrow.className = 'custom-select-arrow';
+    arrow.innerHTML = '▼';
+    trigger.appendChild(arrow);
+    
+    wrapper.appendChild(trigger);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-select-options';
+    
+    function rebuildOptions() {
+        dropdown.innerHTML = '';
+        Array.from(selectElement.options).forEach((option) => {
+            const optDiv = document.createElement('div');
+            optDiv.className = 'custom-select-option';
+            if (option.value === selectElement.value) {
+                optDiv.classList.add('selected');
+            }
+            optDiv.innerText = option.text;
+            optDiv.dataset.value = option.value;
+
+            optDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement.value = option.value;
+                triggerText.innerText = option.text;
+                
+                // Disparar evento change en el select original
+                const event = new Event('change', { bubbles: true });
+                selectElement.dispatchEvent(event);
+                
+                closeDropdown();
+            });
+            dropdown.appendChild(optDiv);
+        });
+    }
+
+    rebuildOptions();
+    wrapper.appendChild(dropdown);
+
+    function toggleDropdown(e) {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.contains('show');
+        closeAllCustomDropdowns();
+        if (!isOpen) {
+            dropdown.classList.add('show');
+            trigger.classList.add('active');
+            const selectedOpt = dropdown.querySelector('.custom-select-option.selected');
+            if (selectedOpt) {
+                selectedOpt.scrollIntoView({ block: 'nearest' });
+            }
+        }
+    }
+
+    function closeDropdown() {
+        dropdown.classList.remove('show');
+        trigger.classList.remove('active');
+    }
+
+    trigger.addEventListener('click', toggleDropdown);
+
+    selectElement.customSelect = {
+        update: () => {
+            rebuildOptions();
+            triggerText.innerText = selectElement.options[selectElement.selectedIndex]?.text || '';
+        }
+    };
+}
+
+function closeAllCustomDropdowns() {
+    document.querySelectorAll('.custom-select-options.show').forEach((dropdown) => {
+        dropdown.classList.remove('show');
+    });
+    document.querySelectorAll('.custom-select-trigger.active').forEach((trigger) => {
+        trigger.classList.remove('active');
+    });
+}
+
+document.addEventListener('click', closeAllCustomDropdowns);
+
+function updateCustomSelects() {
+    document.querySelectorAll('.select-sm').forEach((selectElement) => {
+        if (selectElement.customSelect) {
+            selectElement.customSelect.update();
+        }
     });
 }
 

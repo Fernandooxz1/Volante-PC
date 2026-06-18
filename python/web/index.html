@@ -49,8 +49,9 @@
         <!-- MAIN DASHBOARD -->
         <main class="dashboard-grid">
             
-            <!-- LEFT COLUMN: COCKPIT HUD VISUALIZERS -->
-            <section class="card cockpit-hud">
+            <!-- LEFT COLUMN: COCKPIT HUD & LOGS -->
+            <div class="left-column">
+                <section class="card cockpit-hud">
                 <div class="card-header">
                     <h2>TELEMETRÍA EN VIVO</h2>
                     <span class="badge" id="status-badge">DESCONECTADO</span>
@@ -147,10 +148,6 @@
 
                 <!-- Digital button state & virtual controller status -->
                 <div class="hud-footer">
-                    <div class="virtual-status">
-                        <span>Emulación Mando:</span>
-                        <span class="status-indicator active" id="gamepad-status">CONECTADO (X360)</span>
-                    </div>
                     <div class="buttons-grid">
                         <div class="btn-indicator-pill" id="btn-p2-pill">
                             <span class="pill-dot"></span>
@@ -226,7 +223,39 @@
                 </div>
             </section>
 
-            <!-- RIGHT COLUMN: TUNING & CALIBRATION -->
+            <!-- FOOTER / CONSOLE LOGS -->
+            <footer class="app-console">
+                <div class="console-header">
+                    <h3>REGISTRO DE SISTEMA Y DIAGNÓSTICOS</h3>
+                    <div class="console-actions">
+                        <button id="btn-clear-log" class="btn btn-text">Limpiar Registro</button>
+                    </div>
+                </div>
+                <div class="console-body" id="console-output">
+                    <div class="log-line log-info">Consola inicializada. Esperando conexión con el servidor de emulación...</div>
+                    <div class="log-line log-warn">Asegúrate de tener conectado el Arduino UNO vía USB antes de iniciar.</div>
+                </div>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span class="dot yellow" id="ws-dot"></span>
+                        <span id="ws-status-text">WebSocket: Desconectado</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Arduino: </span>
+                        <span id="arduino-port-text" class="value">Ninguno</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Bauds: </span>
+                        <span class="value">115200 bps</span>
+                    </div>
+                    <div class="status-item logo-tiny">
+                        <span>ANTIGRAVITY TECHNOLOGY</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+
+        <!-- RIGHT COLUMN: TUNING & CALIBRATION -->
             <section class="card calibration-tuning">
                 <div class="card-header">
                     <h2>CALIBRACIÓN Y AJUSTES</h2>
@@ -287,7 +316,7 @@
                             <label for="slider-slope">Pendiente de Eje (Linealidad)</label>
                             <span class="slider-value" id="val-slope">0.65x</span>
                         </div>
-                        <input type="range" id="slider-slope" min="0.25" max="2.0" step="0.05" value="0.65">
+                        <input type="range" id="slider-slope" min="0.25" max="3.0" step="0.05" value="0.65">
                         <div class="slider-desc">Ajusta la curva de progresión. Mayor que 1.0 da más precisión al centro; menor da respuesta rápida.</div>
                     </div>
 
@@ -325,7 +354,7 @@
                     <div class="config-separator">Mapeo de Botones (Digitales)</div>
 
                     <div class="button-mappings-grid">
-                        <div class="mapping-row" style="background: rgba(0, 242, 254, 0.03); border-color: rgba(0, 242, 254, 0.15); border-radius: 6px; padding: 4px 8px; margin-bottom: 8px;">
+                        <div class="mapping-row" style="grid-column: span 2; background: rgba(0, 242, 254, 0.03); border-color: rgba(0, 242, 254, 0.15); border-radius: 6px; padding: 4px 8px; margin-bottom: 8px;">
                             <label for="preset-cycle-btn" style="color: var(--neon-blue); font-weight: 600;">Alternar Presets:</label>
                             <select id="preset-cycle-btn" class="select-sm" style="border-color: rgba(0, 242, 254, 0.3);">
                                 <option value="Ninguno">Ninguno</option>
@@ -385,37 +414,6 @@
                 </div>
             </section>
         </main>
-
-        <!-- FOOTER / CONSOLE LOGS -->
-        <footer class="app-console">
-            <div class="console-header">
-                <h3>REGISTRO DE SISTEMA Y DIAGNÓSTICOS</h3>
-                <div class="console-actions">
-                    <button id="btn-clear-log" class="btn btn-text">Limpiar Registro</button>
-                </div>
-            </div>
-            <div class="console-body" id="console-output">
-                <div class="log-line log-info">Consola inicializada. Esperando conexión con el servidor de emulación...</div>
-                <div class="log-line log-warn">Asegúrate de tener conectado el Arduino UNO vía USB antes de iniciar.</div>
-            </div>
-            <div class="status-bar">
-                <div class="status-item">
-                    <span class="dot yellow" id="ws-dot"></span>
-                    <span id="ws-status-text">WebSocket: Desconectado</span>
-                </div>
-                <div class="status-item">
-                    <span>Arduino: </span>
-                    <span id="arduino-port-text" class="value">Ninguno</span>
-                </div>
-                <div class="status-item">
-                    <span>Bauds: </span>
-                    <span class="value">115200 bps</span>
-                </div>
-                <div class="status-item logo-tiny">
-                    <span>ANTIGRAVITY TECHNOLOGY</span>
-                </div>
-            </div>
-        </footer>
     </div>
     <script src="app.js"></script>
 </body>

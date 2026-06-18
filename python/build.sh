@@ -9,6 +9,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Activar entorno virtual si existe para evitar errores de PEP 668 en Linux
+if [ -d "venv" ]; then
+    echo "Activando entorno virtual local (venv)..."
+    source venv/bin/activate
+fi
+
 echo "============================================="
 echo "  VOLANTE PC - Compilación de App Nativa"
 echo "============================================="
@@ -70,6 +76,7 @@ python3 -m PyInstaller \
     --windowed \
     --name "VolantePC" \
     --add-data "web:web" \
+    --add-data "config_volante.json:." \
     --clean \
     --noconfirm \
     app_nativa.py

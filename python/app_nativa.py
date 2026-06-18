@@ -25,10 +25,43 @@ import webview
 # ==========================================================================
 if getattr(sys, 'frozen', False):
     BASE_DIR = sys._MEIPASS
-    CONFIG_FILE_PATH = os.path.join(os.path.dirname(sys.executable), 'config_volante.json')
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    CONFIG_FILE_PATH = os.path.join(BASE_DIR, 'config_volante.json')
+
+def get_config_path():
+    """Retorna la ruta del archivo de configuración en el directorio del usuario y lo inicializa si es necesario."""
+    if os.name == 'nt':
+        appdata = os.getenv('APPDATA')
+        config_dir = os.path.join(appdata, 'VolantePC') if appdata else os.path.expanduser('~')
+    else:
+        config_dir = os.path.join(os.path.expanduser('~'), '.config', 'volante_pc')
+    
+    user_config_path = os.path.join(config_dir, 'config_volante.json')
+    
+    if os.path.exists(user_config_path):
+        return user_config_path
+        
+    # Buscar el de origen
+    if getattr(sys, 'frozen', False):
+        default_config_path = os.path.join(sys._MEIPASS, 'config_volante.json')
+        if not os.path.exists(default_config_path):
+            default_config_path = os.path.join(os.path.dirname(sys.executable), 'config_volante.json')
+    else:
+        default_config_path = os.path.join(BASE_DIR, 'config_volante.json')
+        
+    if os.path.exists(default_config_path):
+        try:
+            os.makedirs(config_dir, exist_ok=True)
+            import shutil
+            shutil.copy2(default_config_path, user_config_path)
+            print(f"Configuración por defecto copiada a: {user_config_path}")
+            return user_config_path
+        except Exception as e:
+            print(f"Error copiando configuración inicial: {e}")
+            
+    return default_config_path
+
+CONFIG_FILE_PATH = get_config_path()
 
 # ==========================================================================
 # MAPEO DE BOTONES DE GAMEPAD (XBOX 360)
@@ -124,8 +157,10 @@ def save_config_to_json():
     try:
         with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
             json.dump(config_copy, f, indent=4)
+        log_to_buffer(f"Configuración guardada en: {CONFIG_FILE_PATH}", "success")
     except Exception as e:
         print(f"Error guardando configuración JSON: {e}")
+        log_to_buffer(f"Error guardando configuración: {e}", "error")
 
 
 def load_config_from_json():
@@ -138,10 +173,15 @@ def load_config_from_json():
                 with state_lock:
                     for k, v in saved.items():
                         if k in calib_config:
-                            calib_config[k] = v
-            print("Configuración cargada con éxito desde config_volante.json.")
+                            if k == "custom_presets":
+                                calib_config[k] = dict(v)
+                            else:
+                                calib_config[k] = v
+            print(f"Configuración cargada con éxito desde: {CONFIG_FILE_PATH}")
+            log_to_buffer(f"Configuración cargada desde: {CONFIG_FILE_PATH}", "success")
         except Exception as e:
             print(f"Error cargando configuración JSON: {e}")
+            log_to_buffer(f"Error cargando configuración JSON: {e}", "error")
 
 # ==========================================================================
 # LOGS Y NOTIFICACIONES (BUFFER EN VEZ DE WEBSOCKET)
@@ -221,7 +261,7 @@ def cycle_presets_native():
                 if k != "custom_presets" and k in calib_config:
                     calib_config[k] = v
 
-        log_to_buffer(f"Alternando preset de {current_preset} a {next_preset}", "success")
+    log_to_buffer(f"Alternando preset de {current_preset} a {next_preset}", "success")
 
     # Guardar la configuración en disco
     save_config_to_json()
@@ -349,7 +389,7 @@ def emulation_loop(port):
                             last_filtered_steer = steer
 
                         # 2. Procesar Dirección (Normalizar [-1, 1] usando límites calibrados,
-                        #    aplicar Pendiente y Anti-Zona Muerta)
+                        #    aplicar Exponencial y Anti-Zona Muerta)
                         if steer < steer_center:
                             denom = steer_center - steer_min
                             x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
@@ -359,7 +399,12 @@ def emulation_loop(port):
                             x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
                             x = max(0.0, min(1.0, x))
 
-                        x_sloped = x * slope * sensitivity
+                        # Exponencial: x_expo = sign(x) * (|x| ^ slope)
+                        abs_x_raw = abs(x)
+                        sign_x_raw = 1.0 if x >= 0 else -1.0
+                        x_expo = sign_x_raw * (abs_x_raw ** slope) if abs_x_raw > 0 else 0.0
+
+                        x_sloped = x_expo * sensitivity
                         x_sloped = max(-1.0, min(1.0, x_sloped))
 
                         abs_x = abs(x_sloped)
@@ -718,13 +763,13 @@ def main():
         url=index_path,
         js_api=api,
         width=1280,
-        height=800,
-        min_size=(1024, 680),
+        height=700,
+        min_size=(960, 580),
         confirm_close=True
     )
 
     # 7. Arrancar PyWebView (bloquea hasta que la ventana se cierre)
-    webview.start(debug=False)
+    webview.start(debug=False, http_server=True)
 
     # 8. Limpieza al cerrar la ventana
     print("\n\033[93mCerrando aplicación...\033[0m")
@@ -745,6 +790,7 @@ def main():
         virtual_gamepad = None
 
     print("Aplicación cerrada. ¡Hasta luego!")
+    os._exit(0)
 
 
 if __name__ == "__main__":

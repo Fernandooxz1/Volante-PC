@@ -368,7 +368,7 @@ def emulation_loop(port):
                         else:
                             last_filtered_steer = steer
 
-                        # 2. Procesar Dirección (Normalizar [-1, 1] usando límites calibrados, aplicar Pendiente y Anti-Zona Muerta)
+                        # 2. Procesar Dirección (Normalizar [-1, 1] usando límites calibrados, aplicar Exponencial y Anti-Zona Muerta)
                         if steer < steer_center:
                             denom = steer_center - steer_min
                             x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
@@ -378,7 +378,12 @@ def emulation_loop(port):
                             x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
                             x = max(0.0, min(1.0, x))
                             
-                        x_sloped = x * slope * sensitivity
+                        # Exponencial: x_expo = sign(x) * (|x| ^ slope)
+                        abs_x_raw = abs(x)
+                        sign_x_raw = 1.0 if x >= 0 else -1.0
+                        x_expo = sign_x_raw * (abs_x_raw ** slope) if abs_x_raw > 0 else 0.0
+                        
+                        x_sloped = x_expo * sensitivity
                         x_sloped = max(-1.0, min(1.0, x_sloped))
                         
                         abs_x = abs(x_sloped)
