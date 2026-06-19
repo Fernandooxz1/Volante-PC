@@ -52,6 +52,7 @@ selected_port = None
 emulation_thread = None
 serial_conn = None
 virtual_gamepad = None
+gamepad_ok = True
 
 # Estado de botones virtuales del D-pad para mapeo
 virtual_btn_states = {
@@ -199,10 +200,11 @@ def get_available_ports():
 
 def init_virtual_gamepad():
     """Inicializa la instancia de vgamepad (mando Xbox 360 virtual)."""
-    global virtual_gamepad
+    global virtual_gamepad, gamepad_ok
     try:
         virtual_gamepad = vg.VX360Gamepad()
         log_to_gui("Gamepad virtual Xbox 360 inicializado correctamente.", "success")
+        gamepad_ok = True
         return True
     except Exception as e:
         log_to_gui(f"Error fatal inicializando gamepad: {e}", "error")
@@ -211,6 +213,7 @@ def init_virtual_gamepad():
         else:
             log_to_gui("En Linux asegúrate de tener permisos en /dev/uinput (revisa README.md).", "warn")
         virtual_gamepad = None
+        gamepad_ok = False
         return False
 
 def cycle_presets_web():
@@ -593,6 +596,7 @@ async def send_status_to(websocket):
             "type": "status",
             "data": {
                 "emulating": is_emulating,
+                "gamepad_ok": gamepad_ok,
                 "current_port": selected_port,
                 "ports": get_available_ports(),
                 "config": calib_config
@@ -611,6 +615,7 @@ async def broadcast_status_async():
             "type": "status",
             "data": {
                 "emulating": is_emulating,
+                "gamepad_ok": gamepad_ok,
                 "current_port": selected_port,
                 "ports": get_available_ports(),
                 "config": calib_config
@@ -630,6 +635,24 @@ async def handle_websocket_message(websocket, message_str):
         if msg_type == "command":
             if msg_data == "get_status":
                 await send_status_to(websocket)
+                
+            elif msg_data == "install_driver":
+                try:
+                    if getattr(sys, 'frozen', False):
+                        base_dir = sys._MEIPASS
+                    else:
+                        base_dir = os.path.dirname(os.path.abspath(__file__))
+                    installer_path = os.path.join(base_dir, 'web', 'drivers', 'ViGEmBus_Setup.exe')
+                    if os.path.exists(installer_path):
+                        if os.name == 'nt':
+                            os.startfile(installer_path)
+                            log_to_gui("Ejecutando instalador de ViGEmBus...", "info")
+                        else:
+                            log_to_gui("El driver solo es necesario en Windows.", "warn")
+                    else:
+                        log_to_gui(f"Instalador no encontrado en: {installer_path}", "error")
+                except Exception as e:
+                    log_to_gui(f"Error al ejecutar instalador: {e}", "error")
                 
             elif msg_data == "refresh_ports":
                 ports = get_available_ports()
@@ -731,18 +754,7 @@ def main():
     
     # 2. InicializarGamepad virtual
     if not init_virtual_gamepad():
-        print("\033[91mNo se pudo inicializar el gamepad virtual. Deteniendo.\033[0m")
-        if os.name == 'nt':
-            print("\n=======================================================")
-            print("ERROR: Falta el driver de mando virtual ViGEmBus.")
-            print("Para usar este emulador en Windows, debes instalar ViGEmBus.")
-            print("Descarga e instala la última versión desde el siguiente enlace:")
-            print("https://github.com/nefarius/ViGEmBus/releases")
-            print("=======================================================\n")
-        else:
-            print("\nEn Linux, asegúrate de tener permisos en /dev/uinput (revisa el README.md).\n")
-        input("Presiona Enter para salir...")
-        sys.exit(1)
+        print("\033[93mAVISO: No se pudo inicializar el gamepad virtual. El dashboard se iniciará en modo de configuración/solo lectura.\033[0m")
         
     # 3. Encontrar puertos libres para HTTP y WS
     http_port = find_free_port(DEFAULT_HTTP_PORT)

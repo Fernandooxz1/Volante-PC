@@ -95,6 +95,7 @@ selected_port = None
 emulation_thread = None
 serial_conn = None
 virtual_gamepad = None
+gamepad_ok = True
 
 # Estado de botones virtuales del D-pad para mapeo
 virtual_btn_states = {
@@ -214,10 +215,11 @@ def get_available_ports():
 
 def init_virtual_gamepad():
     """Inicializa la instancia de vgamepad (mando Xbox 360 virtual)."""
-    global virtual_gamepad
+    global virtual_gamepad, gamepad_ok
     try:
         virtual_gamepad = vg.VX360Gamepad()
         log_to_buffer("Gamepad virtual Xbox 360 inicializado correctamente.", "success")
+        gamepad_ok = True
         return True
     except Exception as e:
         log_to_buffer(f"Error fatal inicializando gamepad: {e}", "error")
@@ -226,6 +228,7 @@ def init_virtual_gamepad():
         else:
             log_to_buffer("En Linux asegúrate de tener permisos en /dev/uinput (revisa README.md).", "warn")
         virtual_gamepad = None
+        gamepad_ok = False
         return False
 
 
@@ -589,12 +592,33 @@ class EmuladorAPI:
                 "type": "status",
                 "data": {
                     "emulating": is_emulating,
+                    "gamepad_ok": gamepad_ok,
                     "current_port": selected_port,
                     "ports": get_available_ports(),
                     "config": calib_config.copy()
                 }
             }
         return json.dumps(msg)
+
+    def run_driver_installer(self) -> str:
+        """Ejecuta el instalador de ViGEmBus en Windows."""
+        try:
+            if getattr(sys, 'frozen', False):
+                installer_path = os.path.join(sys._MEIPASS, 'web', 'drivers', 'ViGEmBus_Setup.exe')
+            else:
+                installer_path = os.path.join(BASE_DIR, 'web', 'drivers', 'ViGEmBus_Setup.exe')
+            
+            if os.path.exists(installer_path):
+                if os.name == 'nt':
+                    os.startfile(installer_path)
+                    log_to_buffer("Ejecutando instalador de ViGEmBus...", "info")
+                    return json.dumps({"success": True, "message": "Ejecutando instalador"})
+                else:
+                    return json.dumps({"success": False, "message": "El driver solo es necesario y ejecutable en Windows"})
+            else:
+                return json.dumps({"success": False, "message": f"Instalador no encontrado en: {installer_path}"})
+        except Exception as e:
+            return json.dumps({"success": False, "message": f"Error ejecutando instalador: {e}"})
 
     def refresh_ports(self) -> str:
         """Escanea puertos serie disponibles y retorna la lista."""
@@ -714,32 +738,7 @@ def main():
 
     # 3. Inicializar Gamepad virtual
     if not init_virtual_gamepad():
-        print("\033[91mNo se pudo inicializar el gamepad virtual. Deteniendo.\033[0m")
-        if os.name == 'nt':
-            print("\n=======================================================")
-            print("ERROR: Falta el driver de mando virtual ViGEmBus.")
-            print("Para usar este emulador en Windows, debes instalar ViGEmBus.")
-            print("Descarga e instala la última versión desde el siguiente enlace:")
-            print("https://github.com/nefarius/ViGEmBus/releases")
-            print("=======================================================\n")
-        else:
-            print("\nEn Linux, asegúrate de tener permisos en /dev/uinput (revisa el README.md).\n")
-        # Mostrar diálogo de error nativo y salir
-        try:
-            webview.create_window(
-                'Error - Volante PC',
-                html='<html><body style="font-family:sans-serif;padding:40px;background:#1a1a2e;color:#e94560;">'
-                     '<h2>Error Fatal</h2>'
-                     '<p>No se pudo inicializar el gamepad virtual.</p>'
-                     '<p>En Linux, asegúrate de tener permisos en /dev/uinput.</p>'
-                     '<p>En Windows, instala el driver ViGEmBus.</p>'
-                     '</body></html>',
-                width=500, height=300
-            )
-            webview.start()
-        except Exception:
-            pass
-        sys.exit(1)
+        print("\033[93mAVISO: No se pudo inicializar el gamepad virtual. Se continuará en modo de configuración/solo lectura.\033[0m")
 
     # 4. Determinar ruta del directorio web (manejar modo frozen con sys._MEIPASS)
     web_dir = os.path.join(BASE_DIR, 'web')

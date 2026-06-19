@@ -247,6 +247,9 @@ async function nativeSendMessage(type, data, value) {
                 case "stop":
                     result = await pyApi.stop_emulation();
                     break;
+                case "install_driver":
+                    result = await pyApi.run_driver_installer();
+                    break;
                 case "trigger_dpad":
                     await pyApi.trigger_dpad(value);
                     return;
@@ -336,6 +339,11 @@ function handleServerMessage(msg) {
             // Cargar puertos y seleccionar el puerto actual
             updatePortsList(msg.data.ports, msg.data.current_port);
             
+            // Sincronizar estado del driver
+            if (msg.data && msg.data.hasOwnProperty("gamepad_ok")) {
+                toggleDriverWarningBanner(!msg.data.gamepad_ok);
+            }
+            
             // Sincronizar configuración actual con la del backend
             if (msg.data.config) {
                 config = msg.data.config;
@@ -359,6 +367,13 @@ function handleServerMessage(msg) {
             
         default:
             console.warn("Mensaje desconocido del servidor:", msg);
+    }
+}
+
+function toggleDriverWarningBanner(show) {
+    const banner = document.getElementById("driver-warning-banner");
+    if (banner) {
+        banner.style.display = show ? "flex" : "none";
     }
 }
 
@@ -864,6 +879,15 @@ function log(text, level = "info") {
 // EVENT LISTENERS & INICIALIZACIÓN
 // ==========================================================================
 function setupEventListeners() {
+    // Botón instalar driver
+    const btnInstallDriver = document.getElementById('btn-install-driver');
+    if (btnInstallDriver) {
+        btnInstallDriver.addEventListener('click', () => {
+            log("Iniciando instalador de ViGEmBus...", "info");
+            sendMessage("command", "install_driver");
+        });
+    }
+
     // Botones Conexión
     dom.btnRefresh.addEventListener('click', () => {
         log("Escaneando puertos serie disponibles...", "info");

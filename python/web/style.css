@@ -1160,3 +1160,74 @@ body {
 .custom-select-options::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* Driver Alert Banner */
+.driver-alert-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 51, 102, 0.08);
+    border: 1px solid rgba(255, 51, 102, 0.25);
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-bottom: 8px;
+    gap: 16px;
+    animation: fadeInSlide 0.3s ease;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.driver-alert-banner .alert-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.driver-alert-banner .alert-icon {
+    font-size: 20px;
+}
+
+.driver-alert-banner .alert-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.driver-alert-banner .alert-text strong {
+    color: #ff3366;
+    font-weight: 600;
+}
+
+.driver-alert-banner .btn-alert-action {
+    background: #ff3366;
+    color: white;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition-speed) ease;
+    box-shadow: 0 0 10px rgba(255, 51, 102, 0.3);
+}
+
+.driver-alert-banner .btn-alert-action:hover {
+    background: #ff5588;
+    transform: translateY(-1px);
+    box-shadow: 0 0 15px rgba(255, 51, 102, 0.5);
+}
+
+.driver-alert-banner .btn-alert-action:active {
+    transform: translateY(0);
+}

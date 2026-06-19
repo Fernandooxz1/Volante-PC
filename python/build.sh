@@ -90,6 +90,13 @@ if [ -f "config_volante.json" ]; then
     echo "  config_volante.json copiado a dist/"
 fi
 
+# Copiar drivers al directorio de distribución
+if [ -d "web/drivers" ]; then
+    mkdir -p dist/drivers
+    cp -r web/drivers/* dist/drivers/
+    echo "  Drivers copiados a dist/drivers/"
+fi
+
 echo ""
 echo "============================================="
 echo "  ¡COMPILACIÓN EXITOSA!"
