@@ -1,6 +1,8 @@
-# Volante para PC con Arduino UNO y Python
+# Volante para PC con Arduino UNO y Python (Multiplataforma)
 
 Este proyecto te permite construir tu propio volante de carreras y pedalera para PC utilizando un **Arduino UNO**, potenciómetros de 10k y un script de Python que emula un control virtual de Xbox 360 en tu computadora.
+
+Esta versión cuenta con una **curva de dirección exponencial (Steering Expo)** similar a la de simuladores comerciales (Logitech G, Fanatec, PlayStation) para lograr la máxima precisión en rectas, además de un sistema auto-contenido para instalar los controladores necesarios en Windows de manera desatendida.
 
 ---
 
@@ -12,7 +14,7 @@ Este proyecto te permite construir tu propio volante de carreras y pedalera para
    - 1x para el **Pedal de Acelerador**.
    - 1x para el **Pedal de Freno**.
 3. **Cables de conexión** y protoboard (o soldador para montaje final).
-4. **Cable USB** (típicamente tipo B o tipo C, según tu modelo de placa UNO) para conectar el Arduino a la PC.
+4. **Cable USB** para conectar el Arduino a la PC.
 
 ### Esquema de Conexiones
 
@@ -37,7 +39,6 @@ Todos los potenciómetros comparten la misma línea de alimentación de **5V** y
 2. Abre el archivo [volante_uno.ino](arduino/volante_uno/volante_uno.ino).
 3. Selecciona tu placa **Arduino Uno** y el puerto correspondiente en el menú *Herramientas*.
 4. Sube (Upload) el programa al Arduino.
-5. Dado que el Arduino ahora transmite en un formato binario altamente optimizado para baja latencia y mínimo consumo de memoria, verás caracteres especiales ("ruido" binario) si abres el *Monitor Serie*. Esto es normal y esperado; el script de Python se encargará de decodificar este flujo de bytes.
 
 ### 2. Configurar Python
 El script requiere Python 3 y dos librerías principales: `pyserial` y `vgamepad`.
@@ -47,8 +48,8 @@ El script requiere Python 3 y dos librerías principales: `pyserial` y `vgamepad
    pip install -r python/requirements.txt
    ```
 
-#### Configuración Especial para Linux (uinput)
-Para que el script pueda crear un dispositivo de juego virtual en Linux sin necesidad de permisos de superusuario (`sudo`), debes configurar las reglas de `udev` para el subsistema `uinput`:
+#### Configuración en Linux (uinput)
+Para que el script pueda crear un dispositivo de juego virtual en Linux sin necesidad de permisos de superusuario (`sudo`), debes configurar las reglas de `udev`:
 
 1. Agrega tu usuario al grupo `input`:
    ```bash
@@ -62,7 +63,11 @@ Para que el script pueda crear un dispositivo de juego virtual en Linux sin nece
    ```bash
    sudo modprobe uinput
    ```
-4. **Reinicia tu sesión** (cierra sesión y vuelve a entrar) o reinicia la PC para que los cambios de grupo tengan efecto.
+4. **Reinicia tu sesión** (cierra sesión y vuelve a entrar) o reinicia la PC para que los cambios tengan efecto.
+
+#### Configuración en Windows (ViGEmBus)
+El programa requiere el controlador de mandos virtuales **ViGEmBus** en Windows. 
+* **Instalación Desatendida Integrada**: Si ejecutas el programa en Windows sin tener el controlador instalado, la interfaz web y la app nativa te mostrarán un banner rojo informándote del problema. Simplemente haz clic en **"Instalar ViGEmBus"** en la pantalla y la aplicación extraerá y ejecutará de forma automática el instalador oficial integrado en sus recursos (`web/drivers/ViGEmBus_Setup.exe`).
 
 ---
 
@@ -78,13 +83,13 @@ Inicia el servidor local y la interfaz web ejecutando:
 python python/gui_web.py
 ```
 
-El script abrirá automáticamente tu navegador web por defecto con un panel de control interactivo de alta fidelidad. Desde allí podrás:
-- Auto-detectar y seleccionar el puerto serie del Arduino UNO en tiempo real.
+El script abrirá automáticamente tu navegador web con un panel de control interactivo de alta fidelidad. Desde allí podrás:
+- Auto-detectar y seleccionar el puerto serie del Arduino en tiempo real.
 - Cargar presets pre-configurados para F1 23/24, Gran Turismo, NFS, o personalizar el tuyo.
-- Configurar visualmente la **sensibilidad, linealidad (pendiente), zona muerta de pedales y el filtro anti-ruido (Jitter)**.
+- Configurar visualmente la **sensibilidad, linealidad (curva exponencial), zona muerta de pedales y el filtro de ruido (Jitter)**.
 - Monitorear en vivo la curva de respuesta y ver el cursor dinámico conforme giras el volante físico.
 
-### Opción B: Dashboard Interactivo de la Terminal (Consola)
+### Opción B: Dashboard de la Terminal (Consola)
 
 Si deseas correr el script directamente en la consola sin interfaz gráfica:
 
@@ -92,38 +97,48 @@ Si deseas correr el script directamente en la consola sin interfaz gráfica:
 python python/emulador_volante.py
 ```
 
-Puedes especificar un puerto de manera manual usando `-p` (ej. `python python/emulador_volante.py -p /dev/ttyUSB0`).
+---
 
-### Dashboard Interactivo de la Terminal
-Al ejecutarse con éxito, verás una interfaz visual interactiva en la terminal en tiempo real:
+## Calibración y Curva Exponencial
 
-```text
-===================================================
-          EMULADOR DE VOLANTE Y PEDALES PC         
-===================================================
-Buscando Arduino UNO automáticamente...
--> Encontrado posible Arduino en: /dev/ttyUSB0
-Inicializando gamepad virtual de Xbox 360...
-¡Gamepad virtual creado correctamente!
-Conectándose a /dev/ttyUSB0 a 115200 baudios...
-Conectado al Arduino con éxito. Esperando datos...
+Para evitar que el auto zigzaguee o "baile" constantemente a la izquierda o derecha en rectas, esta versión implementa una **progresión exponencial de dirección**:
 
-Volante: [---------O----------]  512 | Acel:   0% | Freno:   0%
-```
+$$x_{\text{expo}} = \text{sign}(x) \cdot |x|^{\text{slope}}$$
+$$x_{\text{sloped}} = x_{\text{expo}} \cdot \text{sensitivity}$$
 
-Al mover el potenciómetro del volante o presionar los pedales, el indicador gráfico `O` se moverá lateralmente y los porcentajes de acelerador y freno se actualizarán dinámicamente con latencia ultra baja.
+### Cómo ajustarlo desde el Dashboard:
+1. **Pendiente de Eje (Linealidad / Slope)**:
+   * Valores de **`1.5` a `2.0`** (exponencial) suavizan el centro del volante. Un giro físico del 10% se traducirá en solo un 1% de dirección virtual, dando una precisión milimétrica para mantener el auto recto. A medida que gires más al extremo, la sensibilidad aumenta de forma progresiva.
+   * Un valor de **`1.0`** dará una respuesta completamente lineal.
+2. **Filtro de Ruido (Anti-Jitter)**:
+   * Si tienes un potenciómetro de posiciones que va haciendo "clicks" o escalones (de $0$ a $1022$), sube este slider a un valor entre **`60%` y `75%`**. El filtro EMA suavizará la transición entre los clicks para que la dirección no sea brusca.
+3. **Compensación de Zona Muerta (Anti-Deadzone)**:
+   * Mantenlo en **`0%`** a menos que el juego requiera superar una zona muerta interna muy grande. Dejarlo activo sin necesidad genera saltos bruscos en el centro de la dirección.
+
+### Verificación del Mando Virtual
+* **En Linux**: Puedes probar el joystick virtual utilizando la herramienta gráfica `jstest-gtk` (instálala con `sudo apt install jstest-gtk` o `sudo pacman -S jstest-gtk`).
+* **En Windows**: Abre el panel de mandos presionando `Win + R`, escribe `joy.cpl` y dale a Enter. Verás el mando de Xbox 360 emulado en la lista para comprobar los ejes.
 
 ---
 
-## Calibración y Verificación
+## Compilación del Ejecutable (`.exe` o Binario)
 
-### En Linux
-Puedes verificar que el joystick virtual es reconocido por el sistema utilizando herramientas GUI como:
-- **`jstest-gtk`**: Una herramienta gráfica excelente para calibrar y probar mandos. Instálala con tu gestor de paquetes (ej. `sudo apt install jstest-gtk` o `sudo pacman -S jstest-gtk`).
-- También puedes probar desde la consola listando los inputs: `ls /dev/input/by-id/` (debería aparecer un dispositivo de tipo virtual Xbox).
+El proyecto cuenta con un archivo unificado de configuración de compilación multiplataforma: **`VolantePC.spec`**. 
 
-### En Windows
-El script de Python también funciona en Windows.
-1. Necesitas tener instalado el driver de controladores virtuales [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases).
-2. Ejecuta el script.
-3. Abre el menú Ejecutar (`Win + R`), escribe `joy.cpl` y presiona Enter para abrir la configuración de dispositivos de juego de Windows y ver el control de Xbox 360 emulado.
+El uso del archivo `.spec` garantiza que las librerías dinámicas y DLLs necesarias (como `ViGEmClient.dll` para Windows) se empaqueten automáticamente de forma correcta.
+
+Para compilarlo en tu sistema (Linux o Windows):
+
+1. Instala PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+2. Compila utilizando el archivo de especificaciones:
+   ```bash
+   # Posiciónate en la carpeta python/ y compila
+   cd python
+   pyinstaller --clean --noconfirm VolantePC.spec
+   ```
+3. El binario autocontenido se generará en la carpeta `python/dist/` junto con:
+   * `config_volante.json` (archivo de configuración guardada).
+   * La subcarpeta `drivers/` que contiene el instalador de controladores para Windows.
