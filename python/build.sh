@@ -72,14 +72,9 @@ echo "[3/4] Compilando con PyInstaller..."
 echo ""
 
 python3 -m PyInstaller \
-    --onefile \
-    --windowed \
-    --name "VolantePC" \
-    --add-data "web:web" \
-    --add-data "config_volante.json:." \
     --clean \
     --noconfirm \
-    app_nativa.py
+    VolantePC.spec
 
 echo ""
 echo "[4/4] Copiando configuración inicial..."
