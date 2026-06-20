@@ -137,6 +137,7 @@ calib_config = {
     "btn_map_p9": "Ninguno",
     "btn_map_p10": "Ninguno",
     "btn_map_p11": "Ninguno",
+    "btn_map_p12": "Ninguno",
     "preset_cycle_btn": "Ninguno",
     "active_preset": "Personalizado",
     "previous_preset": "Personalizado",
@@ -349,9 +350,9 @@ def emulation_loop(port):
                         if invert_brake:
                             brake_raw = 1023 - brake_raw
 
-                        # Extraer los 10 botones individuales (bits 0 a 9)
+                        # Extraer los 11 botones individuales (bits 0 a 10)
                         btn_states = []
-                        for i in range(10):
+                        for i in range(11):
                             btn_states.append((buttons_val >> i) & 0x01)
 
                         # Detectar flanco de subida del botón de alternar preset
@@ -397,6 +398,7 @@ def emulation_loop(port):
                             btn_map_p9 = calib_config["btn_map_p9"]
                             btn_map_p10 = calib_config["btn_map_p10"]
                             btn_map_p11 = calib_config["btn_map_p11"]
+                            btn_map_p12 = calib_config.get("btn_map_p12", "Ninguno")
 
                         # 1. Filtro DSP Anti-Ruido (EMA)
                         if filter_strength > 0:
@@ -521,13 +523,14 @@ def emulation_loop(port):
                             virtual_gamepad.left_trigger(value=left_trigger_val)
                             virtual_gamepad.right_trigger(value=right_trigger_val)
 
-                            # Mapear los 10 botones digitales de forma dinámica
+                            # Mapear los 11 botones digitales de forma dinámica
                             btn_mappings = [
                                 btn_map_p2, btn_map_p3, btn_map_p4, btn_map_p5, btn_map_p6,
-                                btn_map_p7, btn_map_p8, btn_map_p9, btn_map_p10, btn_map_p11
+                                btn_map_p7, btn_map_p8, btn_map_p9, btn_map_p10, btn_map_p11,
+                                btn_map_p12
                             ]
                             active_buttons = set()
-                            for i in range(10):
+                            for i in range(11):
                                 if btn_states[i] == 1:
                                     target = btn_mappings[i]
                                     if target in BUTTON_MAP and BUTTON_MAP[target] is not None:

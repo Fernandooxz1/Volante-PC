@@ -115,7 +115,8 @@ const dom = {
         document.getElementById('btn-p8-pill'),
         document.getElementById('btn-p9-pill'),
         document.getElementById('btn-p10-pill'),
-        document.getElementById('btn-p11-pill')
+        document.getElementById('btn-p11-pill'),
+        document.getElementById('btn-p12-pill')
     ],
     
     // Button mapping dropdowns
@@ -129,7 +130,8 @@ const dom = {
         document.getElementById('map-p8'),
         document.getElementById('map-p9'),
         document.getElementById('map-p10'),
-        document.getElementById('map-p11')
+        document.getElementById('map-p11'),
+        document.getElementById('map-p12')
     ],
     
     // Tuning
@@ -428,8 +430,8 @@ function updateTelemetry(data) {
     dom.rawBrake.innerText = data.raw.brake;
     
     // --- 3. ACTUALIZAR ESTADO DE LOS BOTONES ---
-    if (data.mapped.buttons && data.mapped.buttons.length === 10) {
-        for (let i = 0; i < 10; i++) {
+    if (data.mapped.buttons && data.mapped.buttons.length >= 10) {
+        for (let i = 0; i < data.mapped.buttons.length; i++) {
             const pill = dom.btnPills[i];
             if (pill) {
                 if (data.mapped.buttons[i] === 1) {
@@ -730,7 +732,7 @@ function syncSlidersWithConfig() {
     dom.brakeDzMarker.style.bottom = `${dzPercent}%`;
 
     // Actualizar mapeos de botones en la UI
-    if (dom.mapSelects && dom.mapSelects.length === 10) {
+    if (dom.mapSelects && dom.mapSelects.length >= 10) {
         const p2 = config.btn_map_p2 !== undefined ? config.btn_map_p2 : "Ninguno";
         const p3 = config.btn_map_p3 !== undefined ? config.btn_map_p3 : "Ninguno";
         const p4 = config.btn_map_p4 !== undefined ? config.btn_map_p4 : "Ninguno";
@@ -741,29 +743,32 @@ function syncSlidersWithConfig() {
         const p9 = config.btn_map_p9 !== undefined ? config.btn_map_p9 : "Ninguno";
         const p10 = config.btn_map_p10 !== undefined ? config.btn_map_p10 : "Ninguno";
         const p11 = config.btn_map_p11 !== undefined ? config.btn_map_p11 : "Ninguno";
+        const p12 = config.btn_map_p12 !== undefined ? config.btn_map_p12 : "Ninguno";
 
-        dom.mapSelects[0].value = p2;
-        dom.mapSelects[1].value = p3;
-        dom.mapSelects[2].value = p4;
-        dom.mapSelects[3].value = p5;
-        dom.mapSelects[4].value = p6;
-        dom.mapSelects[5].value = p7;
-        dom.mapSelects[6].value = p8;
-        dom.mapSelects[7].value = p9;
-        dom.mapSelects[8].value = p10;
-        dom.mapSelects[9].value = p11;
+        if (dom.mapSelects[0]) dom.mapSelects[0].value = p2;
+        if (dom.mapSelects[1]) dom.mapSelects[1].value = p3;
+        if (dom.mapSelects[2]) dom.mapSelects[2].value = p4;
+        if (dom.mapSelects[3]) dom.mapSelects[3].value = p5;
+        if (dom.mapSelects[4]) dom.mapSelects[4].value = p6;
+        if (dom.mapSelects[5]) dom.mapSelects[5].value = p7;
+        if (dom.mapSelects[6]) dom.mapSelects[6].value = p8;
+        if (dom.mapSelects[7]) dom.mapSelects[7].value = p9;
+        if (dom.mapSelects[8]) dom.mapSelects[8].value = p10;
+        if (dom.mapSelects[9]) dom.mapSelects[9].value = p11;
+        if (dom.mapSelects[10]) dom.mapSelects[10].value = p12;
 
         // Actualizar etiquetas en las píldoras del HUD
-        document.getElementById("btn-p2-mapping").innerText = getShortMappingLabel(p2);
-        document.getElementById("btn-p3-mapping").innerText = getShortMappingLabel(p3);
-        document.getElementById("btn-p4-mapping").innerText = getShortMappingLabel(p4);
-        document.getElementById("btn-p5-mapping").innerText = getShortMappingLabel(p5);
-        document.getElementById("btn-p6-mapping").innerText = getShortMappingLabel(p6);
-        document.getElementById("btn-p7-mapping").innerText = getShortMappingLabel(p7);
-        document.getElementById("btn-p8-mapping").innerText = getShortMappingLabel(p8);
-        document.getElementById("btn-p9-mapping").innerText = getShortMappingLabel(p9);
-        document.getElementById("btn-p10-mapping").innerText = getShortMappingLabel(p10);
-        document.getElementById("btn-p11-mapping").innerText = getShortMappingLabel(p11);
+        if (document.getElementById("btn-p2-mapping")) document.getElementById("btn-p2-mapping").innerText = getShortMappingLabel(p2);
+        if (document.getElementById("btn-p3-mapping")) document.getElementById("btn-p3-mapping").innerText = getShortMappingLabel(p3);
+        if (document.getElementById("btn-p4-mapping")) document.getElementById("btn-p4-mapping").innerText = getShortMappingLabel(p4);
+        if (document.getElementById("btn-p5-mapping")) document.getElementById("btn-p5-mapping").innerText = getShortMappingLabel(p5);
+        if (document.getElementById("btn-p6-mapping")) document.getElementById("btn-p6-mapping").innerText = getShortMappingLabel(p6);
+        if (document.getElementById("btn-p7-mapping")) document.getElementById("btn-p7-mapping").innerText = getShortMappingLabel(p7);
+        if (document.getElementById("btn-p8-mapping")) document.getElementById("btn-p8-mapping").innerText = getShortMappingLabel(p8);
+        if (document.getElementById("btn-p9-mapping")) document.getElementById("btn-p9-mapping").innerText = getShortMappingLabel(p9);
+        if (document.getElementById("btn-p10-mapping")) document.getElementById("btn-p10-mapping").innerText = getShortMappingLabel(p10);
+        if (document.getElementById("btn-p11-mapping")) document.getElementById("btn-p11-mapping").innerText = getShortMappingLabel(p11);
+        if (document.getElementById("btn-p12-mapping")) document.getElementById("btn-p12-mapping").innerText = getShortMappingLabel(p12);
     }
     
     // Sincronizar el select de alternar presets
@@ -1129,7 +1134,7 @@ function setupEventListeners() {
     }
 
     // Event listeners para mapeos de botones
-    if (dom.mapSelects && dom.mapSelects.length === 10) {
+    if (dom.mapSelects && dom.mapSelects.length >= 10) {
         dom.mapSelects.forEach((select, index) => {
             select.addEventListener('change', (e) => {
                 const key = `btn_map_p${index + 2}`;
@@ -1232,7 +1237,7 @@ function setupEventListeners() {
 // Inicialización
 function init() {
     // 1. Popular selectores de botones dinámicamente antes de sincronizar
-    if (dom.mapSelects && dom.mapSelects.length === 10) {
+    if (dom.mapSelects && dom.mapSelects.length >= 10) {
         dom.mapSelects.forEach((select) => {
             select.innerHTML = "";
             for (const [val, label] of Object.entries(MAP_OPTIONS)) {
