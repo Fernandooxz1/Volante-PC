@@ -14,7 +14,6 @@ let reconnectInterval = 2000;
 let isConnected = false;
 let isEmulating = false;
 
-// Estado de Ajustes (Calibración)
 let config = {
     sensitivity: 0.25,
     slope: 0.65,
@@ -28,6 +27,9 @@ let config = {
     steer_min: 0,
     steer_center: 512,
     steer_max: 1023,
+    invert_steer: false,
+    invert_accel: false,
+    invert_brake: false,
     btn_map_p2: "Ninguno",
     btn_map_p3: "Ninguno",
     btn_map_p4: "Ninguno",
@@ -151,6 +153,9 @@ const dom = {
     lblCalMin: document.getElementById('lbl-cal-min'),
     lblCalCenter: document.getElementById('lbl-cal-center'),
     lblCalMax: document.getElementById('lbl-cal-max'),
+    checkInvertSteer: document.getElementById('check-invert-steer'),
+    checkInvertAccel: document.getElementById('check-invert-accel'),
+    checkInvertBrake: document.getElementById('check-invert-brake'),
     
     // Logs & Status Footer
     consoleOutput: document.getElementById('console-output'),
@@ -757,6 +762,11 @@ function syncSlidersWithConfig() {
         dom.presetSelect.value = config.active_preset !== undefined ? config.active_preset : "Personalizado";
     }
 
+    // Sincronizar checkboxes de inversión
+    if (dom.checkInvertSteer) dom.checkInvertSteer.checked = config.invert_steer || false;
+    if (dom.checkInvertAccel) dom.checkInvertAccel.checked = config.invert_accel || false;
+    if (dom.checkInvertBrake) dom.checkInvertBrake.checked = config.invert_brake || false;
+
     // Actualizar los dropdowns personalizados
     if (typeof updateCustomSelects === 'function') {
         updateCustomSelects();
@@ -1106,6 +1116,36 @@ function setupEventListeners() {
             config.preset_cycle_btn = e.target.value;
             sendMessage("config", config);
             log(`Botón de alternar presets configurado a: ${e.target.value}`, "info");
+        });
+    }
+
+    // Event listeners para inversión de ejes
+    const handleCheckboxChange = (key, checked, label) => {
+        config[key] = checked;
+        if (config.active_preset !== "Personalizado") {
+            config.previous_preset = config.active_preset;
+        }
+        config.active_preset = "Personalizado";
+        if (dom.presetSelect) {
+            dom.presetSelect.value = "Personalizado";
+        }
+        sendMessage("config", config);
+        log(`${label} ${checked ? 'activado' : 'desactivado'}`, "info");
+    };
+
+    if (dom.checkInvertSteer) {
+        dom.checkInvertSteer.addEventListener('change', (e) => {
+            handleCheckboxChange('invert_steer', e.target.checked, "Invertir Volante");
+        });
+    }
+    if (dom.checkInvertAccel) {
+        dom.checkInvertAccel.addEventListener('change', (e) => {
+            handleCheckboxChange('invert_accel', e.target.checked, "Invertir Acelerador");
+        });
+    }
+    if (dom.checkInvertBrake) {
+        dom.checkInvertBrake.addEventListener('change', (e) => {
+            handleCheckboxChange('invert_brake', e.target.checked, "Invertir Freno");
         });
     }
 

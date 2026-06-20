@@ -76,6 +76,9 @@ calib_config = {
     "steer_min": 0,
     "steer_center": 512,
     "steer_max": 1023,
+    "invert_steer": False,
+    "invert_accel": False,
+    "invert_brake": False,
     # Mapeo de botones individuales (Pines 2 al 11)
     "btn_map_p2": "Ninguno",
     "btn_map_p3": "Ninguno",
@@ -308,6 +311,19 @@ def emulation_loop(port):
                         steer_raw = axes_val & 0x3FF
                         accel_raw = (axes_val >> 10) & 0x3FF
                         brake_raw = (axes_val >> 20) & 0x3FF
+                        
+                        # Aplicar inversión de ejes si está configurada
+                        with state_lock:
+                            invert_steer = calib_config.get("invert_steer", False)
+                            invert_accel = calib_config.get("invert_accel", False)
+                            invert_brake = calib_config.get("invert_brake", False)
+                            
+                        if invert_steer:
+                            steer_raw = 1023 - steer_raw
+                        if invert_accel:
+                            accel_raw = 1023 - accel_raw
+                        if invert_brake:
+                            brake_raw = 1023 - brake_raw
                         
                         # Extraer los 10 botones individuales (bits 0 a 9)
                         btn_states = []

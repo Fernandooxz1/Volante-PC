@@ -1231,3 +1231,92 @@ body {
 .driver-alert-banner .btn-alert-action:active {
     transform: translateY(0);
 }
+
+/* ==========================================================================
+   AXIS INVERSION SECTION & CUSTOM CHECKBOXES
+   ========================================================================== */
+.axis-inversion-section {
+    background: rgba(10, 13, 19, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.inversion-checkboxes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 28px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    user-select: none;
+    transition: color var(--transition-speed) ease;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    height: 18px;
+    width: 18px;
+    background-color: rgba(16, 20, 31, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: all var(--transition-speed) ease;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 6px rgba(0, 242, 254, 0.15);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: rgba(0, 242, 254, 0.1);
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px var(--neon-blue-glow);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-container .checkmark:after {
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 9px;
+    border: solid var(--neon-blue);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-container:hover {
+    color: var(--neon-blue);
+}
