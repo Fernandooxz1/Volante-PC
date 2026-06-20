@@ -122,6 +122,10 @@ calib_config = {
     "invert_steer": False,
     "invert_accel": False,
     "invert_brake": False,
+    "accel_min": 0,
+    "accel_max": 1023,
+    "brake_min": 0,
+    "brake_max": 1023,
     # Mapeo de botones individuales (Pines 2 al 11)
     "btn_map_p2": "Ninguno",
     "btn_map_p3": "Ninguno",
@@ -377,6 +381,10 @@ def emulation_loop(port):
                             steer_min = calib_config["steer_min"]
                             steer_center = calib_config["steer_center"]
                             steer_max = calib_config["steer_max"]
+                            accel_min = calib_config.get("accel_min", 0)
+                            accel_max = calib_config.get("accel_max", 1023)
+                            brake_min = calib_config.get("brake_min", 0)
+                            brake_max = calib_config.get("brake_max", 1023)
 
                             # Botones mapeados individuales
                             btn_map_p2 = calib_config["btn_map_p2"]
@@ -440,13 +448,18 @@ def emulation_loop(port):
                         x_final = max(-1.0, min(1.0, x_final))
                         val_steer_mapped = int(x_final * 32767)
 
-                        # 3. Auxiliar para procesar pedales
-                        def get_pedal_val(pedal_in, max_val):
-                            deadzone_limit = int(deadzone * 1023)
-                            if pedal_in <= deadzone_limit:
+                        # 3. Auxiliar para procesar pedales con calibración de límites
+                        def get_pedal_val(pedal_in, pedal_min, pedal_max, max_val):
+                            if pedal_max > pedal_min:
+                                val_norm = (pedal_in - pedal_min) / float(pedal_max - pedal_min)
+                                val_norm = max(0.0, min(1.0, val_norm))
+                            else:
+                                val_norm = 0.0
+                                
+                            if val_norm <= deadzone:
                                 return 0
                             else:
-                                val_scaled = (pedal_in - deadzone_limit) / (1023.0 - deadzone_limit)
+                                val_scaled = (val_norm - deadzone) / (1.0 - deadzone)
                                 return int(val_scaled * max_val)
 
                         # 4. Mapear Salidas
@@ -468,25 +481,25 @@ def emulation_loop(port):
                             right_stick_y = val_steer_mapped
 
                         # Pedales — Acelerador
-                        a_val_trigger = get_pedal_val(accel, 255)
-                        a_val_stick = get_pedal_val(accel, 32767)
+                        a_val_trigger = get_pedal_val(accel, accel_min, accel_max, 255)
+                        a_val_stick = get_pedal_val(accel, accel_min, accel_max, 32767)
 
                         if accel_target == "Right Trigger (RT)":
                             right_trigger_val = a_val_trigger
                         elif accel_target == "Left Trigger (LT)":
                             left_trigger_val = a_val_trigger
                         elif accel_target == "Right Stick Y+ (UP)":
-                            right_stick_y -= get_pedal_val(accel, 32768)  # Negativo = UP en driver Xbox
+                            right_stick_y -= get_pedal_val(accel, accel_min, accel_max, 32768)  # Negativo = UP en driver Xbox
                         elif accel_target == "Right Stick Y- (DOWN)":
                             right_stick_y += a_val_stick
                         elif accel_target == "Left Stick Y+ (UP)":
-                            left_stick_y -= get_pedal_val(accel, 32768)
+                            left_stick_y -= get_pedal_val(accel, accel_min, accel_max, 32768)
                         elif accel_target == "Left Stick Y- (DOWN)":
                             left_stick_y += a_val_stick
 
                         # Pedales — Freno
-                        b_val_trigger = get_pedal_val(brake, 255)
-                        b_val_stick = get_pedal_val(brake, 32767)
+                        b_val_trigger = get_pedal_val(brake, brake_min, brake_max, 255)
+                        b_val_stick = get_pedal_val(brake, brake_min, brake_max, 32767)
 
                         if brake_target == "Left Trigger (LT)":
                             left_trigger_val = b_val_trigger
@@ -495,11 +508,11 @@ def emulation_loop(port):
                         elif brake_target == "Right Stick Y- (DOWN)":
                             right_stick_y += b_val_stick
                         elif brake_target == "Right Stick Y+ (UP)":
-                            right_stick_y -= get_pedal_val(brake, 32768)
+                            right_stick_y -= get_pedal_val(brake, brake_min, brake_max, 32768)
                         elif brake_target == "Left Stick Y- (DOWN)":
                             left_stick_y += b_val_stick
                         elif brake_target == "Left Stick Y+ (UP)":
-                            left_stick_y -= get_pedal_val(brake, 32768)
+                            left_stick_y -= get_pedal_val(brake, brake_min, brake_max, 32768)
 
                         # Enviar a vgamepad (si inicializado con éxito)
                         if virtual_gamepad:
@@ -550,8 +563,8 @@ def emulation_loop(port):
 
                             # Valores mapeados escalados a 0-1023 para las barras del front
                             gui_steer = int(((x_final + 1.0) / 2.0) * 1023)
-                            gui_accel = get_pedal_val(accel, 1023)
-                            gui_brake = get_pedal_val(brake, 1023)
+                            gui_accel = get_pedal_val(accel, accel_min, accel_max, 1023)
+                            gui_brake = get_pedal_val(brake, brake_min, brake_max, 1023)
 
                             telemetry_data = {
                                 "raw": {

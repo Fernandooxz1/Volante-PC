@@ -30,6 +30,10 @@ let config = {
     invert_steer: false,
     invert_accel: false,
     invert_brake: false,
+    accel_min: 0,
+    accel_max: 1023,
+    brake_min: 0,
+    brake_max: 1023,
     btn_map_p2: "Ninguno",
     btn_map_p3: "Ninguno",
     btn_map_p4: "Ninguno",
@@ -156,6 +160,17 @@ const dom = {
     checkInvertSteer: document.getElementById('check-invert-steer'),
     checkInvertAccel: document.getElementById('check-invert-accel'),
     checkInvertBrake: document.getElementById('check-invert-brake'),
+    
+    // Pedals Hardware Calibration
+    btnCalAccelMin: document.getElementById('btn-cal-accel-min'),
+    btnCalAccelMax: document.getElementById('btn-cal-accel-max'),
+    btnCalBrakeMin: document.getElementById('btn-cal-brake-min'),
+    btnCalBrakeMax: document.getElementById('btn-cal-brake-max'),
+    btnPedalReset: document.getElementById('btn-pedal-reset'),
+    lblCalAccelMin: document.getElementById('lbl-cal-accel-min'),
+    lblCalAccelMax: document.getElementById('lbl-cal-accel-max'),
+    lblCalBrakeMin: document.getElementById('lbl-cal-brake-min'),
+    lblCalBrakeMax: document.getElementById('lbl-cal-brake-max'),
     
     // Logs & Status Footer
     consoleOutput: document.getElementById('console-output'),
@@ -767,6 +782,12 @@ function syncSlidersWithConfig() {
     if (dom.checkInvertAccel) dom.checkInvertAccel.checked = config.invert_accel || false;
     if (dom.checkInvertBrake) dom.checkInvertBrake.checked = config.invert_brake || false;
 
+    // Sincronizar límites de calibración de pedales en la UI
+    if (dom.lblCalAccelMin) dom.lblCalAccelMin.innerText = config.accel_min !== undefined ? config.accel_min : 0;
+    if (dom.lblCalAccelMax) dom.lblCalAccelMax.innerText = config.accel_max !== undefined ? config.accel_max : 1023;
+    if (dom.lblCalBrakeMin) dom.lblCalBrakeMin.innerText = config.brake_min !== undefined ? config.brake_min : 0;
+    if (dom.lblCalBrakeMax) dom.lblCalBrakeMax.innerText = config.brake_max !== undefined ? config.brake_max : 1023;
+
     // Actualizar los dropdowns personalizados
     if (typeof updateCustomSelects === 'function') {
         updateCustomSelects();
@@ -1054,6 +1075,58 @@ function setupEventListeners() {
         sendMessage("config", config);
         drawCurve();
     });
+
+    // Calibración de Pedales (Hardware)
+    if (dom.btnCalAccelMin) {
+        dom.btnCalAccelMin.addEventListener('click', () => {
+            config.accel_min = currentTelemetry.raw.accel;
+            dom.lblCalAccelMin.innerText = config.accel_min;
+            log(`Calibración Pedales: Acelerador Suelto (Mín) establecido a ${config.accel_min}`, "success");
+            sendMessage("config", config);
+        });
+    }
+
+    if (dom.btnCalAccelMax) {
+        dom.btnCalAccelMax.addEventListener('click', () => {
+            config.accel_max = currentTelemetry.raw.accel;
+            dom.lblCalAccelMax.innerText = config.accel_max;
+            log(`Calibración Pedales: Acelerador A Fondo (Máx) establecido a ${config.accel_max}`, "success");
+            sendMessage("config", config);
+        });
+    }
+
+    if (dom.btnCalBrakeMin) {
+        dom.btnCalBrakeMin.addEventListener('click', () => {
+            config.brake_min = currentTelemetry.raw.brake;
+            dom.lblCalBrakeMin.innerText = config.brake_min;
+            log(`Calibración Pedales: Freno Suelto (Mín) establecido a ${config.brake_min}`, "success");
+            sendMessage("config", config);
+        });
+    }
+
+    if (dom.btnCalBrakeMax) {
+        dom.btnCalBrakeMax.addEventListener('click', () => {
+            config.brake_max = currentTelemetry.raw.brake;
+            dom.lblCalBrakeMax.innerText = config.brake_max;
+            log(`Calibración Pedales: Freno A Fondo (Máx) establecido a ${config.brake_max}`, "success");
+            sendMessage("config", config);
+        });
+    }
+
+    if (dom.btnPedalReset) {
+        dom.btnPedalReset.addEventListener('click', () => {
+            config.accel_min = 0;
+            config.accel_max = 1023;
+            config.brake_min = 0;
+            config.brake_max = 1023;
+            dom.lblCalAccelMin.innerText = "0";
+            dom.lblCalAccelMax.innerText = "1023";
+            dom.lblCalBrakeMin.innerText = "0";
+            dom.lblCalBrakeMax.innerText = "1023";
+            log("Calibración de límites de pedales restablecida a valores por defecto (0, 1023)", "info");
+            sendMessage("config", config);
+        });
+    }
 
     // Event listeners para mapeos de botones
     if (dom.mapSelects && dom.mapSelects.length === 10) {

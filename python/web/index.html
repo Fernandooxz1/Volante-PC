@@ -300,6 +300,40 @@
                     </div>
                 </div>
 
+                <!-- Pedals Limits Calibration -->
+                <div class="hardware-calibration-section">
+                    <div class="calibration-section-header">
+                        <span>Calibración de Límites de Pedales (Hardware)</span>
+                        <button id="btn-pedal-reset" class="btn btn-text btn-xs">Restablecer</button>
+                    </div>
+                    
+                    <!-- Accelerator Calibration -->
+                    <div class="pedal-cal-row">
+                        <span class="pedal-cal-name">Acelerador</span>
+                        <div class="calibration-buttons-grid-2">
+                            <button id="btn-cal-accel-min" class="btn btn-secondary btn-sm" title="Establecer acelerador suelto (mínimo)">Suelto (Mín)</button>
+                            <button id="btn-cal-accel-max" class="btn btn-secondary btn-sm" title="Establecer acelerador a fondo (máximo)">A Fondo (Máx)</button>
+                        </div>
+                        <div class="pedal-cal-values">
+                            <span>Mín: <b id="lbl-cal-accel-min">0</b></span>
+                            <span>Máx: <b id="lbl-cal-accel-max">1023</b></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Brake Calibration -->
+                    <div class="pedal-cal-row">
+                        <span class="pedal-cal-name">Freno</span>
+                        <div class="calibration-buttons-grid-2">
+                            <button id="btn-cal-brake-min" class="btn btn-secondary btn-sm" title="Establecer freno suelto (mínimo)">Suelto (Mín)</button>
+                            <button id="btn-cal-brake-max" class="btn btn-secondary btn-sm" title="Establecer freno a fondo (máximo)">A Fondo (Máx)</button>
+                        </div>
+                        <div class="pedal-cal-values">
+                            <span>Mín: <b id="lbl-cal-brake-min">0</b></span>
+                            <span>Máx: <b id="lbl-cal-brake-max">1023</b></span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Axis Inversion -->
                 <div class="axis-inversion-section">
                     <div class="calibration-section-header">
