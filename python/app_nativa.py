@@ -96,6 +96,8 @@ emulation_thread = None
 serial_conn = None
 virtual_gamepad = None
 gamepad_ok = True
+pending_led_color = None
+last_sent_led_color = None
 
 # Estado de botones virtuales del D-pad para mapeo
 virtual_btn_states = {
@@ -141,6 +143,7 @@ calib_config = {
     "preset_cycle_btn": "Ninguno",
     "active_preset": "Personalizado",
     "previous_preset": "Personalizado",
+    "led_color": "Azul",
     "custom_presets": {}
 }
 
@@ -191,6 +194,44 @@ def load_config_from_json():
         except Exception as e:
             print(f"Error cargando configuración JSON: {e}")
             log_to_buffer(f"Error cargando configuración JSON: {e}", "error")
+
+def send_led_color_to_arduino():
+    """Registra el color del LED RGB para que sea transmitido de manera segura por el hilo de emulación."""
+    global pending_led_color
+    with state_lock:
+        # Obtener el color del preset activo
+        preset_name = calib_config.get("active_preset", "Personalizado")
+        color_name = calib_config.get("led_color", "Apagado")
+        
+        # Si el preset cargado tiene color propio y no estamos en "Personalizado", usar ese
+        if preset_name in calib_config.get("custom_presets", {}):
+            preset_data = calib_config["custom_presets"][preset_name]
+            color_name = preset_data.get("led_color", None)
+            
+        # Fallbacks retrocompatibles si no está definido
+        if color_name is None or color_name == "":
+            if preset_name == "F1 RACING":
+                color_name = "Rojo"
+            elif preset_name == "F1 RACING CRUCETAS":
+                color_name = "Naranja"
+            else:
+                color_name = "Apagado"
+                
+        # Convertir a código numérico
+        color_mapping = {
+            "Apagado": 0,
+            "Rojo": 1,
+            "Verde": 2,
+            "Azul": 3,
+            "Amarillo": 4,
+            "Violeta": 5,
+            "Celeste": 6,
+            "Naranja": 7
+        }
+        color_code = color_mapping.get(color_name, 0)
+        
+        # Guardar en variable global para transmisión en el hilo correcto
+        pending_led_color = color_code
 
 # ==========================================================================
 # LOGS Y NOTIFICACIONES (BUFFER EN VEZ DE WEBSOCKET)
@@ -276,6 +317,7 @@ def cycle_presets_native():
 
     # Guardar la configuración en disco
     save_config_to_json()
+    send_led_color_to_arduino()
 
 
 def get_pin_state(pin_name, btn_states):
@@ -296,7 +338,7 @@ def get_pin_state(pin_name, btn_states):
 def emulation_loop(port):
     """Bucle principal de lectura serie + emulación de gamepad.
     Idéntico a gui_web.py pero almacena telemetría en buffer compartido."""
-    global is_emulating, serial_conn, last_filtered_steer, virtual_gamepad
+    global is_emulating, serial_conn, last_filtered_steer, virtual_gamepad, pending_led_color, last_sent_led_color
     global _telemetry_buffer
 
     log_to_buffer(f"Abriendo puerto serie {port} a 115200 baudios...", "info")
@@ -304,6 +346,9 @@ def emulation_loop(port):
         serial_conn = serial.Serial(port, 115200, timeout=1.0)
         serial_conn.reset_input_buffer()
         log_to_buffer(f"Conectado a Arduino en {port} con éxito.", "success")
+        with state_lock:
+            last_sent_led_color = None
+        send_led_color_to_arduino()
     except Exception as e:
         log_to_buffer(f"Error abriendo puerto {port}: {e}", "error")
         with state_lock:
@@ -314,11 +359,43 @@ def emulation_loop(port):
     pressed_buttons = set()
     last_send_time = 0.0
     last_btn_cycle_state = 0
+    last_led_send_time = 0.0
 
     while True:
         with state_lock:
             if not is_emulating:
                 break
+                
+        # Verificar si hay un color de LED pendiente para enviar o si toca latido (heartbeat)
+        led_to_send = None
+        current_time = time.time()
+        with state_lock:
+            if pending_led_color is not None:
+                led_to_send = pending_led_color
+                pending_led_color = None
+                last_led_send_time = current_time
+            elif current_time - last_led_send_time >= 2.0:
+                # Latido de presencia: enviar color del preset activo periódicamente
+                preset_name = calib_config.get("active_preset", "Personalizado")
+                color_name = calib_config.get("led_color", "Apagado")
+                if preset_name in calib_config.get("custom_presets", {}):
+                    preset_data = calib_config["custom_presets"][preset_name]
+                    color_name = preset_data.get("led_color", color_name)
+                
+                color_mapping = {
+                    "Apagado": 0, "Rojo": 1, "Verde": 2, "Azul": 3,
+                    "Amarillo": 4, "Violeta": 5, "Celeste": 6, "Naranja": 7
+                }
+                led_to_send = color_mapping.get(color_name, 0)
+                last_led_send_time = current_time
+                
+        if led_to_send is not None and serial_conn and serial_conn.is_open:
+            try:
+                packet = bytes([0xBB, 0x66, led_to_send])
+                serial_conn.write(packet)
+                serial_conn.flush()
+            except Exception as e:
+                log_to_buffer(f"[LED RGB] Error al transmitir color: {e}", "error")
 
         try:
             # Buscar cabecera de sincronización (0xAA, 0x55)
@@ -716,7 +793,10 @@ class EmuladorAPI:
                     if k in calib_config:
                         calib_config[k] = v
             # Guardar en disco en hilo separado para no bloquear
-            threading.Thread(target=save_config_to_json, daemon=True).start()
+            def save_and_send():
+                save_config_to_json()
+                send_led_color_to_arduino()
+            threading.Thread(target=save_and_send, daemon=True).start()
         except Exception as e:
             log_to_buffer(f"Error actualizando configuración: {e}", "error")
         return self.get_status()

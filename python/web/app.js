@@ -46,7 +46,8 @@ let config = {
     btn_map_p11: "Ninguno",
     preset_cycle_btn: "Ninguno",
     active_preset: "Personalizado",
-    previous_preset: "Personalizado"
+    previous_preset: "Personalizado",
+    led_color: "Azul"
 };
 
 // Presets de Juego (Espejo de python para consistencia local y velocidad)
@@ -179,7 +180,8 @@ const dom = {
     btnClearLog: document.getElementById('btn-clear-log'),
     wsDot: document.getElementById('ws-dot'),
     wsStatusText: document.getElementById('ws-status-text'),
-    arduinoPortText: document.getElementById('arduino-port-text')
+    arduinoPortText: document.getElementById('arduino-port-text'),
+    ledColorSelect: document.getElementById('led-color-select')
 };
 
 // Canvas 2D Context
@@ -777,6 +779,11 @@ function syncSlidersWithConfig() {
         cycleBtnSelect.value = config.preset_cycle_btn !== undefined ? config.preset_cycle_btn : "Ninguno";
     }
     
+    // Sincronizar el select de color de LED RGB
+    if (dom.ledColorSelect) {
+        dom.ledColorSelect.value = config.led_color !== undefined ? config.led_color : "Apagado";
+    }
+    
     // Sincronizar selector de preset
     if (dom.presetSelect) {
         dom.presetSelect.value = config.active_preset !== undefined ? config.active_preset : "Personalizado";
@@ -853,7 +860,7 @@ function loadPreset(presetName) {
         if (preset.accel_target !== undefined) config.accel_target = preset.accel_target;
         if (preset.brake_target !== undefined) config.brake_target = preset.brake_target;
         
-        for (let i = 2; i <= 11; i++) {
+        for (let i = 2; i <= 12; i++) {
             const key = `btn_map_p${i}`;
             if (preset[key] !== undefined) {
                 config[key] = preset[key];
@@ -861,6 +868,20 @@ function loadPreset(presetName) {
         }
         if (preset.preset_cycle_btn !== undefined) {
             config.preset_cycle_btn = preset.preset_cycle_btn;
+        }
+        
+        // Cargar o deducir el color de LED RGB
+        if (preset.led_color !== undefined) {
+            config.led_color = preset.led_color;
+        } else {
+            // Retrocompatibilidad con presets existentes sin led_color
+            if (presetName === "F1 RACING") {
+                config.led_color = "Rojo";
+            } else if (presetName === "F1 RACING CRUCETAS") {
+                config.led_color = "Naranja";
+            } else {
+                config.led_color = "Apagado";
+            }
         }
         
         config.active_preset = presetName;
@@ -997,7 +1018,9 @@ function setupEventListeners() {
                 btn_map_p9: config.btn_map_p9 || "Ninguno",
                 btn_map_p10: config.btn_map_p10 || "Ninguno",
                 btn_map_p11: config.btn_map_p11 || "Ninguno",
-                preset_cycle_btn: config.preset_cycle_btn || "Ninguno"
+                btn_map_p12: config.btn_map_p12 || "Ninguno",
+                preset_cycle_btn: config.preset_cycle_btn || "Ninguno",
+                led_color: config.led_color || "Apagado"
             };
             config.active_preset = trimmedName;
             
@@ -1154,6 +1177,28 @@ function setupEventListeners() {
                 sendMessage("config", config);
                 log(`Mapeo de Pin D${index + 2} actualizado a: ${MAP_OPTIONS[e.target.value]}`, "info");
             });
+        });
+    }
+
+    // Event listener para Color de LED RGB
+    if (dom.ledColorSelect) {
+        dom.ledColorSelect.addEventListener('change', (e) => {
+            config.led_color = e.target.value;
+            
+            if (config.active_preset !== "Personalizado") {
+                config.previous_preset = config.active_preset;
+            }
+            config.active_preset = "Personalizado";
+            if (dom.presetSelect) {
+                dom.presetSelect.value = "Personalizado";
+            }
+            const btnDelete = document.getElementById("btn-delete-preset");
+            if (btnDelete) {
+                btnDelete.style.display = "none";
+            }
+            
+            sendMessage("config", config);
+            log(`Color de LED RGB actualizado a: ${e.target.value}`, "info");
         });
     }
 
