@@ -136,9 +136,9 @@ calib_config = {
     "btn_map_p6": "Ninguno",
     "btn_map_p7": "Ninguno",
     "btn_map_p8": "Ninguno",
-    "btn_map_p9": "Ninguno",
-    "btn_map_p10": "Ninguno",
-    "btn_map_p11": "Ninguno",
+    "btn_map_pa3": "Ninguno",
+    "btn_map_pa5": "Ninguno",
+    "btn_map_pa4": "Ninguno",
     "btn_map_p12": "Ninguno",
     "preset_cycle_btn": "Ninguno",
     "active_preset": "Personalizado",
@@ -189,6 +189,13 @@ def load_config_from_json():
                                 calib_config[k] = dict(v)
                             else:
                                 calib_config[k] = v
+                    # Compatibilidad con configuración anterior
+                    if "btn_map_p9" in saved and "btn_map_pa3" not in saved:
+                        calib_config["btn_map_pa3"] = saved["btn_map_p9"]
+                    if "btn_map_p10" in saved and "btn_map_pa5" not in saved:
+                        calib_config["btn_map_pa5"] = saved["btn_map_p10"]
+                    if "btn_map_p11" in saved and "btn_map_pa4" not in saved:
+                        calib_config["btn_map_pa4"] = saved["btn_map_p11"]
             print(f"Configuración cargada con éxito desde: {CONFIG_FILE_PATH}")
             log_to_buffer(f"Configuración cargada desde: {CONFIG_FILE_PATH}", "success")
         except Exception as e:
@@ -321,8 +328,16 @@ def cycle_presets_native():
 
 
 def get_pin_state(pin_name, btn_states):
-    """Devuelve el estado de un pin digital dado su nombre ('Pin D2'...'Pin D11')."""
-    if pin_name and pin_name.startswith("Pin D"):
+    """Devuelve el estado de un pin digital o analógico dado su nombre."""
+    if not pin_name:
+        return 0
+    if pin_name == "Pin A3" and len(btn_states) > 7:
+        return btn_states[7]
+    elif pin_name == "Pin A5" and len(btn_states) > 8:
+        return btn_states[8]
+    elif pin_name == "Pin A4" and len(btn_states) > 9:
+        return btn_states[9]
+    elif pin_name.startswith("Pin D"):
         try:
             pin_num = int(pin_name[5:])
             idx = pin_num - 2
@@ -472,9 +487,9 @@ def emulation_loop(port):
                             btn_map_p6 = calib_config["btn_map_p6"]
                             btn_map_p7 = calib_config["btn_map_p7"]
                             btn_map_p8 = calib_config["btn_map_p8"]
-                            btn_map_p9 = calib_config["btn_map_p9"]
-                            btn_map_p10 = calib_config["btn_map_p10"]
-                            btn_map_p11 = calib_config["btn_map_p11"]
+                            btn_map_pa3 = calib_config.get("btn_map_pa3", calib_config.get("btn_map_p9", "Ninguno"))
+                            btn_map_pa5 = calib_config.get("btn_map_pa5", calib_config.get("btn_map_p10", "Ninguno"))
+                            btn_map_pa4 = calib_config.get("btn_map_pa4", calib_config.get("btn_map_p11", "Ninguno"))
                             btn_map_p12 = calib_config.get("btn_map_p12", "Ninguno")
 
                         # 1. Filtro DSP Anti-Ruido (EMA)
@@ -603,7 +618,7 @@ def emulation_loop(port):
                             # Mapear los 11 botones digitales de forma dinámica
                             btn_mappings = [
                                 btn_map_p2, btn_map_p3, btn_map_p4, btn_map_p5, btn_map_p6,
-                                btn_map_p7, btn_map_p8, btn_map_p9, btn_map_p10, btn_map_p11,
+                                btn_map_p7, btn_map_p8, btn_map_pa3, btn_map_pa5, btn_map_pa4,
                                 btn_map_p12
                             ]
                             active_buttons = set()

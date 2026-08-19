@@ -41,9 +41,9 @@ let config = {
     btn_map_p6: "Ninguno",
     btn_map_p7: "Ninguno",
     btn_map_p8: "Ninguno",
-    btn_map_p9: "Ninguno",
-    btn_map_p10: "Ninguno",
-    btn_map_p11: "Ninguno",
+    btn_map_pa3: "Ninguno",
+    btn_map_pa5: "Ninguno",
+    btn_map_pa4: "Ninguno",
     preset_cycle_btn: "Ninguno",
     active_preset: "Personalizado",
     previous_preset: "Personalizado",
@@ -114,9 +114,9 @@ const dom = {
         document.getElementById('btn-p6-pill'),
         document.getElementById('btn-p7-pill'),
         document.getElementById('btn-p8-pill'),
-        document.getElementById('btn-p9-pill'),
-        document.getElementById('btn-p10-pill'),
-        document.getElementById('btn-p11-pill'),
+        document.getElementById('btn-pa3-pill'),
+        document.getElementById('btn-pa5-pill'),
+        document.getElementById('btn-pa4-pill'),
         document.getElementById('btn-p12-pill')
     ],
     
@@ -129,9 +129,9 @@ const dom = {
         document.getElementById('map-p6'),
         document.getElementById('map-p7'),
         document.getElementById('map-p8'),
-        document.getElementById('map-p9'),
-        document.getElementById('map-p10'),
-        document.getElementById('map-p11'),
+        document.getElementById('map-pa3'),
+        document.getElementById('map-pa5'),
+        document.getElementById('map-pa4'),
         document.getElementById('map-p12')
     ],
     
@@ -742,9 +742,9 @@ function syncSlidersWithConfig() {
         const p6 = config.btn_map_p6 !== undefined ? config.btn_map_p6 : "Ninguno";
         const p7 = config.btn_map_p7 !== undefined ? config.btn_map_p7 : "Ninguno";
         const p8 = config.btn_map_p8 !== undefined ? config.btn_map_p8 : "Ninguno";
-        const p9 = config.btn_map_p9 !== undefined ? config.btn_map_p9 : "Ninguno";
-        const p10 = config.btn_map_p10 !== undefined ? config.btn_map_p10 : "Ninguno";
-        const p11 = config.btn_map_p11 !== undefined ? config.btn_map_p11 : "Ninguno";
+        const p9 = config.btn_map_pa3 !== undefined ? config.btn_map_pa3 : (config.btn_map_p9 !== undefined ? config.btn_map_p9 : "Ninguno");
+        const p10 = config.btn_map_pa5 !== undefined ? config.btn_map_pa5 : (config.btn_map_p10 !== undefined ? config.btn_map_p10 : "Ninguno");
+        const p11 = config.btn_map_pa4 !== undefined ? config.btn_map_pa4 : (config.btn_map_p11 !== undefined ? config.btn_map_p11 : "Ninguno");
         const p12 = config.btn_map_p12 !== undefined ? config.btn_map_p12 : "Ninguno";
 
         if (dom.mapSelects[0]) dom.mapSelects[0].value = p2;
@@ -767,9 +767,9 @@ function syncSlidersWithConfig() {
         if (document.getElementById("btn-p6-mapping")) document.getElementById("btn-p6-mapping").innerText = getShortMappingLabel(p6);
         if (document.getElementById("btn-p7-mapping")) document.getElementById("btn-p7-mapping").innerText = getShortMappingLabel(p7);
         if (document.getElementById("btn-p8-mapping")) document.getElementById("btn-p8-mapping").innerText = getShortMappingLabel(p8);
-        if (document.getElementById("btn-p9-mapping")) document.getElementById("btn-p9-mapping").innerText = getShortMappingLabel(p9);
-        if (document.getElementById("btn-p10-mapping")) document.getElementById("btn-p10-mapping").innerText = getShortMappingLabel(p10);
-        if (document.getElementById("btn-p11-mapping")) document.getElementById("btn-p11-mapping").innerText = getShortMappingLabel(p11);
+        if (document.getElementById("btn-pa3-mapping")) document.getElementById("btn-pa3-mapping").innerText = getShortMappingLabel(p9);
+        if (document.getElementById("btn-pa5-mapping")) document.getElementById("btn-pa5-mapping").innerText = getShortMappingLabel(p10);
+        if (document.getElementById("btn-pa4-mapping")) document.getElementById("btn-pa4-mapping").innerText = getShortMappingLabel(p11);
         if (document.getElementById("btn-p12-mapping")) document.getElementById("btn-p12-mapping").innerText = getShortMappingLabel(p12);
     }
     
@@ -1015,9 +1015,9 @@ function setupEventListeners() {
                 btn_map_p6: config.btn_map_p6 || "Ninguno",
                 btn_map_p7: config.btn_map_p7 || "Ninguno",
                 btn_map_p8: config.btn_map_p8 || "Ninguno",
-                btn_map_p9: config.btn_map_p9 || "Ninguno",
-                btn_map_p10: config.btn_map_p10 || "Ninguno",
-                btn_map_p11: config.btn_map_p11 || "Ninguno",
+                btn_map_pa3: config.btn_map_pa3 || "Ninguno",
+                btn_map_pa5: config.btn_map_pa5 || "Ninguno",
+                btn_map_pa4: config.btn_map_pa4 || "Ninguno",
                 btn_map_p12: config.btn_map_p12 || "Ninguno",
                 preset_cycle_btn: config.preset_cycle_btn || "Ninguno",
                 led_color: config.led_color || "Apagado"
@@ -1158,9 +1158,13 @@ function setupEventListeners() {
 
     // Event listeners para mapeos de botones
     if (dom.mapSelects && dom.mapSelects.length >= 10) {
+        const pinKeys = ["p2", "p3", "p4", "p5", "p6", "p7", "p8", "pa3", "pa5", "pa4", "p12"];
+        const pinLabels = ["Pin D2", "Pin D3", "Pin D4", "Pin D5", "Pin D6", "Pin D7", "Pin D8", "Pin A3", "Pin A5", "Pin A4", "Pin D12"];
         dom.mapSelects.forEach((select, index) => {
             select.addEventListener('change', (e) => {
-                const key = `btn_map_p${index + 2}`;
+                const pinKey = pinKeys[index];
+                const pinLabel = pinLabels[index];
+                const key = `btn_map_${pinKey}`;
                 config[key] = e.target.value;
                 if (config.active_preset !== "Personalizado") {
                     config.previous_preset = config.active_preset;
@@ -1169,13 +1173,13 @@ function setupEventListeners() {
                 dom.presetSelect.value = "Personalizado";
                 
                 // Actualizar etiqueta del HUD inmediatamente
-                const mappingLabel = document.getElementById(`btn-p${index + 2}-mapping`);
+                const mappingLabel = document.getElementById(`btn-${pinKey}-mapping`);
                 if (mappingLabel) {
                     mappingLabel.innerText = getShortMappingLabel(e.target.value);
                 }
                 
                 sendMessage("config", config);
-                log(`Mapeo de Pin D${index + 2} actualizado a: ${MAP_OPTIONS[e.target.value]}`, "info");
+                log(`Mapeo de ${pinLabel} actualizado a: ${MAP_OPTIONS[e.target.value]}`, "info");
             });
         });
     }

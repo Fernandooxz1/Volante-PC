@@ -13,9 +13,9 @@ const int PIN_DIRECCION = A0;
 const int PIN_ACELERADOR = A1;
 const int PIN_FRENO = A2;
 
-// Pines digitales para botones (Pines del 2 al 12)
+// Pines para botones (D2 a D8, analógicos A3, A5, A4 para botones, y D12)
 const int NUM_BOTONES = 11;
-const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, A3, A5, A4, 12};
 
 // Factor de suavizado para el filtro EMA en punto fijo (escala de 256)
 // 90/256 equivale aproximadamente a ALPHA = 0.35
@@ -40,10 +40,10 @@ VolantePacket packet;
 const unsigned long INTERVALO_MS = 10;
 unsigned long ultimoTiempoTransmision = 0;
 
-// Configuración de pines para el LED RGB
-const int PIN_LED_R = A3;
-const int PIN_LED_G = A5;
-const int PIN_LED_B = A4;
+// Configuración de pines PWM para el LED RGB
+const int PIN_LED_R = 9;
+const int PIN_LED_G = 10;
+const int PIN_LED_B = 11;
 
 // Brillo objetivo para cada canal (escala de 0 a 100)
 uint8_t targetR = 0;
@@ -179,15 +179,17 @@ void loop() {
     }
   }
 
-  // --- Ciclo Software-PWM para los leds RGB ---
-  static uint8_t pwmCounter = 0;
-  pwmCounter++;
-  if (pwmCounter >= 100) {
-    pwmCounter = 0;
+  // --- Control PWM por hardware para los leds RGB ---
+  // Invertido (255 - valor) porque es Ánodo Común (LOW enciende, HIGH apaga)
+  static uint8_t lastR = 255, lastG = 255, lastB = 255;
+  if (targetR != lastR || targetG != lastG || targetB != lastB) {
+    lastR = targetR;
+    lastG = targetG;
+    lastB = targetB;
+    analogWrite(PIN_LED_R, 255 - ((uint16_t)targetR * 255) / 100);
+    analogWrite(PIN_LED_G, 255 - ((uint16_t)targetG * 255) / 100);
+    analogWrite(PIN_LED_B, 255 - ((uint16_t)targetB * 255) / 100);
   }
-  digitalWrite(PIN_LED_R, pwmCounter < targetR ? LOW : HIGH);
-  digitalWrite(PIN_LED_G, pwmCounter < targetG ? LOW : HIGH);
-  digitalWrite(PIN_LED_B, pwmCounter < targetB ? LOW : HIGH);
 
   unsigned long tiempoActual = millis();
 

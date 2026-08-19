@@ -75,9 +75,9 @@ class VolanteGUI(ctk.CTk):
         self.btn_d6_target = "Ninguno"
         self.btn_d7_target = "Ninguno"
         self.btn_d8_target = "Ninguno"
-        self.btn_d9_target = "Ninguno"
-        self.btn_d10_target = "Ninguno"
-        self.btn_d11_target = "Ninguno"
+        self.btn_a3_target = "Ninguno"
+        self.btn_a5_target = "Ninguno"
+        self.btn_a4_target = "Ninguno"
         
         self.preset_cycle_btn = "Ninguno"
         self.last_btn_cycle_state = 0
@@ -176,7 +176,7 @@ class VolanteGUI(ctk.CTk):
 
         # Fila Botón de Alternar Preset
         ctk.CTkLabel(config_frame, text="Alternar Presets:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, padx=15, pady=5, sticky="w")
-        cycle_options = ["Ninguno", "Pin D2", "Pin D3", "Pin D4", "Pin D5", "Pin D6", "Pin D7", "Pin D8", "Pin D9", "Pin D10", "Pin D11"]
+        cycle_options = ["Ninguno", "Pin D2", "Pin D3", "Pin D4", "Pin D5", "Pin D6", "Pin D7", "Pin D8", "Pin A3", "Pin A5", "Pin A4"]
         self.preset_cycle_combo = ctk.CTkComboBox(
             config_frame,
             values=cycle_options,
@@ -245,27 +245,27 @@ class VolanteGUI(ctk.CTk):
         self.btn_d4_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
         self.btn_d4_combo.grid(row=8, column=1, padx=15, pady=5, sticky="w")
         
-        ctk.CTkLabel(config_frame, text="Botón D9 (Preset Cycle):", font=ctk.CTkFont(weight="bold")).grid(row=8, column=2, padx=15, pady=5, sticky="w")
-        self.btn_d9_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
-        self.btn_d9_combo.grid(row=8, column=3, padx=15, pady=5, sticky="w")
+        ctk.CTkLabel(config_frame, text="Botón A3 (Preset Cycle):", font=ctk.CTkFont(weight="bold")).grid(row=8, column=2, padx=15, pady=5, sticky="w")
+        self.btn_a3_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
+        self.btn_a3_combo.grid(row=8, column=3, padx=15, pady=5, sticky="w")
 
-        # Row 9: D5 & D10
+        # Row 9: D5 & A5
         ctk.CTkLabel(config_frame, text="Botón D5 (X):", font=ctk.CTkFont(weight="bold")).grid(row=9, column=0, padx=15, pady=5, sticky="w")
         self.btn_d5_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
         self.btn_d5_combo.grid(row=9, column=1, padx=15, pady=5, sticky="w")
         
-        ctk.CTkLabel(config_frame, text="Botón D10 (L3):", font=ctk.CTkFont(weight="bold")).grid(row=9, column=2, padx=15, pady=5, sticky="w")
-        self.btn_d10_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
-        self.btn_d10_combo.grid(row=9, column=3, padx=15, pady=5, sticky="w")
+        ctk.CTkLabel(config_frame, text="Botón A5 (L3):", font=ctk.CTkFont(weight="bold")).grid(row=9, column=2, padx=15, pady=5, sticky="w")
+        self.btn_a5_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
+        self.btn_a5_combo.grid(row=9, column=3, padx=15, pady=5, sticky="w")
 
-        # Row 10: D6 & D11
+        # Row 10: D6 & A4
         ctk.CTkLabel(config_frame, text="Botón D6 (Y):", font=ctk.CTkFont(weight="bold")).grid(row=10, column=0, padx=15, pady=5, sticky="w")
         self.btn_d6_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
         self.btn_d6_combo.grid(row=10, column=1, padx=15, pady=5, sticky="w")
         
-        ctk.CTkLabel(config_frame, text="Botón D11 (R3):", font=ctk.CTkFont(weight="bold")).grid(row=10, column=2, padx=15, pady=5, sticky="w")
-        self.btn_d11_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
-        self.btn_d11_combo.grid(row=10, column=3, padx=15, pady=5, sticky="w")
+        ctk.CTkLabel(config_frame, text="Botón A4 (R3):", font=ctk.CTkFont(weight="bold")).grid(row=10, column=2, padx=15, pady=5, sticky="w")
+        self.btn_a4_combo = ctk.CTkComboBox(config_frame, values=list(BUTTON_MAP.keys()), command=self.mark_custom, width=140)
+        self.btn_a4_combo.grid(row=10, column=3, padx=15, pady=5, sticky="w")
 
         # Separador visual 2
         separator2 = ctk.CTkFrame(config_frame, height=2, fg_color="gray30")
@@ -352,11 +352,11 @@ class VolanteGUI(ctk.CTk):
         
         ctk.CTkLabel(btn_box, text="Botones:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(5, 10))
         self.btn_indicators = []
+        pin_names = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "A3", "A5", "A4"]
         for i in range(10):
-            pin = i + 2
             lbl = ctk.CTkLabel(
                 btn_box, 
-                text=f"D{pin}", 
+                text=pin_names[i], 
                 fg_color="gray25", 
                 text_color="gray70", 
                 corner_radius=4,
@@ -473,9 +473,9 @@ class VolanteGUI(ctk.CTk):
                 self.btn_d6_target = saved.get("btn_map_p6", "Ninguno")
                 self.btn_d7_target = saved.get("btn_map_p7", "Ninguno")
                 self.btn_d8_target = saved.get("btn_map_p8", "Ninguno")
-                self.btn_d9_target = saved.get("btn_map_p9", "Ninguno")
-                self.btn_d10_target = saved.get("btn_map_p10", "Ninguno")
-                self.btn_d11_target = saved.get("btn_map_p11", "Ninguno")
+                self.btn_a3_target = saved.get("btn_map_pa3", saved.get("btn_map_p9", "Ninguno"))
+                self.btn_a5_target = saved.get("btn_map_pa5", saved.get("btn_map_p10", "Ninguno"))
+                self.btn_a4_target = saved.get("btn_map_pa4", saved.get("btn_map_p11", "Ninguno"))
                 
                 self.preset_cycle_btn = saved.get("preset_cycle_btn", "Ninguno")
                 self.active_preset = saved.get("active_preset", "Personalizado")
@@ -521,12 +521,12 @@ class VolanteGUI(ctk.CTk):
                     self.btn_d7_combo.set(self.btn_d7_target)
                 if hasattr(self, 'btn_d8_combo'):
                     self.btn_d8_combo.set(self.btn_d8_target)
-                if hasattr(self, 'btn_d9_combo'):
-                    self.btn_d9_combo.set(self.btn_d9_target)
-                if hasattr(self, 'btn_d10_combo'):
-                    self.btn_d10_combo.set(self.btn_d10_target)
-                if hasattr(self, 'btn_d11_combo'):
-                    self.btn_d11_combo.set(self.btn_d11_target)
+                if hasattr(self, 'btn_a3_combo'):
+                    self.btn_a3_combo.set(self.btn_a3_target)
+                if hasattr(self, 'btn_a5_combo'):
+                    self.btn_a5_combo.set(self.btn_a5_target)
+                if hasattr(self, 'btn_a4_combo'):
+                    self.btn_a4_combo.set(self.btn_a4_target)
                     
                 # Ciclo
                 if hasattr(self, 'preset_cycle_combo'):
@@ -567,9 +567,9 @@ class VolanteGUI(ctk.CTk):
         saved["btn_map_p6"] = self.btn_d6_target
         saved["btn_map_p7"] = self.btn_d7_target
         saved["btn_map_p8"] = self.btn_d8_target
-        saved["btn_map_p9"] = self.btn_d9_target
-        saved["btn_map_p10"] = self.btn_d10_target
-        saved["btn_map_p11"] = self.btn_d11_target
+        saved["btn_map_pa3"] = self.btn_a3_target
+        saved["btn_map_pa5"] = self.btn_a5_target
+        saved["btn_map_pa4"] = self.btn_a4_target
         
         saved["preset_cycle_btn"] = self.preset_cycle_btn
         if hasattr(self, 'preset_combo'):
@@ -618,9 +618,9 @@ class VolanteGUI(ctk.CTk):
             self.btn_d6_target = preset.get("btn_map_p6", "Ninguno")
             self.btn_d7_target = preset.get("btn_map_p7", "Ninguno")
             self.btn_d8_target = preset.get("btn_map_p8", "Ninguno")
-            self.btn_d9_target = preset.get("btn_map_p9", "Ninguno")
-            self.btn_d10_target = preset.get("btn_map_p10", "Ninguno")
-            self.btn_d11_target = preset.get("btn_map_p11", "Ninguno")
+            self.btn_a3_target = preset.get("btn_map_pa3", preset.get("btn_map_p9", "Ninguno"))
+            self.btn_a5_target = preset.get("btn_map_pa5", preset.get("btn_map_p10", "Ninguno"))
+            self.btn_a4_target = preset.get("btn_map_pa4", preset.get("btn_map_p11", "Ninguno"))
             self.preset_cycle_btn = preset.get("preset_cycle_btn", "Ninguno")
             
             # Actualizar widgets
@@ -661,12 +661,12 @@ class VolanteGUI(ctk.CTk):
                 self.btn_d7_combo.set(self.btn_d7_target)
             if hasattr(self, 'btn_d8_combo'):
                 self.btn_d8_combo.set(self.btn_d8_target)
-            if hasattr(self, 'btn_d9_combo'):
-                self.btn_d9_combo.set(self.btn_d9_target)
-            if hasattr(self, 'btn_d10_combo'):
-                self.btn_d10_combo.set(self.btn_d10_target)
-            if hasattr(self, 'btn_d11_combo'):
-                self.btn_d11_combo.set(self.btn_d11_target)
+            if hasattr(self, 'btn_a3_combo'):
+                self.btn_a3_combo.set(self.btn_a3_target)
+            if hasattr(self, 'btn_a5_combo'):
+                self.btn_a5_combo.set(self.btn_a5_target)
+            if hasattr(self, 'btn_a4_combo'):
+                self.btn_a4_combo.set(self.btn_a4_target)
                 
             if hasattr(self, 'preset_cycle_combo'):
                 self.preset_cycle_combo.set(self.preset_cycle_btn)
@@ -702,9 +702,9 @@ class VolanteGUI(ctk.CTk):
             self.btn_d6_target = self.btn_d6_combo.get() if hasattr(self, 'btn_d6_combo') else self.btn_d6_target
             self.btn_d7_target = self.btn_d7_combo.get() if hasattr(self, 'btn_d7_combo') else self.btn_d7_target
             self.btn_d8_target = self.btn_d8_combo.get() if hasattr(self, 'btn_d8_combo') else self.btn_d8_target
-            self.btn_d9_target = self.btn_d9_combo.get() if hasattr(self, 'btn_d9_combo') else self.btn_d9_target
-            self.btn_d10_target = self.btn_d10_combo.get() if hasattr(self, 'btn_d10_combo') else self.btn_d10_target
-            self.btn_d11_target = self.btn_d11_combo.get() if hasattr(self, 'btn_d11_combo') else self.btn_d11_target
+            self.btn_a3_target = self.btn_a3_combo.get() if hasattr(self, 'btn_a3_combo') else self.btn_a3_target
+            self.btn_a5_target = self.btn_a5_combo.get() if hasattr(self, 'btn_a5_combo') else self.btn_a5_target
+            self.btn_a4_target = self.btn_a4_combo.get() if hasattr(self, 'btn_a4_combo') else self.btn_a4_target
             self.preset_cycle_btn = self.preset_cycle_combo.get() if hasattr(self, 'preset_cycle_combo') else self.preset_cycle_btn
 
     def toggle_emulation(self):
@@ -794,7 +794,13 @@ class VolanteGUI(ctk.CTk):
                                 cycle_btn_name = self.preset_cycle_btn
                                 
                             current_cycle_state = 0
-                            if cycle_btn_name.startswith("Pin D"):
+                            if cycle_btn_name == "Pin A3" and len(btn_states) > 7:
+                                current_cycle_state = btn_states[7]
+                            elif cycle_btn_name == "Pin A5" and len(btn_states) > 8:
+                                current_cycle_state = btn_states[8]
+                            elif cycle_btn_name == "Pin A4" and len(btn_states) > 9:
+                                current_cycle_state = btn_states[9]
+                            elif cycle_btn_name.startswith("Pin D"):
                                 try:
                                     pin_num = int(cycle_btn_name[5:])
                                     idx = pin_num - 2
@@ -825,8 +831,8 @@ class VolanteGUI(ctk.CTk):
                                 btn_mappings = [
                                     self.btn_d2_target, self.btn_d3_target, self.btn_d4_target,
                                     self.btn_d5_target, self.btn_d6_target, self.btn_d7_target,
-                                    self.btn_d8_target, self.btn_d9_target, self.btn_d10_target,
-                                    self.btn_d11_target
+                                    self.btn_d8_target, self.btn_a3_target, self.btn_a5_target,
+                                    self.btn_a4_target
                                 ]
 
                             # --- FILTRADO AVANZADO ANTI-RUIDO (DSP) ---

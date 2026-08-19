@@ -25,9 +25,9 @@
     "btn_map_p6": "Button A",
     "btn_map_p7": "Button Y",
     "btn_map_p8": "D-Pad RIGHT",
-    "btn_map_p9": "D-Pad LEFT",
-    "btn_map_p10": "D-Pad DOWN",
-    "btn_map_p11": "D-Pad UP",
+    "btn_map_pa3": "D-Pad LEFT",
+    "btn_map_pa5": "D-Pad DOWN",
+    "btn_map_pa4": "D-Pad UP",
     "btn_map_p12": "Ninguno",
     "preset_cycle_btn": "Pin D2",
     "active_preset": "Personalizado",
@@ -49,9 +49,9 @@
             "btn_map_p6": "Button A",
             "btn_map_p7": "Button Y",
             "btn_map_p8": "Button RB (Right Shoulder)",
-            "btn_map_p9": "Button LB (Left Shoulder)",
-            "btn_map_p10": "Button L3 (Left Click)",
-            "btn_map_p11": "Button R3 (Right Click)",
+            "btn_map_pa3": "Button LB (Left Shoulder)",
+            "btn_map_pa5": "Button L3 (Left Click)",
+            "btn_map_pa4": "Button R3 (Right Click)",
             "preset_cycle_btn": "Pin D2"
         },
         "F1 RACING CRUCETAS": {
@@ -70,9 +70,9 @@
             "btn_map_p6": "Button A",
             "btn_map_p7": "Button Y",
             "btn_map_p8": "D-Pad RIGHT",
-            "btn_map_p9": "D-Pad LEFT",
-            "btn_map_p10": "D-Pad DOWN",
-            "btn_map_p11": "D-Pad UP",
+            "btn_map_pa3": "D-Pad LEFT",
+            "btn_map_pa5": "D-Pad DOWN",
+            "btn_map_pa4": "D-Pad UP",
             "preset_cycle_btn": "Pin D2"
         }
     }

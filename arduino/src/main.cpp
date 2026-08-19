@@ -15,9 +15,9 @@ const int PIN_DIRECCION = A0;
 const int PIN_ACELERADOR = A1;
 const int PIN_FRENO = A2;
 
-// Pines digitales para botones (Pines del 2 al 11)
-const int NUM_BOTONES = 10;
-const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+// Pines para botones (D2 a D8, analógicos A3, A5, A4, y D12)
+const int NUM_BOTONES = 11;
+const int PIN_BOTONES[NUM_BOTONES] = {2, 3, 4, 5, 6, 7, 8, A3, A5, A4, 12};
 
 // Factor de suavizado para el filtro EMA en punto fijo (escala de 256)
 // 90/256 equivale aproximadamente a ALPHA = 0.35
@@ -42,6 +42,51 @@ VolantePacket packet;
 const unsigned long INTERVALO_MS = 10;
 unsigned long ultimoTiempoTransmision = 0;
 
+// Configuración de pines PWM para el LED RGB
+const int PIN_LED_R = 9;
+const int PIN_LED_G = 10;
+const int PIN_LED_B = 11;
+
+// Brillo objetivo para cada canal (escala de 0 a 100)
+uint8_t targetR = 0;
+uint8_t targetG = 0;
+uint8_t targetB = 0;
+
+// Estado de conexión con la PC
+bool pcConnected = false;
+unsigned long lastPacketTime = 0;
+
+void setLedColor(uint8_t code) {
+  switch (code) {
+    case 0: // Apagado
+      targetR = 0; targetG = 0; targetB = 0;
+      break;
+    case 1: // Rojo
+      targetR = 100; targetG = 0; targetB = 0;
+      break;
+    case 2: // Verde
+      targetR = 0; targetG = 100; targetB = 0;
+      break;
+    case 3: // Azul
+      targetR = 0; targetG = 0; targetB = 100;
+      break;
+    case 4: // Amarillo
+      targetR = 100; targetG = 100; targetB = 0;
+      break;
+    case 5: // Violeta
+      targetR = 100; targetG = 0; targetB = 100;
+      break;
+    case 6: // Celeste / Cian
+      targetR = 0; targetG = 100; targetB = 100;
+      break;
+    case 7: // Naranja
+      targetR = 100; targetG = 20; targetB = 0;
+      break;
+    default:
+      break;
+  }
+}
+
 void setup() {
   // Inicialización de la comunicación serie a alta velocidad
   Serial.begin(115200);
@@ -61,9 +106,87 @@ void setup() {
   filtradoDireccion = (int32_t)analogRead(PIN_DIRECCION) << 8;
   filtradoAcelerador = (int32_t)analogRead(PIN_ACELERADOR) << 8;
   filtradoFreno = (int32_t)analogRead(PIN_FRENO) << 8;
+
+  // Configurar pines del LED RGB como salidas
+  pinMode(PIN_LED_R, OUTPUT);
+  pinMode(PIN_LED_G, OUTPUT);
+  pinMode(PIN_LED_B, OUTPUT);
+  
+  // Apagar leds inicialmente (HIGH para ánodo común)
+  digitalWrite(PIN_LED_R, HIGH);
+  digitalWrite(PIN_LED_G, HIGH);
+  digitalWrite(PIN_LED_B, HIGH);
+  
+  // Color inicial (Azul para indicar listo)
+  setLedColor(3);
 }
 
 void loop() {
+  // --- Control de tiempo de vida de la conexión con PC ---
+  if (pcConnected && (millis() - lastPacketTime > 5000)) {
+    pcConnected = false;
+  }
+
+  // --- Lectura de comandos serie para LED RGB (no bloqueante) ---
+  while (Serial.available() >= 3) {
+      if (Serial.peek() == 0xBB) {
+        Serial.read(); // Descartar cabecera 0xBB
+        uint8_t b1 = Serial.read();
+        uint8_t b2 = Serial.read();
+        if (b1 == 0x66) {
+          setLedColor(b2);
+          pcConnected = true;
+          lastPacketTime = millis();
+        }
+      } else {
+        Serial.read(); // Descartar byte desalineado
+      }
+  }
+
+  // --- Animación de variación de colores si la PC no está conectada ---
+  if (!pcConnected) {
+    static unsigned long lastFadeTime = 0;
+    if (millis() - lastFadeTime >= 30) { // Actualizar tono cada 30ms
+      lastFadeTime = millis();
+      
+      static uint8_t fadeState = 0; // Estado actual (0-5)
+      static uint8_t fadeVal = 0;   // Brillo dinámico (0-100)
+      
+      fadeVal++;
+      if (fadeVal > 100) {
+        fadeVal = 0;
+        fadeState = (fadeState + 1) % 6;
+      }
+      
+      switch (fadeState) {
+        case 0: // Rojo -> Amarillo (R=100, G sube)
+          targetR = 100; targetG = fadeVal; targetB = 0;
+          break;
+        case 1: // Amarillo -> Verde (G=100, R baja)
+          targetR = 100 - fadeVal; targetG = 100; targetB = 0;
+          break;
+        case 2: // Verde -> Cian (G=100, B sube)
+          targetR = 0; targetG = 100; targetB = fadeVal;
+          break;
+        case 3: // Cian -> Azul (B=100, G baja)
+          targetR = 0; targetG = 100 - fadeVal; targetB = 100;
+          break;
+        case 4: // Azul -> Magenta (B=100, R sube)
+          targetR = fadeVal; targetG = 0; targetB = 100;
+          break;
+        case 5: // Magenta -> Rojo (R=100, B baja)
+          targetR = 100; targetG = 0; targetB = 100 - fadeVal;
+          break;
+      }
+    }
+  }
+
+  // --- Control PWM por hardware para los leds RGB ---
+  // Invertido (255 - valor) porque es Ánodo Común (LOW enciende, HIGH apaga)
+  analogWrite(PIN_LED_R, 255 - ((uint16_t)targetR * 255) / 100);
+  analogWrite(PIN_LED_G, 255 - ((uint16_t)targetG * 255) / 100);
+  analogWrite(PIN_LED_B, 255 - ((uint16_t)targetB * 255) / 100);
+
   unsigned long tiempoActual = millis();
 
   // Lecturas analógicas de 10 bits (0-1023)
