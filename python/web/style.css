@@ -43,7 +43,7 @@
 }
 
 html {
-    zoom: 0.7;
+    zoom: 1.0;
 }
 
 body {
@@ -961,34 +961,19 @@ body {
     transition: zoom 0.15s ease;
 }
 
-@media (max-width: 1440px), (max-height: 900px) {
+@media (max-width: 1280px) and (max-height: 768px) {
     body {
-        zoom: 0.90;
-    }
-}
-
-@media (max-width: 1280px), (max-height: 800px) {
-    body {
-        zoom: 0.82;
+        zoom: 0.95;
     }
     .app-container {
-        padding: 10px;
-        gap: 10px;
-    }
-    .pedals-wrapper {
-        height: 150px;
-    }
-    .pedal-bar-container {
-        height: 100px;
-    }
-    .app-console {
-        height: 125px;
+        padding: 12px;
+        gap: 12px;
     }
 }
 
-@media (max-width: 1024px), (max-height: 700px) {
+@media (max-width: 1024px) {
     body {
-        zoom: 0.72;
+        zoom: 0.90;
     }
 }
 

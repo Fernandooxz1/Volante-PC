@@ -12,6 +12,12 @@
 
 import os
 import sys
+
+# Desactivar DMABUF renderer y compositing problemático en WebKitGTK con drivers NVIDIA en Wayland
+if sys.platform.startswith('linux'):
+    os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+    os.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
+
 import time
 import json
 import threading
@@ -264,9 +270,18 @@ def log_to_buffer(text, level="info"):
 # LÓGICA DE DETECCIÓN Y EMULACIÓN DE HARDWARE (SERIE & GAMEPAD)
 # ==========================================================================
 def get_available_ports():
-    """Retorna una lista de puertos serie activos en el sistema."""
+    """Retorna una lista de puertos serie activos y relevantes en el sistema, descartando puertos UART genéricos."""
     ports = serial.tools.list_ports.comports()
-    return [p.device for p in ports]
+    filtered = []
+    for p in ports:
+        # En Linux, descartar puertos ttySXX no conectados o genéricos de la placa madre
+        if os.name == 'posix' and p.device.startswith('/dev/ttyS') and (p.hwid == 'n/a' or not p.hwid):
+            continue
+        filtered.append(p.device)
+    
+    # Priorizar puertos típicos de Arduino / adaptadores USB (ttyUSB, ttyACM, COM)
+    filtered.sort(key=lambda x: (not any(k in x.upper() for k in ['USB', 'ACM', 'ARDUINO', 'CH340']), x))
+    return filtered if filtered else [p.device for p in ports]
 
 
 def init_virtual_gamepad():
@@ -711,14 +726,18 @@ class EmuladorAPI:
 
     def get_status(self) -> str:
         """Retorna el estado completo actual: emulación, puerto, lista de puertos y config."""
+        global selected_port
+        ports = get_available_ports()
         with state_lock:
+            if not selected_port or selected_port not in ports:
+                selected_port = ports[0] if ports else None
             msg = {
                 "type": "status",
                 "data": {
                     "emulating": is_emulating,
                     "gamepad_ok": gamepad_ok,
                     "current_port": selected_port,
-                    "ports": get_available_ports(),
+                    "ports": ports,
                     "config": calib_config.copy()
                 }
             }
@@ -746,7 +765,11 @@ class EmuladorAPI:
 
     def refresh_ports(self) -> str:
         """Escanea puertos serie disponibles y retorna la lista."""
+        global selected_port
         ports = get_available_ports()
+        with state_lock:
+            if not selected_port or selected_port not in ports:
+                selected_port = ports[0] if ports else None
         log_to_buffer(f"Buscando puertos serie. Encontrados: {ports}", "info")
         msg = {
             "type": "ports",
@@ -888,9 +911,9 @@ def main():
         'Volante PC - Racing Dashboard Pro',
         url=index_path,
         js_api=api,
-        width=1280,
-        height=700,
-        min_size=(960, 580),
+        width=1360,
+        height=820,
+        min_size=(1024, 620),
         confirm_close=True
     )
 

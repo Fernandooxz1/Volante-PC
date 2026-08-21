@@ -250,9 +250,18 @@ def find_free_port(start_port):
 # LÓGICA DE DETECCIÓN Y EMULACIÓN DE HARDWARE (SERIE & GAMEPAD)
 # ==========================================================================
 def get_available_ports():
-    """Retorna una lista de puertos serie activos en el sistema."""
+    """Retorna una lista de puertos serie activos y relevantes en el sistema, descartando puertos UART genéricos."""
     ports = serial.tools.list_ports.comports()
-    return [p.device for p in ports]
+    filtered = []
+    for p in ports:
+        # En Linux, descartar puertos ttySXX no conectados o genéricos de la placa madre
+        if os.name == 'posix' and p.device.startswith('/dev/ttyS') and (p.hwid == 'n/a' or not p.hwid):
+            continue
+        filtered.append(p.device)
+    
+    # Priorizar puertos típicos de Arduino / adaptadores USB (ttyUSB, ttyACM, COM)
+    filtered.sort(key=lambda x: (not any(k in x.upper() for k in ['USB', 'ACM', 'ARDUINO', 'CH340']), x))
+    return filtered if filtered else [p.device for p in ports]
 
 def init_virtual_gamepad():
     """Inicializa la instancia de vgamepad (mando Xbox 360 virtual)."""
