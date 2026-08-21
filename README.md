@@ -1,4 +1,4 @@
-# 🏎️ Volante para PC con Arduino UNO y Python (Multiplataforma)
+#  Volante para PC con Arduino UNO y Python (Multiplataforma)
 
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue.svg)](https://github.com)
 [![Hardware](https://img.shields.io/badge/Hardware-Arduino%20UNO-00979D.svg)](https://www.arduino.cc)
@@ -11,7 +11,7 @@ Incluye una **curva de dirección exponencial (Steering Expo)** idéntica a la u
 
 ---
 
-## ⚡ Instalación Rápida en Linux (1 Solo Comando)
+## Instalación Rápida en Linux (1 Solo Comando)
 
 Clona el repositorio y ejecuta el instalador automático:
 
@@ -30,7 +30,7 @@ El instalador:
 
 ---
 
-## 🛠️ Requisitos de Hardware
+## Requisitos de Hardware
 
 1. **Arduino UNO** (o clon con chip CH340 / ATmega16U2).
 2. **3 Potenciómetros lineales de 10k Ohms**:
@@ -41,7 +41,7 @@ El instalador:
 4. **1x LED RGB de Ánodo Común** (opcional, para indicador de RPM / estado y cambio de presets).
 5. **Cables de conexión**, protoboard o placa de soldadura y **cable USB**.
 
-### 🔌 Esquema de Conexiones
+### Esquema de Conexiones
 
 Todos los potenciómetros comparten la línea de alimentación de **5V** y tierra (**GND**) del Arduino UNO. Los pines centrales (*wiper*) se conectan a las entradas analógicas:
 
@@ -60,7 +60,7 @@ Todos los potenciómetros comparten la línea de alimentación de **5V** y tierr
 
 ---
 
-## 💻 Instalación y Configuración Manual
+## Instalación y Configuración Manual
 
 ### 1. Flashear el Arduino UNO
 1. Abre [Arduino IDE](https://www.arduino.cc/en/software) (o PlatformIO).
@@ -110,7 +110,7 @@ sudo modprobe uinput
 
 ---
 
-## 🎮 Ejecución y Modos de Uso
+## Ejecución y Modos de Uso
 
 ### Opción A: Aplicación Nativa con Dashboard Pro (Recomendado)
 Ejecuta la interfaz nativa de escritorio:
@@ -136,7 +136,7 @@ python3 python/emulador_volante.py
 
 ---
 
-## 📐 Calibración y Curva Exponencial
+## Calibración y Curva Exponencial
 
 Para evitar que el auto zigzaguee en rectas a altas velocidades, se implementa una **progresión exponencial de dirección**:
 
@@ -153,7 +153,7 @@ $$x_{\text{sloped}} = x_{\text{expo}} \cdot \text{sensitivity}$$
 
 ---
 
-## 📦 Compilación del Ejecutable
+## Compilación del Ejecutable
 
 Para compilar un binario independiente con PyInstaller:
 
@@ -165,6 +165,6 @@ El ejecutable se generará en `python/dist/VolantePC` (o `VolantePC.exe` en Wind
 
 ---
 
-## 📄 Licencia
+## Licencia
 
 Proyecto de código abierto bajo licencia MIT. ¡Construye, compite y disfruta! 🏁
