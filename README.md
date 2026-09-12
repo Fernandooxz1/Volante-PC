@@ -6,20 +6,20 @@
 [![UI](https://img.shields.io/badge/UI-PyQt6%20Motorsport%20DDU-black.svg)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow.svg)](https://www.python.org)
 
-Suite nativa de emulación de **volante de carreras y pedalera profesional para PC** utilizando un **Arduino UNO**, potenciómetros lineales de 10k $\Omega$, botones digitales, LED RGB de telemetría y un panel de control nativo en **PyQt6 (Qt 6)** de ultra baja latencia (100 Hz reales) inspirado en instrumental de competición (Driver Display Unit).
+Aplicacion nativa de emulación de **volante de carreras y pedaler para PC** utilizando un **Arduino UNO**, potenciómetros lineales de 10k $\Omega$, botones digitales, LED RGB de telemetría y un panel de control nativo en **PyQt6 (Qt 6)** de ultra baja latencia (100 Hz).
 
-El motor central está completamente desacoplado de la interfaz gráfica y emula un mando virtual de Xbox 360 de ultra baja latencia con curva de dirección exponencial (Steering Expo), filtrado DSP anti-ruido y asistentes interactivos de calibración y mapeo.
+El motor central está completamente desacoplado de la interfaz gráfica y emula un mando virtual de Xbox 360 de con curva de dirección exponencial, filtrado DSP anti-ruido y asistentes interactivos de calibración y mapeo.
 
 ---
 
 ## Características Principales
 
-- **100% Nativo (Sin WebKit ni servidores locales)**: Desarrollado en PyQt6 con aceleración por hardware. Fluidez a 60-144+ FPS nativos en Wayland (Hyprland / Sway) y compatibilidad total con Windows.
-- **Motor Desacoplado a 100 Hz**: Bucle serial de hardware en hilo independiente sincronizado con `time.perf_counter()`. Cero input lag aunque la ventana esté minimizada.
-- **Estética de Competición (Motorsport DDU)**: Fondo OLED Black (`#0B0E14`), diseño limpio, sobrio y sin emojis ni sobrecargas visuales.
+- **100% Nativo**: Desarrollado en PyQt6 con aceleración por hardware. Fluidez a 144+ FPS nativos en Linux (Testeado en Hyprland y GNOME) y compatibilidad total con Windows.
+- **Motor desacoplado a 100 Hz**: Bucle serial de hardware en hilo independiente sincronizado con `time.perf_counter()`. Cero input lag aunque la ventana esté minimizada.
+- **Estética de Competición (Driver DDU)**: Fondo OLED Black (`#0B0E14`), diseño limpio, sobrio y sin sobrecargas visuales.
 - **Personalización de Temas**: Paletas de acento predefinidas (*Cyan Neon, Racing Red, Porsche Acid Green, McLaren Orange, Tokyo Night Violet*) o selector libre de color hexadecimal.
 - **Soporte Bilingüe Nativo [EN | ES]**: Alternador instantáneo entre Inglés y Español en la barra superior con persistencia en configuración.
-- **Asistente de Mapeo Interactivo ("Press to Map")**:
+- **Asistente de Mapeo Interactivo ("Mapeo dinamico")**:
   - **Asistente Completo**: Guía paso a paso por todos los controles (*"Presiona el botón para LT"*, detecta el pin en el Arduino y avanza).
   - **Mapeo Individual**: Botón para reasignar cualquier control con una sola pulsación.
 - **Asistente de Calibración de Topes**: Calibración visual de topes físicos (Tope Izquierdo, Centro Neutro, Tope Derecho) y recorrido de pedales con detección de potenciómetros invertidos.
@@ -38,7 +38,7 @@ El motor central está completamente desacoplado de la interfaz gráfica y emula
 
 ---
 
-## Instalación Automática en Linux (Arch / Omarchy / Debian / Fedora)
+## Instalación Automática en Linux (Arch / Debian / Fedora)
 
 Clona el repositorio y ejecuta el instalador como usuario normal:
 
@@ -109,7 +109,7 @@ Volante-PC/
 │   └── engine.py                        # Bucle a 100 Hz en hilo independiente y bus de eventos
 ├── ui/                                  # Capa de interfaz gráfica nativa PyQt6
 │   ├── i18n.py                          # Sistema de internacionalización bilingüe (EN / ES)
-│   ├── themes.py                        # Paleta OLED Black, temas de acento y generador QSS
+│   ├── themes.py                        # Paleta black, temas de acento y generador QSS
 │   ├── widgets/                         # Widgets de telemetría de competición
 │   │   ├── wheel_gauge.py               # Volante vectorial con grados
 │   │   ├── pedal_bar.py                 # Barras verticales con línea de deadzone
@@ -117,13 +117,13 @@ Volante-PC/
 │   │   ├── button_grid.py               # Píldoras de estado de los 11 pines físicos
 │   │   └── led_indicator.py             # Barra de LEDs de modo y sincronización RGB
 │   ├── dialogs/                         # Asistentes interactivos
-│   │   ├── mapping_wizard.py            # Asistente "Press to Map" (completo e individual)
+│   │   ├── mapping_wizard.py            # Asistente de mapeo (completo e individual)
 │   │   ├── calibration_wizard.py        # Asistente de calibración de límites
 │   │   └── theme_dialog.py              # Selector visual de colores y temas
 │   └── main_window.py                   # Ventana principal integrada estilo DDU
 ├── tests/                               # Suite de pruebas automatizadas (67 tests)
 ├── main.py                              # Punto de entrada unificado (--gui, --daemon, --cli)
-└── install.sh                           # Instalador para Arch Linux / Omarchy y Debian/Fedora
+└── install.sh                           # Instalador para Arch Linux y Debian/Fedora
 ```
 
 ---
