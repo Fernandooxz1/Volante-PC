@@ -1,0 +1,4 @@
+PyQt6>=6.5.0
+pyserial>=3.5
+vgamepad>=0.1.0
+pytest>=7.0.0
