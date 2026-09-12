@@ -23,7 +23,7 @@
                     </svg>
                 </div>
                 <div class="logo-text">
-                    <h1>RACING WHEEL</h1>
+                    <h1>STEERING WHEEL</h1>
                     <span>CONTROL CENTER PRO</span>
                 </div>
             </div>
@@ -41,7 +41,7 @@
                 </div>
                 <button id="btn-connect" class="btn btn-primary btn-start">
                     <span class="icon">●</span>
-                    <span class="text">Iniciar Emulación</span>
+                    <span class="text">Start Emulation</span>
                 </button>
             </div>
         </header>
@@ -50,11 +50,11 @@
             <div class="alert-content">
                 <span class="alert-icon">⚠️</span>
                 <div class="alert-text">
-                    <strong>Driver de Mando Virtual no detectado:</strong> 
-                    Se requiere el controlador ViGEmBus para la emulación en Windows. Puedes instalarlo directamente desde aquí.
+                    <strong>Driver virtual controller not detecter:</strong> 
+                    You should have the ViGEmBus for Windows emulation. You can install it from here.
                 </div>
             </div>
-            <button id="btn-install-driver" class="btn btn-alert-action">Instalar ViGEmBus</button>
+            <button id="btn-install-driver" class="btn btn-alert-action">Install ViGEmBus</button>
         </div>
 
         <!-- MAIN DASHBOARD -->
@@ -64,14 +64,14 @@
             <div class="left-column">
                 <section class="card cockpit-hud">
                 <div class="card-header">
-                    <h2>TELEMETRÍA EN VIVO</h2>
-                    <span class="badge" id="status-badge">DESCONECTADO</span>
+                    <h2>LIVE TELEMETRY/h2>
+                    <span class="badge" id="status-badge">DISCONECTED</span>
                 </div>
                 
                 <div class="hud-container">
                     <!-- Steering Wheel Gauge -->
                     <div class="gauge-wrapper steer-gauge-wrapper">
-                        <div class="gauge-label">DIRECCIÓN</div>
+                        <div class="gauge-label">DIRECTION</div>
                         <div class="wheel-visual-container">
                             <!-- SVG Steering Wheel -->
                              <svg id="steering-wheel" viewBox="0 0 200 200" width="240" height="240">
@@ -106,7 +106,7 @@
                         </div>
                         <div class="axis-details">
                             <span class="raw-val">Raw: <b id="raw-steer">512</b></span>
-                            <span class="mapped-val">Salida: <b id="mapped-steer">0</b></span>
+                            <span class="mapped-val">Output: <b id="mapped-steer">0</b></span>
                         </div>
                     </div>
 
@@ -114,7 +114,7 @@
                     <div class="pedals-wrapper">
                         <!-- Throttle -->
                         <div class="pedal-gauge">
-                            <div class="pedal-label">ACELERADOR</div>
+                            <div class="pedal-label">GAS</div>
                             <div class="pedal-bar-container">
                                 <div class="pedal-bar-fill throttle-fill" id="throttle-fill" style="height: 0%;"></div>
                                 <div class="pedal-value" id="throttle-display">0%</div>
@@ -127,7 +127,7 @@
 
                         <!-- Brake -->
                         <div class="pedal-gauge">
-                            <div class="pedal-label">FRENO</div>
+                            <div class="pedal-label">BRAKE</div>
                             <div class="pedal-bar-container">
                                 <div class="pedal-bar-fill brake-fill" id="brake-fill" style="height: 0%;"></div>
                                 <div class="pedal-value" id="brake-display">0%</div>
@@ -141,7 +141,7 @@
 
                     <!-- Virtual D-pad for mapping -->
                     <div class="gauge-wrapper dpad-gauge-wrapper">
-                        <div class="gauge-label">CRUCETA VIRTUAL</div>
+                        <div class="gauge-label">VIRTUAL D-PAD</div>
                         <div class="dpad-visual-container">
                             <button id="btn-dpad-up" class="dpad-btn up" title="Simular Cruceta Arriba para mapear">▲</button>
                             <div class="dpad-row">
@@ -152,7 +152,7 @@
                             <button id="btn-dpad-down" class="dpad-btn down" title="Simular Cruceta Abajo para mapear">▼</button>
                         </div>
                         <div class="axis-details">
-                            <span class="raw-val">Mapear sin flechas físicas</span>
+                            <span class="raw-val">Map witouth D-PADs</span>
                         </div>
                     </div>
                 </div>
@@ -233,8 +233,8 @@
                         <div class="btn-indicator-pill" id="btn-p12-pill">
                             <span class="pill-dot"></span>
                             <div class="pill-text-wrapper">
-                                <span class="pill-pin">D12 (Clutch)</span>
-                                <span class="pill-mapping" id="btn-p12-mapping">Ninguno</span>
+                                <span class="pill-pin">D12</span>
+                                <span class="pill-mapping" id="btn-p12-mapping">NONE</span>
                             </div>
                         </div>
                     </div>
@@ -244,9 +244,9 @@
             <!-- FOOTER / CONSOLE LOGS -->
             <footer class="app-console">
                 <div class="console-header">
-                    <h3>REGISTRO DE SISTEMA Y DIAGNÓSTICOS</h3>
+                    <h3>REGISTER AND DIAGNOSTICS</h3>
                     <div class="console-actions">
-                        <button id="btn-clear-log" class="btn btn-text">Limpiar Registro</button>
+                        <button id="btn-clear-log" class="btn btn-text">Clean</button>
                     </div>
                 </div>
                 <div class="console-body" id="console-output">
@@ -267,7 +267,7 @@
                         <span class="value">115200 bps</span>
                     </div>
                     <div class="status-item logo-tiny">
-                        <span>ANTIGRAVITY TECHNOLOGY</span>
+                        <span>ORTIZ TECHNOLOGY</span>
                     </div>
                 </div>
             </footer>
@@ -276,33 +276,33 @@
         <!-- RIGHT COLUMN: TUNING & CALIBRATION -->
             <section class="card calibration-tuning">
                 <div class="card-header">
-                    <h2>CALIBRACIÓN Y AJUSTES</h2>
+                    <h2>CALIBRATION AND SETTIGNS</h2>
                     <div class="preset-selector-wrapper">
                         <label for="preset-select">Preset:</label>
                         <select id="preset-select">
                             <option value="F1 RACING">F1 RACING</option>
-                            <option value="F1 RACING CRUCETAS">F1 RACING CRUCETAS</option>
-                            <option value="Personalizado" selected>Personalizado</option>
+                            <optioin value="F1 RACING CRUCETAS">F1 RACING CRUCETAS</optioin>
+                            <option value="Custom" selected>Custom</option>
                         </select>
-                        <button id="btn-save-preset" class="btn-icon" title="Guardar preset actual">💾</button>
-                        <button id="btn-delete-preset" class="btn-icon" title="Eliminar preset" style="display: none; background: rgba(255, 51, 102, 0.1); border-color: rgba(255, 51, 102, 0.2);">🗑️</button>
+                        <button id="btn-save-preset" class="btn-icon" title="Save preset">💾</button>
+                        <button id="btn-delete-preset" class="btn-icon" title="Delete preset" style="display: none; background: rgba(255, 51, 102, 0.1); border-color: rgba(255, 51, 102, 0.2);">🗑️</button>
                     </div>
                 </div>
 
                 <!-- Hardware Limits Calibration -->
                 <div class="hardware-calibration-section">
                     <div class="calibration-section-header">
-                        <span>Calibración de Límites de Dirección (Hardware)</span>
-                        <button id="btn-cal-reset" class="btn btn-text btn-xs">Restablecer</button>
+                        <span>Calibrate Steering limits </span>
+                        <button id="btn-cal-reset" class="btn btn-text btn-xs">Reset</button>
                     </div>
                     <div class="calibration-buttons-grid">
-                        <button id="btn-cal-left" class="btn btn-secondary btn-sm" title="Establecer límite izquierdo">◄ Izquierda Máx</button>
-                        <button id="btn-cal-center" class="btn btn-secondary btn-sm" title="Establecer posición central">● Guardar Centro</button>
-                        <button id="btn-cal-right" class="btn btn-secondary btn-sm" title="Establecer límite derecho">Derecha Máx ►</button>
+                        <button id="btn-cal-left" class="btn btn-secondary btn-sm" title="Set left limit">◄ MAX Left</button>
+                        <button id="btn-cal-center" class="btn btn-secondary btn-sm" title="Set central position">● Save </button>
+                        <button id="btn-cal-right" class="btn btn-secondary btn-sm" title="Set right limit">MAX Right ►</button>
                     </div>
                     <div class="calibration-values-display">
                         <div class="cal-val-item">Mín: <span id="lbl-cal-min">0</span></div>
-                        <div class="cal-val-item highlight">Centro: <span id="lbl-cal-center">512</span></div>
+                        <div class="cal-val-item highlight">Center: <span id="lbl-cal-center">512</span></div>
                         <div class="cal-val-item">Máx: <span id="lbl-cal-max">1023</span></div>
                     </div>
                 </div>
@@ -310,16 +310,16 @@
                 <!-- Pedals Limits Calibration -->
                 <div class="hardware-calibration-section">
                     <div class="calibration-section-header">
-                        <span>Calibración de Límites de Pedales (Hardware)</span>
-                        <button id="btn-pedal-reset" class="btn btn-text btn-xs">Restablecer</button>
+                        <span>Calibrate Pedals limits</span>
+                        <button id="btn-pedal-reset" class="btn btn-text btn-xs">Reset</button>
                     </div>
                     
                     <!-- Accelerator Calibration -->
                     <div class="pedal-cal-row">
-                        <span class="pedal-cal-name">Acelerador</span>
+                        <span class="pedal-cal-name">Acceleator</span>
                         <div class="calibration-buttons-grid-2">
-                            <button id="btn-cal-accel-min" class="btn btn-secondary btn-sm" title="Establecer acelerador suelto (mínimo)">Suelto (Mín)</button>
-                            <button id="btn-cal-accel-max" class="btn btn-secondary btn-sm" title="Establecer acelerador a fondo (máximo)">A Fondo (Máx)</button>
+                            <button id="btn-cal-accel-min" class="btn btn-secondary btn-sm" title="Set accelerator released">Released</button>
+                            <button id="btn-cal-accel-max" class="btn btn-secondary btn-sm" title="Set accelerator pressed">Pressed</button>
                         </div>
                         <div class="pedal-cal-values">
                             <span>Mín: <b id="lbl-cal-accel-min">0</b></span>
@@ -329,10 +329,10 @@
                     
                     <!-- Brake Calibration -->
                     <div class="pedal-cal-row">
-                        <span class="pedal-cal-name">Freno</span>
+                        <span class="pedal-cal-name">Brake</span>
                         <div class="calibration-buttons-grid-2">
-                            <button id="btn-cal-brake-min" class="btn btn-secondary btn-sm" title="Establecer freno suelto (mínimo)">Suelto (Mín)</button>
-                            <button id="btn-cal-brake-max" class="btn btn-secondary btn-sm" title="Establecer freno a fondo (máximo)">A Fondo (Máx)</button>
+                            <button id="btn-cal-brake-min" class="btn btn-secondary btn-sm" title="Set brake released">Released</button>
+                            <button id="btn-cal-brake-max" class="btn btn-secondary btn-sm" title="Set brake pressed">Pressed</button>
                         </div>
                         <div class="pedal-cal-values">
                             <span>Mín: <b id="lbl-cal-brake-min">0</b></span>
@@ -344,23 +344,23 @@
                 <!-- Axis Inversion -->
                 <div class="axis-inversion-section">
                     <div class="calibration-section-header">
-                        <span>Invertir Ejes de Controles</span>
+                        <span>Invert Axis</span>
                     </div>
                     <div class="inversion-checkboxes-grid">
                         <label class="checkbox-container">
                             <input type="checkbox" id="check-invert-steer">
                             <span class="checkmark"></span>
-                            Invertir Volante
+                            Invertir Steering
                         </label>
                         <label class="checkbox-container">
                             <input type="checkbox" id="check-invert-accel">
                             <span class="checkmark"></span>
-                            Invertir Acelerador
+                            Invert Accelerator
                         </label>
                         <label class="checkbox-container">
                             <input type="checkbox" id="check-invert-brake">
                             <span class="checkmark"></span>
-                            Invertir Freno
+                            Invert Brake
                         </label>
                     </div>
                 </div>
@@ -368,8 +368,8 @@
                 <!-- Live Curve Mapping Graph -->
                 <div class="graph-container">
                     <div class="graph-header">
-                        <span>Curva de Respuesta de Dirección</span>
-                        <span class="graph-tooltip">Eje X: Entrada Física | Eje Y: Mando Virtual</span>
+                        <span>Steering responsive graphic</span>
+                        <span class="graph-tooltip">X Axis: Phisical Input | Y Axis: Virtual Joystick</span>
                     </div>
                     <canvas id="curve-canvas" width="400" height="200"></canvas>
                 </div>
@@ -379,61 +379,61 @@
                     <!-- Sensitivity -->
                     <div class="slider-group">
                         <div class="slider-info">
-                            <label for="slider-sens">Sensibilidad del Volante</label>
+                            <label for="slider-sens">Steering sensitivity</label>
                             <span class="slider-value" id="val-sens">25%</span>
                         </div>
                         <input type="range" id="slider-sens" min="0.1" max="1.0" step="0.05" value="0.25">
-                        <div class="slider-desc">Controla el rango máximo del volante. Valores bajos requieren menos giro físico para máxima dirección.</div>
+                        <div class="slider-desc">Control the max steering range. Less values require less phisic turn for a max direction.</div>
                     </div>
 
                     <!-- Slope -->
                     <div class="slider-group">
                         <div class="slider-info">
-                            <label for="slider-slope">Pendiente de Eje (Linealidad)</label>
+                            <label for="slider-slope">Linearity slope</label>
                             <span class="slider-value" id="val-slope">0.65x</span>
                         </div>
                         <input type="range" id="slider-slope" min="0.25" max="3.0" step="0.05" value="0.65">
-                        <div class="slider-desc">Ajusta la curva de progresión. Mayor que 1.0 da más precisión al centro; menor da respuesta rápida.</div>
+                        <div class="slider-desc">Modify the center values. Bigger than 1.0 gives more precision in the center; lesser values give a quickly response </div>
                     </div>
 
                     <!-- Anti-Deadzone -->
                     <div class="slider-group">
                         <div class="slider-info">
-                            <label for="slider-anti-dz">Compensación de Zona Muerta (Anti-Deadzone)</label>
+                            <label for="slider-anti-dz">Anti-Deadzone</label>
                             <span class="slider-value" id="val-anti-dz">0%</span>
                         </div>
                         <input type="range" id="slider-anti-dz" min="0.0" max="0.5" step="0.01" value="0.0">
-                        <div class="slider-desc">Supera la zona muerta inicial del juego, haciendo que responda inmediatamente al mínimo toque.</div>
+                        <div class="slider-desc">More responsive movements.</div>
                     </div>
 
                     <!-- Pedals Deadzone -->
                     <div class="slider-group">
                         <div class="slider-info">
-                            <label for="slider-dz">Zona Muerta de Pedales</label>
+                            <label for="slider-dz">Pedals Deadzone</label>
                             <span class="slider-value" id="val-dz">23%</span>
                         </div>
                         <input type="range" id="slider-dz" min="0.0" max="0.5" step="0.01" value="0.23">
-                        <div class="slider-desc">Filtra el inicio de los pedales para evitar que el freno o acelerador queden presionados por error.</div>
+                        <div class="slider-desc">Ajust the deadzone in the pedals.</div>
                     </div>
 
                     <!-- Anti-Noise Filter -->
                     <div class="slider-group">
                         <div class="slider-info">
-                            <label for="slider-filter">Filtro de Ruido (Anti-Jitter)</label>
+                            <label for="slider-filter">Anti-Jitter</label>
                             <span class="slider-value" id="val-filter">55%</span>
                         </div>
                         <input type="range" id="slider-filter" min="0.0" max="0.9" step="0.05" value="0.55">
-                        <div class="slider-desc">Filtro DSP para suavizar la señal analógica. Evita el temblor o vibraciones causadas por potenciómetros viejos.</div>
+                        <div class="slider-desc">Filter analog signal. Eliminate the jitter for a old potentiometers.</div>
                     </div>
 
                     <!-- Separator -->
-                    <div class="config-separator">Mapeo de Botones (Digitales)</div>
+                    <div class="config-separator">Digital buttons map</div>
 
                     <div class="button-mappings-grid">
                         <div class="mapping-row" style="grid-column: span 2; background: rgba(0, 242, 254, 0.03); border-color: rgba(0, 242, 254, 0.15); border-radius: 6px; padding: 4px 8px; margin-bottom: 8px;">
-                            <label for="preset-cycle-btn" style="color: var(--neon-blue); font-weight: 600;">Alternar Presets:</label>
+                            <label for="preset-cycle-btn" style="color: var(--neon-blue); font-weight: 600;">Switch presets:</label>
                             <select id="preset-cycle-btn" class="select-sm" style="border-color: rgba(0, 242, 254, 0.3);">
-                                <option value="Ninguno">Ninguno</option>
+                                <option value="Ninguno">None</option>
                                 <option value="Pin D2">Pin D2</option>
                                 <option value="Pin D3">Pin D3</option>
                                 <option value="Pin D4">Pin D4</option>
@@ -448,16 +448,16 @@
                             </select>
                         </div>
                         <div class="mapping-row" style="grid-column: span 2; background: rgba(255, 165, 0, 0.03); border-color: rgba(255, 165, 0, 0.15); border-radius: 6px; padding: 4px 8px; margin-bottom: 8px;">
-                            <label for="led-color-select" style="color: #ffa500; font-weight: 600;">Color de LED RGB:</label>
+                            <label for="led-color-select" style="color: #ffa500; font-weight: 600;">RGB color:</label>
                             <select id="led-color-select" class="select-sm" style="border-color: rgba(255, 165, 0, 0.3);">
-                                <option value="Apagado">Apagado</option>
-                                <option value="Rojo">Rojo (F1 RACING)</option>
-                                <option value="Naranja">Naranja (CRUCETAS)</option>
-                                <option value="Verde">Verde</option>
-                                <option value="Azul">Azul</option>
-                                <option value="Amarillo">Amarillo</option>
-                                <option value="Violeta">Violeta</option>
-                                <option value="Celeste">Celeste / Cian</option>
+                                <option value="Off">Off</option>
+                                <option value="Red">Red (F1 RACING)</option>
+                                <option value="Orange">Orange (CRUCETAS)</option>
+                                <option value="Green">Green</option>
+                                <option value="Blue">Blue</option>
+                                <option value="Yellow">Yellow</option>
+                                <option value="Violet">Violet</option>
+                                <option value="Cian">Cian</option>
                             </select>
                         </div>
                         <div class="mapping-row">
@@ -501,7 +501,7 @@
                             <select id="map-pa4" class="select-sm"></select>
                         </div>
                         <div class="mapping-row">
-                            <label for="map-p12">Pin D12 (Clutch):</label>
+                            <label for="map-p12">Pin D12:</label>
                             <select id="map-p12" class="select-sm"></select>
                         </div>
                     </div>

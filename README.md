@@ -11,9 +11,9 @@ Incluye una **curva de dirección exponencial (Steering Expo)** idéntica a la u
 
 ---
 
-## Instalación Rápida en Linux (1 Solo Comando)
+##  Instalación Automática en Linux (1 Solo Paso)
 
-Clona el repositorio y ejecuta el instalador automático:
+Clona el repositorio y ejecuta el instalador como **usuario normal** (no uses `sudo ./install.sh`; el script pedirá privilegios únicamente cuando sea necesario para configurar reglas udev o paquetes):
 
 ```bash
 git clone https://github.com/Fernandooxz1/Volante-PC.git
@@ -22,15 +22,16 @@ chmod +x install.sh
 ./install.sh
 ```
 
-El instalador:
-1. Configura automáticamente las reglas `udev` de permisos para el joystick virtual (`/dev/uinput`) y el puerto serie del Arduino (`/dev/ttyUSB*`, `/dev/ttyACM*`).
-2. Configura el entorno virtual de Python con todas las librerías necesarias.
-3. Compila el binario ejecutable independiente.
-4. Instala el acceso directo y el icono de la aplicación en tu sistema para que aparezca en el menú de aplicaciones (`Super` -> **Volante PC**).
+### ¿Qué hace el instalador automáticamente?
+1. **Detecta tu distribución**: Instala automáticamente paquetes necesarios del sistema (`python3-venv`, `python3-pip`, `webkit2gtk`, `gtk3`) mediante el gestor de tu distro (`apt`, `pacman` o `dnf`).
+2. **Configura reglas `udev`**: Habilita acceso sin root al joystick virtual (`/dev/uinput`) y al puerto serie del Arduino (`/dev/ttyUSB*`, `/dev/ttyACM*`), aplicando etiquetas `uaccess` para funcionamiento inmediato sin obligar a reiniciar sesión.
+3. **Crea y valida el entorno virtual (`venv`)**: Instala de forma aislada las dependencias requeridas (`pywebview`, `vgamepad`, `pyserial`, `pyinstaller`) cumpliendo con las políticas PEP 668 de Linux moderno.
+4. **Compila la aplicación nativa**: Genera el binario ejecutable independiente de alto rendimiento con PyInstaller.
+5. **Integra con el escritorio**: Instala el binario en `~/.local/bin/volante-pc`, copia el icono vectorial y genera el acceso directo en `~/.local/share/applications/volante-pc.desktop` para que puedas abrirlo directamente desde tu menú de aplicaciones (**Super** -> **Volante PC**).
 
 ---
 
-## Requisitos de Hardware
+##  Requisitos de Hardware
 
 1. **Arduino UNO** (o clon con chip CH340 / ATmega16U2).
 2. **3 Potenciómetros lineales de 10k Ohms**:
@@ -60,7 +61,7 @@ Todos los potenciómetros comparten la línea de alimentación de **5V** y tierr
 
 ---
 
-## Instalación y Configuración Manual
+## 🛠️ Instalación y Configuración Manual
 
 ### 1. Flashear el Arduino UNO
 1. Abre [Arduino IDE](https://www.arduino.cc/en/software) (o PlatformIO).
@@ -70,14 +71,14 @@ Todos los potenciómetros comparten la línea de alimentación de **5V** y tierr
 
 ### 2. Dependencias del Sistema en Linux
 
-- **Arch Linux / Manjaro / Omarchy**:
-  ```bash
-  sudo pacman -S --needed python python-pip python-gobject webkit2gtk-4.1 gtk3 jstest-gtk
-  ```
 - **Ubuntu / Debian / Linux Mint**:
   ```bash
   sudo apt update
   sudo apt install -y python3 python3-pip python3-venv python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 jstest-gtk
+  ```
+- **Arch Linux / Manjaro / EndeavourOS**:
+  ```bash
+  sudo pacman -S --needed python python-pip python-gobject webkit2gtk-4.1 gtk3 jstest-gtk
   ```
 - **Fedora**:
   ```bash
@@ -86,17 +87,17 @@ Todos los potenciómetros comparten la línea de alimentación de **5V** y tierr
 
 ### 3. Permisos de Linux (`udev`)
 
-Crea las reglas de acceso sin necesidad de permisos de superusuario:
+Crea las reglas para permitir acceso al mando virtual y al puerto serie sin necesidad de ejecutar la app como root:
 ```bash
 sudo tee /etc/udev/rules.d/99-volante-pc.rules << 'EOF'
-KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+KERNEL=="uinput", MODE="0666", GROUP="input", OPTIONS+="static_node=uinput", TAG+="uaccess"
 KERNEL=="ttyUSB*", MODE="0666", GROUP="uucp", TAG+="uaccess"
 KERNEL=="ttyACM*", MODE="0666", GROUP="uucp", TAG+="uaccess"
 EOF
 
 sudo udevadm control --reload-rules && sudo udevadm trigger
-sudo usermod -aG input,uucp,dialout $USER
 sudo modprobe uinput
+sudo usermod -aG input,uucp,dialout $USER
 ```
 
 ### 4. Configuración en Windows
@@ -110,7 +111,7 @@ sudo modprobe uinput
 
 ---
 
-## Ejecución y Modos de Uso
+## 🎮 Ejecución y Modos de Uso
 
 ### Opción A: Aplicación Nativa con Dashboard Pro (Recomendado)
 Ejecuta la interfaz nativa de escritorio:
@@ -118,25 +119,28 @@ Ejecuta la interfaz nativa de escritorio:
 # Si instalaste con install.sh:
 volante-pc
 
-# O directamente desde el código fuente:
+# O directamente desde el código fuente con el venv activado:
+source python/venv/bin/activate
 python3 python/app_nativa.py
 ```
 
 ### Opción B: Dashboard en Navegador Web
 Si prefieres correr un servidor web local y abrir el panel en tu navegador:
 ```bash
+source python/venv/bin/activate
 python3 python/gui_web.py
 ```
 
 ### Opción C: Modo Consola (Headless)
 Para terminales sin entorno gráfico:
 ```bash
+source python/venv/bin/activate
 python3 python/emulador_volante.py
 ```
 
 ---
 
-## Calibración y Curva Exponencial
+##  Calibración y Curva Exponencial
 
 Para evitar que el auto zigzaguee en rectas a altas velocidades, se implementa una **progresión exponencial de dirección**:
 
@@ -153,18 +157,47 @@ $$x_{\text{sloped}} = x_{\text{expo}} \cdot \text{sensitivity}$$
 
 ---
 
-## Compilación del Ejecutable
+## ❓ Solución de Problemas Frecuentes
+
+### 1. "No crea el venv" o error con `ensurepip` en Linux
+En distribuciones como Debian y Ubuntu, el soporte para entornos virtuales de Python no viene incluido en el paquete base de Python. El script `install.sh` ahora lo instala automáticamente, pero si haces una instalación manual debes instalarlo con:
+```bash
+sudo apt update && sudo apt install -y python3-venv
+```
+Si tenías una carpeta `venv` previa corrupta o creada con root, puedes limpiarla y reinstalar con:
+```bash
+./install.sh
+```
+
+### 2. Error de permisos en `/dev/uinput` o no se detecta el joystick virtual
+Asegúrate de que tu usuario pertenezca a los grupos `input`, `dialout` y `uucp`:
+```bash
+sudo usermod -aG input,dialout,uucp $USER
+```
+*(Cierra la sesión de usuario y vuelve a iniciarla para que el sistema aplique los nuevos grupos).*
+
+### 3. El comando `volante-pc` no se reconoce en la terminal
+Asegúrate de que el directorio `~/.local/bin` esté incluido en la variable de entorno `$PATH` de tu terminal (`~/.bashrc` o `~/.zshrc`):
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
+## 🔨 Compilación Manual del Ejecutable
 
 Para compilar un binario independiente con PyInstaller:
 
 ```bash
 cd python
+source venv/bin/activate
 pyinstaller --clean --noconfirm VolantePC.spec
 ```
 El ejecutable se generará en `python/dist/VolantePC` (o `VolantePC.exe` en Windows).
 
 ---
 
-## Licencia
+## 📄 Licencia
 
 Proyecto de código abierto bajo licencia MIT. ¡Construye, compite y disfruta! 🏁

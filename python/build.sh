@@ -10,9 +10,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Activar entorno virtual si existe para evitar errores de PEP 668 en Linux
-if [ -d "venv" ]; then
+if [ -f "venv/bin/activate" ]; then
     echo "Activando entorno virtual local (venv)..."
     source venv/bin/activate
+elif [ -f "../python/venv/bin/activate" ]; then
+    source ../python/venv/bin/activate
 fi
 
 echo "============================================="
@@ -31,13 +33,13 @@ fi
 # Verificar que pyinstaller esté instalado
 if ! python3 -m PyInstaller --version &> /dev/null; then
     echo "PyInstaller no encontrado. Instalando..."
-    pip install pyinstaller
+    python3 -m pip install pyinstaller
 fi
 
 # Verificar que pywebview esté instalado
 python3 -c "import webview" 2>/dev/null || {
     echo "pywebview no encontrado. Instalando..."
-    pip install pywebview
+    python3 -m pip install pywebview
 }
 
 # Verificar dependencias GTK para pywebview en Linux

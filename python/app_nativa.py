@@ -880,7 +880,7 @@ def main():
     # 1. Limpiar pantalla de consola y mostrar banner
     os.system('cls' if os.name == 'nt' else 'clear')
     print("\033[96m=================================================================\033[0m")
-    print("\033[96m     EMULADOR DE VOLANTE Y PEDALES - APLICACIÓN NATIVA (PyWebView)\033[0m")
+    print("\033[96m     EMULADOR DE VOLANTE Y PEDALES - APLICACIÓN NATIVA \033[0m")
     print("\033[96m=================================================================\033[0m")
 
     # 2. Cargar configuración guardada
@@ -908,7 +908,7 @@ def main():
 
     # 6. Crear ventana nativa con PyWebView
     webview.create_window(
-        'Volante PC - Racing Dashboard Pro',
+        'Dashboard para Volante-PC',
         url=index_path,
         js_api=api,
         width=1360,
