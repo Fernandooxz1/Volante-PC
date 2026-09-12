@@ -8,6 +8,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -24,19 +28,32 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Pre-install ViGEmBus Driver & Registry Keys (Prevent GUI Popup)
+        shell: cmd
+        run: |
+          :: Instalar ViGEmBus silenciosamente para que vgamepad no bloquee con ventana interactiva
+          if exist windows\drivers\ViGEmBus_Setup.exe (
+              start /wait "" windows\drivers\ViGEmBus_Setup.exe /passive /norestart
+          )
+          :: Registrar claves para asegurar que el script de instalacion de vgamepad lo detecte como instalado
+          reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\ViGEmBus" /v DisplayName /d "Nefarius Virtual Gamepad Emulation Bus Driver" /f
+          reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\ViGEmBus" /v DisplayVersion /d "1.17.333.0" /f
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller pillow cairosvg
+          pip install pyinstaller pillow
 
       - name: Compile Executable with PyInstaller
         run: |
           pyinstaller --clean -y VolantePC.spec
 
       - name: Compile Inno Setup Installer
+        shell: cmd
         run: |
-          iscc windows/installer.iss
+          set "PATH=%PATH%;C:\Program Files (x86)\Inno Setup 6;C:\Program Files\Inno Setup 6"
+          iscc windows\installer.iss
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
