@@ -367,6 +367,58 @@ class TestEngine(unittest.TestCase):
 
         self.engine.stop()
 
+    def test_f1_shift_light_in_conduccion_mode(self):
+        from tests.test_f1_telemetry import make_f1_packet
+
+        self.engine.load_preset("F1 RACING")
+        self.assertEqual(self.engine.mode, MODE_CONDUCCION)
+        base_color = self.engine.current_led_color
+
+        # Sin telemetría activa, debe usar el color base
+        self.assertEqual(self.engine._determine_active_led_color(), base_color)
+
+        # Telemetría activa: 25% revs -> Verde
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=25))
+        self.assertEqual(self.engine._determine_active_led_color(), "Verde")
+
+        # 55% revs -> Amarillo
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=55))
+        self.assertEqual(self.engine._determine_active_led_color(), "Amarillo")
+
+        # 80% revs -> Rojo
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=80))
+        self.assertEqual(self.engine._determine_active_led_color(), "Rojo")
+
+        # 95% revs -> Azul (Shift!)
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=95))
+        self.assertEqual(self.engine._determine_active_led_color(), "Azul")
+
+        # 0% revs (idle / cambio completado) -> Vuelve al color base del preset
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=0))
+        self.assertEqual(self.engine._determine_active_led_color(), base_color)
+
+    def test_f1_telemetry_ignored_in_crucetas_mode(self):
+        from tests.test_f1_telemetry import make_f1_packet
+
+        self.engine.load_preset("F1 RACING CRUCETAS")
+        self.assertEqual(self.engine.mode, MODE_CRUCETAS)
+        base_color = self.engine.current_led_color
+
+        # Con telemetría al 95% de revs, en modo Crucetas se IGNORA por completo
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=95))
+        self.assertEqual(self.engine._determine_active_led_color(), base_color)
+
+    def test_f1_telemetry_ignored_during_mapping(self):
+        from tests.test_f1_telemetry import make_f1_packet
+
+        self.engine.load_preset("F1 RACING")
+        self.engine._f1_receiver.process_packet(make_f1_packet(rev_lights_pct=95))
+        self.assertEqual(self.engine._determine_active_led_color(), "Azul")
+
+        # Al activar el modo de mapeo, la telemetría debe pausarse y restaurar color base
+        self.engine.set_mapping_mode(True)
+        self.assertEqual(self.engine._determine_active_led_color(), self.engine.current_led_color)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -484,11 +484,13 @@ class MainWindow(QMainWindow):
         self.lbl_sb_port = QLabel(f"{tr('status.port')}: --")
         self.lbl_sb_baud = QLabel(f"{tr('status.baudrate')}: 115200")
         self.lbl_sb_hz = QLabel("Tasa: 0 Hz")
+        self.lbl_sb_f1 = QLabel("F1 UDP: Esperando...")
         self.lbl_sb_gamepad = QLabel(f"{tr('status.virtual_gamepad')}: OK")
 
         statusbar.addWidget(self.lbl_sb_port, 2)
         statusbar.addWidget(self.lbl_sb_baud, 1)
         statusbar.addWidget(self.lbl_sb_hz, 1)
+        statusbar.addWidget(self.lbl_sb_f1, 2)
         statusbar.addPermanentWidget(self.lbl_sb_gamepad)
 
     # -------------------------------------------------------------------------
@@ -585,6 +587,24 @@ class MainWindow(QMainWindow):
             self.lbl_sb_gamepad.setStyleSheet("color: #ff3344; font-weight: bold;")
         else:
             self.lbl_sb_gamepad.setStyleSheet("color: #00e676;")
+
+        # 8. Estado F1 UDP y Shift Light
+        if getattr(snapshot, "f1_telemetry_active", False):
+            gear = snapshot.f1_gear
+            gear_str = "R" if gear == -1 else ("N" if gear == 0 else f"M{gear}")
+            self.lbl_sb_f1.setText(
+                f"🏎️ F1: {snapshot.f1_rpm} RPM [{gear_str}] {snapshot.f1_rev_lights}% | LED: {snapshot.led_color}"
+            )
+            self.lbl_sb_f1.setStyleSheet("color: #00e5ff; font-weight: bold;")
+        else:
+            active_preset = getattr(snapshot, "preset", "")
+            mode = getattr(snapshot, "mode", "")
+            if "F1" in active_preset.upper() and mode == "Conducción":
+                self.lbl_sb_f1.setText(f"🏎️ F1 UDP: Puerto 20777 listo | LED: {snapshot.led_color}")
+                self.lbl_sb_f1.setStyleSheet("color: #64748b;")
+            else:
+                self.lbl_sb_f1.setText(f"LED: {snapshot.led_color}")
+                self.lbl_sb_f1.setStyleSheet("color: #64748b;")
 
     # -------------------------------------------------------------------------
     # Manejadores de Sintonía, Presets y Hardware

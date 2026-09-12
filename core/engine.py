@@ -28,6 +28,7 @@ import serial.tools.list_ports
 from core.calibration import calculate_pedal, calculate_steering
 from core.config_manager import ConfigManager
 from core.dsp import SteeringFilter
+from core.f1_telemetry import F1TelemetryReceiver
 from core.gamepad import BUTTON_MAPPING_TABLE, VirtualGamepadManager
 from core.protocol import (
     CONFIG_BUTTON_KEYS,
@@ -158,6 +159,13 @@ class TelemetrySnapshot:
     gamepad_connected: bool
     error_message: Optional[str] = None
 
+    # Telemetría F1 2021 UDP
+    f1_telemetry_active: bool = False
+    f1_rpm: int = 0
+    f1_gear: int = 0
+    f1_speed: int = 0
+    f1_rev_lights: int = 0
+
     def to_dict(self) -> Dict[str, Any]:
         """Convierte la telemetría a formato compatible con JSON y APIs de UI."""
         return {
@@ -189,6 +197,13 @@ class TelemetrySnapshot:
                 "accel": self.gamepad_accel,
                 "brake": self.gamepad_brake,
                 "active_buttons": list(self.active_gamepad_buttons),
+            },
+            "f1": {
+                "active": self.f1_telemetry_active,
+                "rpm": self.f1_rpm,
+                "gear": self.f1_gear,
+                "speed": self.f1_speed,
+                "rev_lights": self.f1_rev_lights,
             },
             "loop_hz": self.loop_hz,
             "gamepad_connected": self.gamepad_connected,
@@ -248,8 +263,13 @@ class Engine:
 
         # LED RGB
         self._current_led_color: str = str(self.config_manager.get("led_color", "Azul"))
+        self._last_effective_led_color: str = self._current_led_color
         self._pending_led_command: Optional[bytes] = None
         self._last_led_send_time: float = 0.0
+
+        # Receptor de telemetría F1 UDP
+        f1_port = int(self.config_manager.get("f1_telemetry_port", 20777))
+        self._f1_receiver: F1TelemetryReceiver = F1TelemetryReceiver(port=f1_port)
 
         # Estado previo de hardware para detección de eventos y flancos
         self._prev_raw_buttons: List[int] = [0] * len(PIN_NAMES)
@@ -300,6 +320,11 @@ class Engine:
             loop_hz=0.0,
             gamepad_connected=self.gamepad_manager.is_connected,
             error_message=self._last_error,
+            f1_telemetry_active=False,
+            f1_rpm=0,
+            f1_gear=0,
+            f1_speed=0,
+            f1_rev_lights=0,
         )
 
     # =========================================================================
@@ -339,8 +364,16 @@ class Engine:
 
         # 2. Inicializar color de LED según preset activo
         self._update_led_color_from_config()
+        self._last_effective_led_color = self._current_led_color
 
-        # 3. Arrancar hilo
+        # 3. Arrancar receptor de telemetría F1 UDP si está habilitado
+        if self.config_manager.get("f1_telemetry_enabled", True) and self._f1_receiver:
+            try:
+                self._f1_receiver.start()
+            except Exception as e:
+                logger.warning("No se pudo iniciar receptor F1 UDP: %s", e)
+
+        # 4. Arrancar hilo
         self._running = True
         self._thread = threading.Thread(target=self._run_loop, name="VolantePC-100Hz", daemon=True)
         self._thread.start()
@@ -354,6 +387,14 @@ class Engine:
 
         logger.info("Deteniendo motor Volante-PC...")
         self._running = False
+
+        # Detener receptor F1 UDP
+        if self._f1_receiver:
+            try:
+                self._f1_receiver.stop()
+            except Exception:
+                pass
+
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.5)
         self._thread = None
@@ -411,6 +452,12 @@ class Engine:
                 active_gamepad_buttons=snap.active_gamepad_buttons,
                 loop_hz=0.0 if status == "disconnected" else snap.loop_hz,
                 gamepad_connected=self.gamepad_manager.is_connected,
+                error_message=self._last_error,
+                f1_telemetry_active=snap.f1_telemetry_active,
+                f1_rpm=snap.f1_rpm,
+                f1_gear=snap.f1_gear,
+                f1_speed=snap.f1_speed,
+                f1_rev_lights=snap.f1_rev_lights,
             )
 
     def connect(self, port: Optional[str] = None) -> bool:
@@ -586,6 +633,11 @@ class Engine:
 
         self._current_led_color = str(color)
 
+    @property
+    def current_led_color(self) -> str:
+        """Color base del LED configurado en el preset actual."""
+        return self._current_led_color
+
     def set_led_color(self, color: str | int) -> None:
         """Actualiza el color del LED en la configuración y lo envía al Arduino."""
         if isinstance(color, int):
@@ -606,6 +658,7 @@ class Engine:
             self._current_led_color = inv.get(color, "Apagado").capitalize()
         elif isinstance(color, str):
             self._current_led_color = color.strip().capitalize()
+        self._last_effective_led_color = self._current_led_color
         packet = encode_led_command(color)
         self._pending_led_command = packet
 
@@ -761,12 +814,41 @@ class Engine:
                 steer_raw, accel_raw, brake_raw, buttons = packet
                 self.process_packet(steer_raw, accel_raw, brake_raw, buttons)
 
+    def _determine_active_led_color(self) -> str:
+        """
+        Determina el color LED efectivo en tiempo real.
+        - En modo Crucetas o durante mapeo: usa siempre el color configurado en el preset.
+        - En modo Conducción y si el preset tiene telemetría activa (ej. F1 RACING):
+          usa el color dinámico de luces de cambio (Verde -> Amarillo -> Rojo -> Azul).
+          Si no hay telemetría activa o rev lights == 0, mantiene el color base del preset.
+        """
+        if self._mode != MODE_CONDUCCION or self.is_mapping_active:
+            return self._current_led_color
+
+        # Verificar si el preset actual admite telemetría F1
+        active_preset = str(self.config_manager.get("active_preset", "Personalizado"))
+        custom_presets = self.config_manager.get("custom_presets", {})
+        preset_data = custom_presets.get(active_preset, {})
+        f1_enabled = preset_data.get("f1_telemetry", self.config_manager.get("f1_telemetry", ("F1" in active_preset.upper())))
+
+        if f1_enabled and self._f1_receiver and self._f1_receiver.is_active:
+            shift_color = self._f1_receiver.get_shift_led_color()
+            if shift_color:
+                return shift_color
+
+        return self._current_led_color
+
     def _manage_led_transmission(self, now: float) -> None:
         """Envía comandos de LED o el latido de presencia cada 2 segundos."""
         with self._serial_lock:
             ser = self._serial
             if not ser or not ser.is_open:
                 return
+
+            target_color = self._determine_active_led_color()
+            if target_color != self._last_effective_led_color:
+                self._last_effective_led_color = target_color
+                self._pending_led_command = encode_led_command(target_color)
 
             cmd_to_send: Optional[bytes] = None
             if self._pending_led_command is not None:
@@ -775,7 +857,7 @@ class Engine:
                 self._last_led_send_time = now
             elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
                 # Latido periódico para que Arduino mantenga pcConnected = true
-                cmd_to_send = encode_led_command(self._current_led_color)
+                cmd_to_send = encode_led_command(target_color)
                 self._last_led_send_time = now
 
             if cmd_to_send:
@@ -784,10 +866,6 @@ class Engine:
                     ser.flush()
                 except (serial.SerialException, OSError, TypeError, AttributeError, ValueError) as e:
                     self._handle_disconnect(f"Error transmitiendo LED: {e}")
-
-    # =========================================================================
-    # Procesamiento de Paquetes: DSP + Calibración + Gamepad + Eventos
-    # =========================================================================
 
     def process_bytes(self, chunk: bytes) -> List[Tuple[int, int, int, List[int]]]:
         """Inyecta y procesa bytes crudos directamente (ideal para pruebas y simulación)."""
@@ -967,13 +1045,16 @@ class Engine:
         # ---------------------------------------------------------------------
         # 8. Creación de Instantánea Atómica de Telemetría
         # ---------------------------------------------------------------------
+        f1_data = self._f1_receiver.get_telemetry_data() if self._f1_receiver else {}
+        active_led = self._determine_active_led_color()
+
         snapshot = TelemetrySnapshot(
             timestamp=time.time(),
             status=self._status,
             active_port=self._active_port,
             mode=self._mode,
             preset=str(self.config_manager.get("active_preset", "Personalizado")),
-            led_color=self._current_led_color,
+            led_color=active_led,
             raw_steer=steer_raw,
             raw_accel=accel_raw,
             raw_brake=brake_raw,
@@ -994,6 +1075,11 @@ class Engine:
             loop_hz=self._loop_hz,
             gamepad_connected=self.gamepad_manager.is_connected,
             error_message=self._last_error,
+            f1_telemetry_active=bool(f1_data.get("active", False)),
+            f1_rpm=int(f1_data.get("rpm", 0)),
+            f1_gear=int(f1_data.get("gear", 0)),
+            f1_speed=int(f1_data.get("speed", 0)),
+            f1_rev_lights=int(f1_data.get("rev_lights_percent", 0)),
         )
 
         with self._telemetry_lock:

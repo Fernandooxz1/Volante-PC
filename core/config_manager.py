@@ -48,10 +48,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "active_preset": "Personalizado",
     "previous_preset": "F1 RACING CRUCETAS",
     "led_color": "Azul",
+    "f1_telemetry_enabled": True,
+    "f1_telemetry_port": 20777,
     "custom_presets": {
         "F1 RACING": {
             "mode": "Conducción",
             "preset_cycle_btn": "Pin D2",
+            "f1_telemetry": True,
             "sensitivity": 1.0,
             "slope": 2.2,
             "anti_deadzone": 0.0,
@@ -60,7 +63,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "steer_target": "Left Stick X",
             "accel_target": "Right Trigger (RT)",
             "brake_target": "Left Trigger (LT)",
-            "led_color": "Rojo",
+            "led_color": "Verde",
             "btn_map_p2": "Ninguno",
             "btn_map_p3": "Button Start",
             "btn_map_p4": "Button B",
@@ -76,6 +79,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "F1 RACING CRUCETAS": {
             "mode": "Crucetas / D-Pad",
             "preset_cycle_btn": "Pin D2",
+            "f1_telemetry": False,
             "sensitivity": 1.0,
             "slope": 1.85,
             "anti_deadzone": 0.0,
@@ -274,7 +278,8 @@ class ConfigManager:
                 "steer_target": self.config.get("steer_target", "Left Stick X"),
                 "accel_target": self.config.get("accel_target", "Right Trigger (RT)"),
                 "brake_target": self.config.get("brake_target", "Left Trigger (LT)"),
-                "led_color": self.config.get("led_color", "Azul")
+                "led_color": self.config.get("led_color", "Azul"),
+                "f1_telemetry": self.config.get("f1_telemetry", True if "F1" in clean_name.upper() and self.config.get("mode") == "Conducción" else False)
             }
             # Guardar botones
             for key in self.config:
