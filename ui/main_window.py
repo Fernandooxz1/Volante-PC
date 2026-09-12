@@ -522,8 +522,8 @@ class MainWindow(QMainWindow):
         self.wheel_gauge._raw_value = snapshot.raw_steer
 
         # 3. Actualizar Barras de Pedales
-        self.pedal_throttle.set_value(snapshot.throttle_pct, snapshot.raw_accel)
-        self.pedal_brake.set_value(snapshot.brake_pct, snapshot.raw_brake)
+        self.pedal_throttle.set_value(snapshot.throttle_pct / 100.0, snapshot.raw_accel)
+        self.pedal_brake.set_value(snapshot.brake_pct / 100.0, snapshot.raw_brake)
 
         # 4. Actualizar Curva Matemática
         self.curve_canvas.set_follower(snapshot.steer_phys_norm, snapshot.steer_out_norm)

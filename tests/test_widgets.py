@@ -96,6 +96,10 @@ def test_pedal_bar_values_and_deadzone(qapp):
     assert abs(bar.get_value() - 0.85) < 0.001
     assert bar.get_raw_adc() == 870
 
+    # Test auto-scaling if percentage (0..100) is passed
+    bar.set_value(65.0, raw_adc=660)
+    assert abs(bar.get_value() - 0.65) < 0.001
+
     bar.set_deadzone(0.12)
     assert abs(bar.get_deadzone() - 0.12) < 0.001
 

@@ -97,10 +97,12 @@ def run_cli_dashboard(port: str | None = None) -> None:
             steer_bar_str = "".join(steer_bar)
 
             # Barras de acelerador y freno
-            throttle_bars = int(snap.throttle_pct * 20)
+            throttle_norm = max(0.0, min(1.0, snap.throttle_pct / 100.0))
+            throttle_bars = int(throttle_norm * 20)
             throttle_str = "█" * throttle_bars + "░" * (20 - throttle_bars)
 
-            brake_bars = int(snap.brake_pct * 20)
+            brake_norm = max(0.0, min(1.0, snap.brake_pct / 100.0))
+            brake_bars = int(brake_norm * 20)
             brake_str = "█" * brake_bars + "░" * (20 - brake_bars)
 
             # Pulsadores
@@ -123,8 +125,8 @@ def run_cli_dashboard(port: str | None = None) -> None:
                 f" Gamepad Virtual: [{'OK' if snap.gamepad_connected else 'ERROR'}] | Frecuencia: {snap.loop_hz:.0f} Hz\n"
                 "--------------------------------------------------------------------------------\n"
                 f" DIRECCIÓN:  [{steer_bar_str}] {snap.steer_angle:+6.1f}° (ADC: {snap.raw_steer:4d})\n"
-                f" ACELERADOR: [{throttle_str}] {snap.throttle_pct * 100:5.1f}% (ADC: {snap.raw_accel:4d})\n"
-                f" FRENO:      [{brake_str}] {snap.brake_pct * 100:5.1f}% (ADC: {snap.raw_brake:4d})\n"
+                f" ACELERADOR: [{throttle_str}] {snap.throttle_pct:5.1f}% (ADC: {snap.raw_accel:4d})\n"
+                f" FRENO:      [{brake_str}] {snap.brake_pct:5.1f}% (ADC: {snap.raw_brake:4d})\n"
                 "--------------------------------------------------------------------------------\n"
                 f" BOTONES: {buttons_str}\n"
                 "--------------------------------------------------------------------------------\n"

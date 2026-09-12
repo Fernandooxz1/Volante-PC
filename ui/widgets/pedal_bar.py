@@ -71,9 +71,12 @@ class PedalBar(QWidget):
 
     def set_value(self, normalized: float, raw_adc: Optional[int] = None) -> None:
         """
-        Establece el nivel de salida efectivo (0.0 .. 1.0) y opcionalmente el ADC crudo.
+        Establece el nivel de salida efectivo (0.0 .. 1.0 o 0.0 .. 100.0) y opcionalmente el ADC crudo.
         """
-        norm_clamped = max(0.0, min(1.0, float(normalized)))
+        val = float(normalized)
+        if val > 1.0:
+            val /= 100.0
+        norm_clamped = max(0.0, min(1.0, val))
         changed = False
 
         if abs(self._fill_percentage - norm_clamped) > 0.002:
