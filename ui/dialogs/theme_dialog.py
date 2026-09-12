@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 
 from core.config_manager import ConfigManager
 from ui.dialogs.mapping_wizard import apply_dark_motorsport_style
+from ui.i18n import i18n, tr
 
 PRESET_COLORS: List[Tuple[str, str, str]] = [
     ("Cyan Neon", "#00E5FF", "High visibility cockpit cyan"),
@@ -144,12 +145,13 @@ class PresetCardWidget(QFrame):
         layout.addStretch()
 
         # Active tag
-        self.lbl_active_tag = QLabel("[ACTIVE]")
+        self.lbl_active_tag = QLabel(tr("themes.active_tag"))
         self.lbl_active_tag.setFont(QFont("Consolas", 9, QFont.Weight.Bold))
         layout.addWidget(self.lbl_active_tag)
 
-    def update_active_state(self, active: bool) -> None:
+    def update_active_state(self, active: bool, lang: Optional[str] = None) -> None:
         self.is_active = active
+        self.lbl_active_tag.setText(tr("themes.active_tag", lang=lang))
         if active:
             self.setStyleSheet(f"""
                 QFrame {{
@@ -205,7 +207,7 @@ class ThemeDialog(QDialog):
         self.current_accent = self.initial_accent
         self.current_lang = self.initial_lang
 
-        self.setWindowTitle("SYSTEM PREFERENCES // THEME & LOCALIZATION")
+        self.setWindowTitle(tr("themes.dialog_title", lang=self.current_lang))
         self.setMinimumSize(660, 620)
         self.setModal(True)
 
@@ -218,8 +220,16 @@ class ThemeDialog(QDialog):
 
     def _t(self, key: str) -> str:
         """Retrieves translated text string for active language."""
-        lang_dict = TRANSLATIONS.get(self.current_lang, TRANSLATIONS["es"])
-        return lang_dict.get(key, "")
+        if key == "title":
+            return tr("themes.dialog_title", lang=self.current_lang)
+        val = tr(f"themes.{key}", lang=self.current_lang)
+        if val != f"themes.{key}":
+            return val
+        val = tr(f"common.{key}", lang=self.current_lang)
+        if val != f"common.{key}":
+            return val
+        lang_dict = TRANSLATIONS.get(self.current_lang, TRANSLATIONS.get("es", {}))
+        return lang_dict.get(key, key)
 
     def _build_ui(self) -> None:
         main_layout = QVBoxLayout(self)
@@ -389,6 +399,7 @@ class ThemeDialog(QDialog):
 
     def _update_texts(self) -> None:
         """Refreshes all displayed strings according to current language."""
+        self.setWindowTitle(self._t("title"))
         self.lbl_main_title.setText(self._t("title"))
         self.lbl_subtitle.setText(self._t("subtitle"))
         self.lbl_presets_title.setText(self._t("color_presets_title"))
@@ -411,12 +422,13 @@ class ThemeDialog(QDialog):
         has_matched_preset = False
         for card in self.preset_cards:
             is_active = (card.hex_code.lower() == norm_current)
-            card.update_active_state(is_active)
+            card.update_active_state(is_active, lang=self.current_lang)
             if is_active:
                 has_matched_preset = True
 
         if not has_matched_preset:
-            self.btn_custom_color.setText(f"[CUSTOM] {self.current_accent.upper()}")
+            custom_tag = tr("themes.custom_tag", lang=self.current_lang)
+            self.btn_custom_color.setText(f"{custom_tag} {self.current_accent.upper()}")
             self.btn_custom_color.setStyleSheet(f"""
                 QPushButton {{
                     background-color: #1a2333;
@@ -510,6 +522,7 @@ class ThemeDialog(QDialog):
             self.current_lang = "en"
         else:
             self.current_lang = "es"
+        i18n.set_language(self.current_lang)
         self._update_texts()
         self._refresh_palette_selection()
         self._refresh_preview()
@@ -518,12 +531,14 @@ class ThemeDialog(QDialog):
         """Applies configuration without closing dialog."""
         self.config_manager.set_theme_accent(self.current_accent, auto_save=True)
         self.config_manager.set_language(self.current_lang, auto_save=True)
+        i18n.set_language(self.current_lang)
         self.theme_changed.emit(self.current_accent, self.current_lang)
 
     def _on_save_clicked(self) -> None:
         """Saves configuration to disk and closes dialog."""
         self.config_manager.set_theme_accent(self.current_accent, auto_save=True)
         self.config_manager.set_language(self.current_lang, auto_save=True)
+        i18n.set_language(self.current_lang)
         self.theme_changed.emit(self.current_accent, self.current_lang)
         self.accept()
 
@@ -532,5 +547,6 @@ class ThemeDialog(QDialog):
         if self.current_accent != self.initial_accent or self.current_lang != self.initial_lang:
             self.config_manager.set_theme_accent(self.initial_accent, auto_save=True)
             self.config_manager.set_language(self.initial_lang, auto_save=True)
+            i18n.set_language(self.initial_lang)
             self.theme_changed.emit(self.initial_accent, self.initial_lang)
         self.reject()

@@ -246,11 +246,175 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "themes.invalid_hex": "Código de color hexadecimal no válido. Formato requerido: #RRGGBB",
         "themes.language": "Idioma de Interfaz",
 
+        # Calibrador de Hardware (Calibration Wizard)
+        "calib.window_title": "ASISTENTE DE CALIBRACIÓN // LÍMITES DE HARDWARE",
+        "calib.header_title": "CALIBRACIÓN DEL SISTEMA // ASISTENTE DE LÍMITES",
+        "calib.step_header": "PASO {current:02d} DE {total:02d}",
+        "calib.completed": "COMPLETADO",
+
+        # Ejes y Barras de Sensores
+        "calib.axis_steer": "Eje del Volante",
+        "calib.axis_throttle": "Pedal de Acelerador",
+        "calib.axis_brake": "Pedal de Freno",
+        "calib.marker_min": "MÍN",
+        "calib.marker_ctr": "CTR",
+        "calib.marker_max": "MÁX",
+
+        # Pasos del Asistente
+        "calib.step1_title": "PASO 1: VOLANTE - LÍMITE IZQUIERDO",
+        "calib.step1_instructions": "Gire el volante completamente hacia el tope IZQUIERDO y manténgalo firme. Observe la lectura del sensor y presione 'Guardar Límite Izquierdo'.",
+        "calib.btn_save_left": "Guardar Límite Izquierdo",
+        "calib.step1_feedback": "Gire el volante al tope izquierdo y presione 'Guardar Límite Izquierdo'.",
+        "calib.feedback_left_saved": "Límite Izquierdo del Volante: {val}",
+
+        "calib.step2_title": "PASO 2: VOLANTE - POSICIÓN CENTRAL",
+        "calib.step2_instructions": "Suelte el volante en su posición física CENTRAL neutra. Asegúrese de que esté alineado al centro y presione 'Guardar Centro'.",
+        "calib.btn_save_center": "Guardar Posición Central",
+        "calib.step2_feedback": "Centre el volante y presione 'Guardar Posición Central'.",
+        "calib.feedback_center_saved": "Posición Central del Volante: {val}",
+
+        "calib.step3_title": "PASO 3: VOLANTE - LÍMITE DERECHO",
+        "calib.step3_instructions": "Gire el volante completamente hacia el tope DERECHO y manténgalo firme. Observe la lectura del sensor y presione 'Guardar Límite Derecho'.",
+        "calib.btn_save_right": "Guardar Límite Derecho",
+        "calib.step3_feedback": "Gire el volante al tope derecho y presione 'Guardar Límite Derecho'.",
+        "calib.feedback_right_saved": "Límite Derecho del Volante: {val}",
+
+        "calib.step4_title": "PASO 4: PEDALES - LÍMITES DE ACELERADOR Y FRENO",
+        "calib.step4_instructions": "1. Suelte ambos pedales por completo -> Haga clic en 'Guardar Límites de Reposo'.\n2. Pise el Acelerador a fondo -> Haga clic en 'Guardar Acelerador Máx'.\n3. Pise el Freno a fondo -> Haga clic en 'Guardar Freno Máx'.\nO active 'Autodetección de Recorrido' y accione ambos pedales a fondo.",
+        "calib.btn_save_rest": "Guardar Límites de Reposo (Mín)",
+        "calib.btn_save_throttle_max": "Guardar Acelerador Máx",
+        "calib.btn_save_brake_max": "Guardar Freno Máx",
+        "calib.btn_auto_detect_on": "Autodetección de Recorrido: ACTIVADO",
+        "calib.btn_auto_detect_off": "Autodetección de Recorrido: DESACTIVADO",
+        "calib.step4_feedback": "Calibre el reposo y los límites de recorrido completo de los pedales.",
+        "calib.feedback_rest_saved": "Límites de Reposo -> Acelerador: {accel} | Freno: {brake}",
+        "calib.feedback_throttle_saved": "Límite Máximo de Acelerador: {val}",
+        "calib.feedback_brake_saved": "Límite Máximo de Freno: {val}",
+        "calib.feedback_pump_pedals": "Accione ambos pedales a fondo para registrar el rango de recorrido.",
+        "calib.feedback_envelope_captured": "Rango capturado -> Acelerador: [{a_min}..{a_max}], Freno: [{b_min}..{b_max}]",
+        "calib.feedback_tracking": "[SEGUIMIENTO] Acelerador: {a_min}..{a_max} | Freno: {b_min}..{b_max}",
+
+        # Resumen y Navegación
+        "calib.summary_title": "CALIBRACIÓN COMPLETADA // RESUMEN DE LÍMITES DE SENSORES",
+        "calib.summary_instructions": "Verifique los límites calibrados abajo. Haga clic en 'Aplicar y Guardar Calibración' para registrar los cambios en la configuración.",
+        "calib.summary_steer_axis": "EJE DE DIRECCIÓN (VOLANTE):",
+        "calib.summary_left_lock": "Tope Físico Izquierdo:",
+        "calib.summary_center": "Centro Físico:",
+        "calib.summary_right_lock": "Tope Físico Derecho:",
+        "calib.summary_calibrated_range": "Rango Calibrado:",
+        "calib.summary_span": "Amplitud",
+        "calib.summary_travel": "Recorrido",
+        "calib.summary_counts": "cuentas",
+        "calib.summary_axis_inversion": "Inversión de Eje:",
+        "calib.summary_inverted_auto": "INVERTIDO (Autocorregido)",
+        "calib.summary_normal": "NORMAL",
+        "calib.summary_inverted": "INVERTIDO",
+        "calib.summary_throttle_pedal": "PEDAL DE ACELERADOR:",
+        "calib.summary_brake_pedal": "PEDAL DE FRENO:",
+        "calib.summary_rest_to_full": "Reposo (Mín) -> Fondo:",
+        "calib.summary_invert_throttle": "Invertir Acelerador:",
+        "calib.summary_invert_brake": "Invertir Freno:",
+
+        "calib.btn_prev": "Paso Anterior",
+        "calib.btn_next": "Paso Siguiente",
+        "calib.btn_apply_save": "Aplicar y Guardar Calibración",
+        "calib.tag_saved": "GUARDADO",
+        "calib.tag_error": "ERROR",
+        "calib.error_steer_span": "Rango de dirección demasiado estrecho (mín. 50 cuentas)",
+        "calib.error_accel_span": "Recorrido de acelerador demasiado estrecho (mín. 20 cuentas)",
+        "calib.error_brake_span": "Recorrido de freno demasiado estrecho (mín. 20 cuentas)",
+        "calib.initial_feedback": "Telemetría de sensores activa en tiempo real. Siga las instrucciones superiores.",
+        "calib.config_saved_success": "Calibración escrita correctamente en config_volante.json.",
+
+        # Asistente de Mapeo de Entradas (Mapping Wizard)
+        "mapping_wizard.window_title": "ASISTENTE DE ASIGNACIÓN DE ENTRADAS",
+        "mapping_wizard.header_title": "CONFIGURACIÓN DEL SISTEMA // ASISTENTE DE ASIGNACIÓN",
+        "mapping_wizard.step_counter": "PASO {current:02d} DE {total:02d}",
+        "mapping_wizard.completed": "COMPLETADO",
+
+        # Insignias de Tipo de Entrada
+        "mapping_wizard.badge_analog_steer": "[EJE ANALÓGICO DE DIRECCIÓN]",
+        "mapping_wizard.badge_analog_pedal": "[GATILLO / PEDAL ANALÓGICO]",
+        "mapping_wizard.badge_digital_button": "[PULSADOR DIGITAL DEL VOLANTE]",
+
+        # Descripciones de Controles
+        "mapping_wizard.desc_brake": "Entrada analógica de freno. Pise firmemente el pedal de freno o presione el pulsador designado.",
+        "mapping_wizard.desc_throttle": "Entrada analógica de acelerador. Pise firmemente el pedal de acelerador o presione el pulsador designado.",
+        "mapping_wizard.desc_steer": "Eje principal de dirección. Gire el volante al menos un 25% hacia cualquier lado.",
+        "mapping_wizard.desc_btn_a": "Acción principal / Aceptar / Reducción secundaria. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_b": "Acción secundaria / Cancelar / Marcha atrás. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_x": "Botón de acción / Embrague / Freno de mano. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_y": "Botón de acción / Mirar atrás / DRS. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_lb": "Leva izquierda / Reducción de marcha. Accione la leva izquierda o presione el pulsador.",
+        "mapping_wizard.desc_btn_rb": "Leva derecha / Subida de marcha. Accione la leva derecha o presione el pulsador.",
+        "mapping_wizard.desc_btn_start": "Pausa / Menú del juego / Encendido. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_back": "Telemetría / Cambiar vista / Limitador de pit. Presione el pulsador en el volante.",
+        "mapping_wizard.desc_dpad_up": "Cruceta Arriba / Reparto de frenada delantero / Navegación MFD. Presione el selector direccional.",
+        "mapping_wizard.desc_dpad_down": "Cruceta Abajo / Reparto de frenada trasero / Navegación MFD. Presione el selector direccional.",
+        "mapping_wizard.desc_dpad_left": "Cruceta Izquierda / Mezcla pobre de combustible / Selección MFD. Presione el selector direccional.",
+        "mapping_wizard.desc_dpad_right": "Cruceta Derecha / Mezcla rica de combustible / Selección MFD. Presione el selector direccional.",
+        "mapping_wizard.desc_default": "Presione el pulsador físico o accione el pedal para vincular.",
+
+        # Estados y Monitor de Hardware
+        "mapping_wizard.awaiting_input": "Esperando señal física de hardware... Presione un botón o pedal",
+        "mapping_wizard.tag_mapped": "ASIGNADO",
+        "mapping_wizard.live_monitor": "HARDWARE EN VIVO: Dirección: {steer:4d} | Acelerador: {accel:4d} | Freno: {brake:4d} | Activo: {pins}",
+        "mapping_wizard.none": "Ninguno",
+
+        # Asignaciones Detectadas
+        "mapping_wizard.assigned_steer": "Eje de Dirección (Left Stick X)",
+        "mapping_wizard.assigned_throttle": "Pedal de Acelerador (Right Trigger)",
+        "mapping_wizard.assigned_brake": "Pedal de Freno (Left Trigger)",
+        "mapping_wizard.assigned_axis": "Eje {axis}",
+        "mapping_wizard.assigned_pin": "Pin {pin}",
+
+        # Botones de Navegación del Asistente
+        "mapping_wizard.btn_back": "Control Anterior",
+        "mapping_wizard.btn_skip": "Omitir Control",
+        "mapping_wizard.btn_cancel": "Cancelar y Salir",
+        "mapping_wizard.btn_finish": "Guardar y Finalizar",
+
+        # Resumen Final de Asignación
+        "mapping_wizard.summary_title": "ASIGNACIÓN COMPLETADA // RESUMEN DE HARDWARE",
+        "mapping_wizard.col_target": "CONTROL OBJETIVO",
+        "mapping_wizard.col_assigned": "HARDWARE ASIGNADO",
+        "mapping_wizard.col_status": "ESTADO",
+        "mapping_wizard.status_active": "[OK] ACTIVO",
+        "mapping_wizard.val_preserved": "Conservado / Omitido",
+        "mapping_wizard.val_existing": "Existente",
+
+        # Asignador Rápido de Botón Individual (SingleButtonMapperDialog)
+        "mapping_wizard.quick_bind_window": "ASIGNACIÓN RÁPIDA // {target}",
+        "mapping_wizard.quick_bind_header": "ASIGNACIÓN RÁPIDA DE BOTÓN INDIVIDUAL",
+        "mapping_wizard.quick_bind_target": "DESTINO: {target}",
+        "mapping_wizard.quick_bind_awaiting": "Esperando señal física de hardware... Presione un botón en el volante",
+
+        # Diálogo de Temas y Localización (Theme Dialog)
+        "themes.dialog_title": "PREFERENCIAS DEL SISTEMA // TEMA Y LOCALIZACIÓN",
+        "themes.subtitle": "SELECCIONAR COLOR DE ACENTO DEL COCKPIT E IDIOMA",
+        "themes.color_presets_title": "PRESETS DE COLOR DE ACENTO",
+        "themes.custom_color_btn": "Color Personalizado...",
+        "themes.custom_color_dialog": "Seleccionar Color de Acento Motorsport",
+        "themes.live_preview_title": "VISTA PREVIA DE INTERFAZ Y TELEMETRÍA",
+        "themes.preview_badge": "DDU TELEMETRÍA",
+        "themes.preview_status": "EN LÍNEA // 100 HZ",
+        "themes.preview_btn": "ACCIÓN PRINCIPAL",
+        "themes.preview_slider_lbl": "INDICADOR TELEMETRÍA // 78%",
+        "themes.language_title": "IDIOMA DE LA INTERFAZ",
+        "themes.lang_en": "[EN] English",
+        "themes.lang_es": "[ES] Español",
+        "themes.active_tag": "[ACTIVO]",
+        "themes.custom_tag": "[PERSONALIZADO]",
+        "themes.btn_apply": "Aplicar",
+        "themes.btn_save": "Guardar y Cerrar",
+        "themes.btn_cancel": "Cancelar",
+
         # Términos Comunes y Botones
         "common.ok": "Aceptar",
         "common.cancel": "Cancelar",
         "common.apply": "Aplicar",
         "common.save": "Guardar",
+        "common.save_and_close": "Guardar y Cerrar",
         "common.reset": "Restablecer",
         "common.close": "Cerrar",
         "common.delete": "Eliminar",
@@ -468,11 +632,175 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "themes.invalid_hex": "Invalid hexadecimal color code. Expected format: #RRGGBB",
         "themes.language": "Interface Language",
 
+        # Hardware Calibration Wizard
+        "calib.window_title": "CALIBRATION WIZARD // HARDWARE LIMITS",
+        "calib.header_title": "SYSTEM CALIBRATION // SENSOR LIMITS WIZARD",
+        "calib.step_header": "STEP {current:02d} OF {total:02d}",
+        "calib.completed": "COMPLETED",
+
+        # Axes & Sensor Bars
+        "calib.axis_steer": "Steering Wheel Axis",
+        "calib.axis_throttle": "Throttle Pedal",
+        "calib.axis_brake": "Brake Pedal",
+        "calib.marker_min": "MIN",
+        "calib.marker_ctr": "CTR",
+        "calib.marker_max": "MAX",
+
+        # Wizard Steps
+        "calib.step1_title": "STEP 1: STEERING WHEEL - LEFT LIMIT",
+        "calib.step1_instructions": "Turn the steering wheel fully to the MAXIMUM LEFT lock position and hold it firmly. Observe the live sensor reading below, then click 'Save Left Limit'.",
+        "calib.btn_save_left": "Save Left Limit",
+        "calib.step1_feedback": "Turn wheel fully left, then click 'Save Left Limit'.",
+        "calib.feedback_left_saved": "Steering Left Limit: {val}",
+
+        "calib.step2_title": "STEP 2: STEERING WHEEL - CENTER POSITION",
+        "calib.step2_instructions": "Release the steering wheel completely to its physical CENTER neutral position. Ensure the wheel is straight, then click 'Save Center'.",
+        "calib.btn_save_center": "Save Center Position",
+        "calib.step2_feedback": "Center the wheel, then click 'Save Center Position'.",
+        "calib.feedback_center_saved": "Steering Center Position: {val}",
+
+        "calib.step3_title": "STEP 3: STEERING WHEEL - RIGHT LIMIT",
+        "calib.step3_instructions": "Turn the steering wheel fully to the MAXIMUM RIGHT lock position and hold it firmly. Observe the live sensor reading below, then click 'Save Right Limit'.",
+        "calib.btn_save_right": "Save Right Limit",
+        "calib.step3_feedback": "Turn wheel fully right, then click 'Save Right Limit'.",
+        "calib.feedback_right_saved": "Steering Right Limit: {val}",
+
+        "calib.step4_title": "STEP 4: PEDALS - THROTTLE & BRAKE LIMITS",
+        "calib.step4_instructions": "1. Release both pedals completely -> Click 'Save Rest Limits'.\n2. Press Throttle fully -> Click 'Save Throttle Max'.\n3. Press Brake fully -> Click 'Save Brake Max'.\nOr toggle 'Auto-Detect Travel' and pump both pedals through full stroke.",
+        "calib.btn_save_rest": "Save Rest Limits (Min)",
+        "calib.btn_save_throttle_max": "Save Throttle Max",
+        "calib.btn_save_brake_max": "Save Brake Max",
+        "calib.btn_auto_detect_on": "Auto-Detect Travel: ON",
+        "calib.btn_auto_detect_off": "Auto-Detect Travel: OFF",
+        "calib.step4_feedback": "Calibrate pedal rest and full travel limits.",
+        "calib.feedback_rest_saved": "Rest Limits -> Throttle: {accel} | Brake: {brake}",
+        "calib.feedback_throttle_saved": "Throttle Max Limit: {val}",
+        "calib.feedback_brake_saved": "Brake Max Limit: {val}",
+        "calib.feedback_pump_pedals": "Pump both pedals fully to register travel envelope.",
+        "calib.feedback_envelope_captured": "Envelope captured -> Throttle: [{a_min}..{a_max}], Brake: [{b_min}..{b_max}]",
+        "calib.feedback_tracking": "[TRACKING] Accel: {a_min}..{a_max} | Brake: {b_min}..{b_max}",
+
+        # Summary & Navigation
+        "calib.summary_title": "CALIBRATION COMPLETE // SENSOR LIMITS SUMMARY",
+        "calib.summary_instructions": "Verify the calibrated limits below. Click 'Apply & Save Calibration' to commit changes to system configuration.",
+        "calib.summary_steer_axis": "STEERING WHEEL AXIS:",
+        "calib.summary_left_lock": "Physical Left Lock:",
+        "calib.summary_center": "Physical Center:",
+        "calib.summary_right_lock": "Physical Right Lock:",
+        "calib.summary_calibrated_range": "Calibrated Min/Max:",
+        "calib.summary_span": "Span",
+        "calib.summary_travel": "Travel",
+        "calib.summary_counts": "counts",
+        "calib.summary_axis_inversion": "Axis Inversion:",
+        "calib.summary_inverted_auto": "INVERTED (Auto-corrected)",
+        "calib.summary_normal": "NORMAL",
+        "calib.summary_inverted": "INVERTED",
+        "calib.summary_throttle_pedal": "THROTTLE PEDAL:",
+        "calib.summary_brake_pedal": "BRAKE PEDAL:",
+        "calib.summary_rest_to_full": "Rest (Min) -> Full:",
+        "calib.summary_invert_throttle": "Invert Throttle:",
+        "calib.summary_invert_brake": "Invert Brake:",
+
+        "calib.btn_prev": "Previous Step",
+        "calib.btn_next": "Next Step",
+        "calib.btn_apply_save": "Apply & Save Calibration",
+        "calib.tag_saved": "SAVED",
+        "calib.tag_error": "ERROR",
+        "calib.error_steer_span": "Steering range too narrow (min 50 counts)",
+        "calib.error_accel_span": "Throttle travel too narrow (min 20 counts)",
+        "calib.error_brake_span": "Brake travel too narrow (min 20 counts)",
+        "calib.initial_feedback": "Real-time sensor feedback active. Follow instruction above.",
+        "calib.config_saved_success": "Calibration successfully written to config_volante.json.",
+
+        # Input Mapping Wizard
+        "mapping_wizard.window_title": "INPUT MAPPING WIZARD",
+        "mapping_wizard.header_title": "SYSTEM CONFIGURATION // INPUT MAPPING WIZARD",
+        "mapping_wizard.step_counter": "STEP {current:02d} OF {total:02d}",
+        "mapping_wizard.completed": "COMPLETED",
+
+        # Input Type Badges
+        "mapping_wizard.badge_analog_steer": "[ANALOG STEERING AXIS]",
+        "mapping_wizard.badge_analog_pedal": "[ANALOG TRIGGER / PEDAL]",
+        "mapping_wizard.badge_digital_button": "[DIGITAL WHEEL BUTTON]",
+
+        # Control Descriptions
+        "mapping_wizard.desc_brake": "Analog brake input. Depress brake pedal firmly or press designated button.",
+        "mapping_wizard.desc_throttle": "Analog throttle input. Depress throttle pedal firmly or press designated button.",
+        "mapping_wizard.desc_steer": "Primary steering axis. Rotate steering wheel at least 25% in either direction.",
+        "mapping_wizard.desc_btn_a": "Primary action / accept / downshift secondary. Press physical wheel button.",
+        "mapping_wizard.desc_btn_b": "Secondary action / cancel / reverse. Press physical wheel button.",
+        "mapping_wizard.desc_btn_x": "Action button / clutch / handbrake. Press physical wheel button.",
+        "mapping_wizard.desc_btn_y": "Action button / look back / DRS. Press physical wheel button.",
+        "mapping_wizard.desc_btn_lb": "Left paddle shifter / downshift. Pull left paddle or press button.",
+        "mapping_wizard.desc_btn_rb": "Right paddle shifter / upshift. Pull right paddle or press button.",
+        "mapping_wizard.desc_btn_start": "Pause / Game menu / Ignition. Press physical button.",
+        "mapping_wizard.desc_btn_back": "Telemetry overlay / Change view / Pit limiter. Press physical button.",
+        "mapping_wizard.desc_dpad_up": "Directional up / Brake bias forward / MFD nav. Press directional switch.",
+        "mapping_wizard.desc_dpad_down": "Directional down / Brake bias rearward / MFD nav. Press directional switch.",
+        "mapping_wizard.desc_dpad_left": "Directional left / Fuel mix lean / MFD select. Press directional switch.",
+        "mapping_wizard.desc_dpad_right": "Directional right / Fuel mix rich / MFD select. Press directional switch.",
+        "mapping_wizard.desc_default": "Press physical button or move pedal to bind.",
+
+        # Status & Hardware Monitor
+        "mapping_wizard.awaiting_input": "Awaiting hardware input... Press button on wheel or pedal",
+        "mapping_wizard.tag_mapped": "MAPPED",
+        "mapping_wizard.live_monitor": "LIVE HARDWARE: Steer: {steer:4d} | Accel: {accel:4d} | Brake: {brake:4d} | Active: {pins}",
+        "mapping_wizard.none": "None",
+
+        # Detected Bindings
+        "mapping_wizard.assigned_steer": "Steering Axis (Left Stick X)",
+        "mapping_wizard.assigned_throttle": "Throttle Pedal (Right Trigger)",
+        "mapping_wizard.assigned_brake": "Brake Pedal (Left Trigger)",
+        "mapping_wizard.assigned_axis": "Axis {axis}",
+        "mapping_wizard.assigned_pin": "Pin {pin}",
+
+        # Navigation Buttons
+        "mapping_wizard.btn_back": "Previous Control",
+        "mapping_wizard.btn_skip": "Skip Control",
+        "mapping_wizard.btn_cancel": "Cancel & Exit",
+        "mapping_wizard.btn_finish": "Save & Finish",
+
+        # Summary View
+        "mapping_wizard.summary_title": "MAPPING COMPLETE // HARDWARE ASSIGNMENT SUMMARY",
+        "mapping_wizard.col_target": "TARGET CONTROL",
+        "mapping_wizard.col_assigned": "ASSIGNED HARDWARE",
+        "mapping_wizard.col_status": "STATUS",
+        "mapping_wizard.status_active": "[OK] ACTIVE",
+        "mapping_wizard.val_preserved": "Preserved / Skipped",
+        "mapping_wizard.val_existing": "Existing",
+
+        # Single Button Mapper Dialog
+        "mapping_wizard.quick_bind_window": "QUICK BIND // {target}",
+        "mapping_wizard.quick_bind_header": "SINGLE BUTTON QUICK BIND",
+        "mapping_wizard.quick_bind_target": "TARGET: {target}",
+        "mapping_wizard.quick_bind_awaiting": "Awaiting hardware input... Press button on wheel",
+
+        # Theme & Localization Dialog
+        "themes.dialog_title": "SYSTEM PREFERENCES // THEME & LOCALIZATION",
+        "themes.subtitle": "SELECT COCKPIT DISPLAY ACCENT AND INTERFACE LANGUAGE",
+        "themes.color_presets_title": "ACCENT COLOR PRESETS",
+        "themes.custom_color_btn": "Custom Color...",
+        "themes.custom_color_dialog": "Select Custom Motorsport Accent Color",
+        "themes.live_preview_title": "LIVE HUD & TELEMETRY PREVIEW",
+        "themes.preview_badge": "TELEMETRY DDU",
+        "themes.preview_status": "ONLINE // 100 HZ",
+        "themes.preview_btn": "PRIMARY ACTION",
+        "themes.preview_slider_lbl": "TELEMETRY GAUGE // 78%",
+        "themes.language_title": "INTERFACE LANGUAGE",
+        "themes.lang_en": "[EN] English",
+        "themes.lang_es": "[ES] Español",
+        "themes.active_tag": "[ACTIVE]",
+        "themes.custom_tag": "[CUSTOM]",
+        "themes.btn_apply": "Apply",
+        "themes.btn_save": "Save & Close",
+        "themes.btn_cancel": "Cancel",
+
         # Common Terms & Buttons
         "common.ok": "OK",
         "common.cancel": "Cancel",
         "common.apply": "Apply",
         "common.save": "Save",
+        "common.save_and_close": "Save & Close",
         "common.reset": "Reset",
         "common.close": "Close",
         "common.delete": "Delete",
@@ -587,6 +915,12 @@ _ALIASES: Dict[str, str] = {
     "mclaren orange": "themes.mclaren_orange",
     "tokyo night violet": "themes.tokyo_violet",
     "tokyo violet": "themes.tokyo_violet",
+
+    # Axes & Sensor Bars
+    "steering wheel axis": "calib.axis_steer",
+    "throttle pedal": "calib.axis_throttle",
+    "brake pedal": "calib.axis_brake",
+    "save and close": "common.save_and_close",
 }
 
 
@@ -664,29 +998,29 @@ class I18nManager:
             if callback in self._listeners:
                 self._listeners.remove(callback)
 
-    def translate(self, key: str, **kwargs: Any) -> str:
+    def translate(self, key: str, lang: Optional[str] = None, **kwargs: Any) -> str:
         """
-        Traduce una clave al idioma actual, con soporte para interpolación segura de formato.
+        Traduce una clave al idioma actual o especificado, con soporte para interpolación segura de formato.
         Si la clave no existe, intenta el idioma alternativo o devuelve la clave original.
         """
         if not key:
             return ""
 
         with self._lock:
-            lang = self._current_language
+            active_lang = lang if (lang and lang in SUPPORTED_LANGUAGES) else self._current_language
 
         # 1. Búsqueda exacta directa
-        text = TRANSLATIONS.get(lang, {}).get(key)
+        text = TRANSLATIONS.get(active_lang, {}).get(key)
 
         # 2. Búsqueda mediante tabla de alias
         if text is None:
             alias_key = _ALIASES.get(key.strip().lower())
             if alias_key:
-                text = TRANSLATIONS.get(lang, {}).get(alias_key)
+                text = TRANSLATIONS.get(active_lang, {}).get(alias_key)
 
         # 3. Fallback al idioma alternativo (EN si ES, o ES si EN)
         if text is None:
-            fallback_lang = "en" if lang == "es" else "es"
+            fallback_lang = "en" if active_lang == "es" else "es"
             text = TRANSLATIONS.get(fallback_lang, {}).get(key)
             if text is None and alias_key:
                 text = TRANSLATIONS.get(fallback_lang, {}).get(alias_key)
@@ -713,12 +1047,18 @@ class I18nManager:
 
 # Instancia singleton del gestor
 _manager = I18nManager()
+i18n = _manager
+
+
+def get_i18n_manager() -> I18nManager:
+    """Retorna la instancia singleton de I18nManager."""
+    return _manager
 
 
 # Funciones de conveniencia globales
-def tr(key: str, **kwargs: Any) -> str:
+def tr(key: str, lang: Optional[str] = None, **kwargs: Any) -> str:
     """Función global de traducción."""
-    return _manager.translate(key, **kwargs)
+    return _manager.translate(key, lang=lang, **kwargs)
 
 
 def set_language(lang: str, force: bool = False) -> None:

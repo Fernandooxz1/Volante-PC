@@ -216,6 +216,39 @@ def test_calibration_wizard_flow(qapp, config_manager, engine):
     dialog.close()
 
 
+def test_calibration_wizard_span_validation(qapp, config_manager, engine):
+    """Verifica que el asistente de calibración rechaza guardar valores con rango cero o insuficiente."""
+    config_manager.set("steer_min", 100)
+    config_manager.set("steer_max", 900)
+    config_manager.save()
+
+    dialog = CalibrationWizardDialog(engine=engine, config_manager=config_manager)
+    # Simular limites iguales (amplitud 0)
+    dialog.saved_steer_left = 500
+    dialog.saved_steer_center = 500
+    dialog.saved_steer_right = 500
+    dialog.saved_accel_min = 200
+    dialog.saved_accel_max = 200
+    dialog.saved_brake_min = 300
+    dialog.saved_brake_max = 300
+
+    dialog._current_step = 4
+    dialog._update_step_ui()
+    qapp.processEvents()
+
+    # Intentar guardar
+    dialog._on_save_config_clicked()
+    qapp.processEvents()
+
+    # La configuracion previa no debe haberse corrompido
+    assert config_manager.get("steer_min") == 100
+    assert config_manager.get("steer_max") == 900
+    # El dialogo debe seguir abierto (no aceptado) y mostrar error
+    assert "ERROR" in dialog.lbl_feedback.text()
+    dialog.close()
+
+
+
 def test_theme_dialog(qapp, config_manager):
     dialog = ThemeDialog(config_manager=config_manager)
     assert dialog.isModal()

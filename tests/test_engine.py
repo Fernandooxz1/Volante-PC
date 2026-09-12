@@ -265,6 +265,26 @@ class TestEngine(unittest.TestCase):
         self.assertFalse(self.engine.is_running)
         self.assertTrue(self.mock_gamepad.reset_called)
 
+    def test_disconnect_and_reconnect_thread_safety(self):
+        """Verifica que disconnect() es seguro contra colisiones de hilos y actualiza la telemetría."""
+        self.engine.start()
+        self.assertTrue(self.engine.is_running)
+
+        # Desconectar manualmente
+        self.engine.disconnect()
+        self.assertEqual(self.engine.status, "disconnected")
+        self.assertTrue(self.engine._manual_disconnect)
+        snap = self.engine.get_telemetry()
+        self.assertEqual(snap.status, "disconnected")
+
+        # Dejar iterar el bucle a 100 Hz mientras está desconectado
+        time.sleep(0.05)
+
+        # No debe haber reconectado automáticamente si fue manual
+        self.assertEqual(self.engine.status, "disconnected")
+
+        self.engine.stop()
+
 
 if __name__ == "__main__":
     unittest.main()

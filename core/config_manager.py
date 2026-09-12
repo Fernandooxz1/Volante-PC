@@ -155,15 +155,17 @@ class ConfigManager:
                 except Exception as e:
                     print(f"[ConfigManager] Error leyendo {self.file_path}: {e}")
 
-            # Fusionar con DEFAULT_CONFIG para asegurar claves faltantes
-            merged = dict(DEFAULT_CONFIG)
-            for k, v in loaded_data.items():
-                if k == "custom_presets" and isinstance(v, dict):
-                    presets = dict(DEFAULT_CONFIG["custom_presets"])
-                    presets.update(v)
-                    merged["custom_presets"] = presets
-                else:
-                    merged[k] = v
+            # Si hay datos previos guardados en disco, respetar exactamente los presets del usuario
+            if loaded_data:
+                merged = dict(DEFAULT_CONFIG)
+                for k, v in loaded_data.items():
+                    if k == "custom_presets" and isinstance(v, dict):
+                        merged["custom_presets"] = dict(v)
+                    else:
+                        merged[k] = v
+            else:
+                merged = dict(DEFAULT_CONFIG)
+                merged["custom_presets"] = dict(DEFAULT_CONFIG.get("custom_presets", {}))
 
             self.config = merged
             return dict(self.config)

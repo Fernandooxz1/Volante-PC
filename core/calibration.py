@@ -19,7 +19,8 @@ def calculate_steering(
     slope: float = 1.0,
     sensitivity: float = 1.0,
     anti_deadzone: float = 0.0,
-    rest_deadzone: float = 0.01
+    rest_deadzone: float = 0.01,
+    invert: bool = False,
 ) -> Tuple[int, float, float]:
     """
     Calcula el valor final del eje de dirección para el gamepad virtual.
@@ -38,6 +39,9 @@ def calculate_steering(
         range_right = steer_max - steer_center
         x = (steer - steer_center) / range_right if range_right > 0 else 0.0
         x = max(0.0, min(1.0, x))
+
+    if invert:
+        x = -x
 
     # 2. Curva Exponencial
     abs_x = abs(x)
@@ -70,7 +74,8 @@ def calculate_pedal(
     val_min: int = 0,
     val_max: int = 1023,
     deadzone: float = 0.0,
-    max_output: int = 255
+    max_output: int = 255,
+    invert: bool = False,
 ) -> Tuple[int, float]:
     """
     Calcula la respuesta del acelerador o freno.
@@ -81,7 +86,13 @@ def calculate_pedal(
     if range_val <= 0:
         return 0, 0.0
 
-    val_norm = (raw_val - val_min) / range_val
+    if invert:
+        # Invertido: la posición de reposo física da 0.0 cuando raw_val está en val_max
+        val_norm = (val_max - raw_val) / float(range_val)
+    else:
+        # Normal: la posición de reposo física da 0.0 cuando raw_val está en val_min
+        val_norm = (raw_val - val_min) / float(range_val)
+
     val_norm = max(0.0, min(1.0, val_norm))
 
     if val_norm <= deadzone:

@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
 
 from core.config_manager import ConfigManager
 from core.protocol import CONFIG_BUTTON_KEYS, PIN_NAMES
+from ui.i18n import tr
 
 TARGET_CONTROLS: List[str] = [
     "Left Trigger (LT) - Brake",
@@ -77,23 +78,23 @@ def get_control_type(control_name: str) -> str:
 def get_control_description(control_name: str) -> str:
     """Returns technical motorsport description for the target action."""
     descriptions = {
-        "Left Trigger (LT) - Brake": "Analog brake input. Depress brake pedal firmly or press designated button.",
-        "Right Trigger (RT) - Throttle": "Analog throttle input. Depress throttle pedal firmly or press designated button.",
-        "Steering Wheel Axis": "Primary steering axis. Rotate steering wheel at least 25% in either direction.",
-        "Button A": "Primary action / accept / downshift secondary. Press physical wheel button.",
-        "Button B": "Secondary action / cancel / reverse. Press physical wheel button.",
-        "Button X": "Action button / clutch / handbrake. Press physical wheel button.",
-        "Button Y": "Action button / look back / DRS. Press physical wheel button.",
-        "Button LB": "Left paddle shifter / downshift. Pull left paddle or press button.",
-        "Button RB": "Right paddle shifter / upshift. Pull right paddle or press button.",
-        "Button Start": "Pause / Game menu / Ignition. Press physical button.",
-        "Button Back": "Telemetry overlay / Change view / Pit limiter. Press physical button.",
-        "D-Pad UP": "Directional up / Brake bias forward / MFD nav. Press directional switch.",
-        "D-Pad DOWN": "Directional down / Brake bias rearward / MFD nav. Press directional switch.",
-        "D-Pad LEFT": "Directional left / Fuel mix lean / MFD select. Press directional switch.",
-        "D-Pad RIGHT": "Directional right / Fuel mix rich / MFD select. Press directional switch.",
+        "Left Trigger (LT) - Brake": tr("mapping_wizard.desc_brake"),
+        "Right Trigger (RT) - Throttle": tr("mapping_wizard.desc_throttle"),
+        "Steering Wheel Axis": tr("mapping_wizard.desc_steer"),
+        "Button A": tr("mapping_wizard.desc_btn_a"),
+        "Button B": tr("mapping_wizard.desc_btn_b"),
+        "Button X": tr("mapping_wizard.desc_btn_x"),
+        "Button Y": tr("mapping_wizard.desc_btn_y"),
+        "Button LB": tr("mapping_wizard.desc_btn_lb"),
+        "Button RB": tr("mapping_wizard.desc_btn_rb"),
+        "Button Start": tr("mapping_wizard.desc_btn_start"),
+        "Button Back": tr("mapping_wizard.desc_btn_back"),
+        "D-Pad UP": tr("mapping_wizard.desc_dpad_up"),
+        "D-Pad DOWN": tr("mapping_wizard.desc_dpad_down"),
+        "D-Pad LEFT": tr("mapping_wizard.desc_dpad_left"),
+        "D-Pad RIGHT": tr("mapping_wizard.desc_dpad_right"),
     }
-    return descriptions.get(control_name, "Press physical button or move pedal to bind.")
+    return descriptions.get(control_name, tr("mapping_wizard.desc_default"))
 
 
 class InputDispatcher(QObject):
@@ -215,7 +216,7 @@ class MappingWizardDialog(QDialog):
         self.config_manager = config_manager or ConfigManager()
         self.accent_color = self.config_manager.get_theme_accent() if hasattr(self.config_manager, "get_theme_accent") else "#00e5ff"
 
-        self.setWindowTitle("INPUT MAPPING WIZARD")
+        self.setWindowTitle(tr("mapping_wizard.window_title"))
         self.setMinimumSize(680, 520)
         self.setModal(True)
 
@@ -261,14 +262,14 @@ class MappingWizardDialog(QDialog):
         header_layout.setSpacing(6)
 
         title_row = QHBoxLayout()
-        self.lbl_header_title = QLabel("SYSTEM CONFIGURATION // INPUT MAPPING WIZARD")
+        self.lbl_header_title = QLabel(tr("mapping_wizard.header_title"))
         self.lbl_header_title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         self.lbl_header_title.setStyleSheet("color: #94a3b8; letter-spacing: 1px;")
         title_row.addWidget(self.lbl_header_title)
 
         title_row.addStretch()
 
-        self.lbl_step_counter = QLabel("STEP 01 OF 15")
+        self.lbl_step_counter = QLabel(tr("mapping_wizard.step_counter", current=1, total=len(TARGET_CONTROLS)))
         self.lbl_step_counter.setFont(QFont("Consolas", 11, QFont.Weight.Bold))
         self.lbl_step_counter.setStyleSheet(f"color: {self.accent_color}; letter-spacing: 1px;")
         title_row.addWidget(self.lbl_step_counter)
@@ -291,7 +292,7 @@ class MappingWizardDialog(QDialog):
 
         # Type badge and name row
         type_row = QHBoxLayout()
-        self.lbl_type_badge = QLabel("[ANALOG INPUT]")
+        self.lbl_type_badge = QLabel(tr("mapping_wizard.badge_analog_pedal"))
         self.lbl_type_badge.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
         self.lbl_type_badge.setStyleSheet("color: #00e5ff; background: #0e202d; padding: 3px 8px; border-radius: 3px;")
         type_row.addWidget(self.lbl_type_badge)
@@ -305,7 +306,7 @@ class MappingWizardDialog(QDialog):
         card_layout.addWidget(self.lbl_action_name)
 
         # Instruction / Description
-        self.lbl_instruction = QLabel("Analog brake pedal input. Depress brake pedal firmly or press designated button.")
+        self.lbl_instruction = QLabel(get_control_description(TARGET_CONTROLS[0]))
         self.lbl_instruction.setFont(QFont("Segoe UI", 11))
         self.lbl_instruction.setStyleSheet("color: #94a3b8; line-height: 1.4;")
         self.lbl_instruction.setWordWrap(True)
@@ -320,7 +321,7 @@ class MappingWizardDialog(QDialog):
         status_layout = QHBoxLayout(self.frame_status)
         status_layout.setContentsMargins(16, 12, 16, 12)
 
-        self.lbl_status_text = QLabel("Awaiting hardware input... Press button on wheel or pedal")
+        self.lbl_status_text = QLabel(tr("mapping_wizard.awaiting_input"))
         self.lbl_status_text.setFont(QFont("Consolas", 12, QFont.Weight.Bold))
         self.lbl_status_text.setStyleSheet(f"color: {self.accent_color}; letter-spacing: 0.5px;")
         status_layout.addWidget(self.lbl_status_text)
@@ -329,7 +330,7 @@ class MappingWizardDialog(QDialog):
         card_layout.addWidget(self.frame_status)
 
         # Live telemetry monitor footer
-        self.lbl_live_monitor = QLabel("LIVE HARDWARE: Steer: 512 | Accel: 0 | Brake: 0 | Active Pin: None")
+        self.lbl_live_monitor = QLabel(tr("mapping_wizard.live_monitor", steer=512, accel=0, brake=0, pins=tr("mapping_wizard.none")))
         self.lbl_live_monitor.setFont(QFont("Consolas", 9))
         self.lbl_live_monitor.setStyleSheet("color: #475569;")
         card_layout.addWidget(self.lbl_live_monitor)
@@ -343,14 +344,14 @@ class MappingWizardDialog(QDialog):
         summary_layout.setContentsMargins(20, 20, 20, 20)
         summary_layout.setSpacing(12)
 
-        lbl_summary_title = QLabel("MAPPING COMPLETE // HARDWARE ASSIGNMENT SUMMARY")
+        lbl_summary_title = QLabel(tr("mapping_wizard.summary_title"))
         lbl_summary_title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
         lbl_summary_title.setStyleSheet("color: #00e676; letter-spacing: 0.5px;")
         summary_layout.addWidget(lbl_summary_title)
 
         self.table_summary = QTableWidget()
         self.table_summary.setColumnCount(3)
-        self.table_summary.setHorizontalHeaderLabels(["TARGET CONTROL", "ASSIGNED HARDWARE", "STATUS"])
+        self.table_summary.setHorizontalHeaderLabels([tr("mapping_wizard.col_target"), tr("mapping_wizard.col_assigned"), tr("mapping_wizard.col_status")])
         self.table_summary.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table_summary.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table_summary.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
@@ -366,23 +367,23 @@ class MappingWizardDialog(QDialog):
         self.bar_buttons = QHBoxLayout()
         self.bar_buttons.setSpacing(10)
 
-        self.btn_back = QPushButton("Previous Control")
+        self.btn_back = QPushButton(tr("mapping_wizard.btn_back"))
         self.btn_back.clicked.connect(self._on_btn_back_clicked)
         self.bar_buttons.addWidget(self.btn_back)
 
-        self.btn_skip = QPushButton("Skip Control")
+        self.btn_skip = QPushButton(tr("mapping_wizard.btn_skip"))
         self.btn_skip.clicked.connect(self._on_btn_skip_clicked)
         self.bar_buttons.addWidget(self.btn_skip)
 
         self.bar_buttons.addStretch()
 
-        self.btn_cancel = QPushButton("Cancel & Exit")
+        self.btn_cancel = QPushButton(tr("mapping_wizard.btn_cancel"))
         self.btn_cancel.setProperty("danger", "true")
         self.btn_cancel.clicked.connect(self.reject)
         self.bar_buttons.addWidget(self.btn_cancel)
 
         # Summary Finish button (shown on summary view)
-        self.btn_finish = QPushButton("Save & Finish")
+        self.btn_finish = QPushButton(tr("mapping_wizard.btn_finish"))
         self.btn_finish.setProperty("primary", "true")
         self.btn_finish.clicked.connect(self._on_btn_finish_clicked)
         self.btn_finish.setVisible(False)
@@ -441,17 +442,17 @@ class MappingWizardDialog(QDialog):
         control_name = TARGET_CONTROLS[step_index]
         ctrl_type = get_control_type(control_name)
 
-        self.lbl_step_counter.setText(f"STEP {step_index + 1:02d} OF {len(TARGET_CONTROLS):02d}")
+        self.lbl_step_counter.setText(tr("mapping_wizard.step_counter", current=step_index + 1, total=len(TARGET_CONTROLS)))
         self.progress_bar.setValue(step_index + 1)
 
         if ctrl_type == "axis":
-            self.lbl_type_badge.setText("[ANALOG STEERING AXIS]")
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_analog_steer"))
             self.lbl_type_badge.setStyleSheet("color: #00e5ff; background: #0d2330; padding: 3px 8px; border-radius: 3px;")
         elif ctrl_type == "trigger":
-            self.lbl_type_badge.setText("[ANALOG TRIGGER / PEDAL]")
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_analog_pedal"))
             self.lbl_type_badge.setStyleSheet("color: #ffd600; background: #262208; padding: 3px 8px; border-radius: 3px;")
         else:
-            self.lbl_type_badge.setText("[DIGITAL WHEEL BUTTON]")
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_digital_button"))
             self.lbl_type_badge.setStyleSheet("color: #00e676; background: #092617; padding: 3px 8px; border-radius: 3px;")
 
         self.lbl_action_name.setText(control_name.upper())
@@ -473,7 +474,7 @@ class MappingWizardDialog(QDialog):
                 border-radius: 4px;
             }
         """)
-        self.lbl_status_text.setText("Awaiting hardware input... Press button on wheel or pedal")
+        self.lbl_status_text.setText(tr("mapping_wizard.awaiting_input"))
         self.lbl_status_text.setStyleSheet(f"color: {self.accent_color}; letter-spacing: 0.5px;")
 
     def _set_status_confirmed(self, message: str) -> None:
@@ -485,7 +486,7 @@ class MappingWizardDialog(QDialog):
                 border-radius: 4px;
             }
         """)
-        self.lbl_status_text.setText(f"[MAPPED] {message}")
+        self.lbl_status_text.setText(f"[{tr('mapping_wizard.tag_mapped')}] {message}")
         self.lbl_status_text.setStyleSheet("color: #0a0c10; font-weight: 700; letter-spacing: 0.5px;")
 
     def _on_input_event(self, data: Any) -> None:
@@ -539,8 +540,8 @@ class MappingWizardDialog(QDialog):
         """Processes raw Arduino packet: checks rising edge on pins and axis thresholds."""
         # 1. Update live monitor readout
         active_pins = [PIN_NAMES[i] for i, val in enumerate(buttons) if val == 1 and i < len(PIN_NAMES)]
-        pin_str = ", ".join(active_pins) if active_pins else "None"
-        self.lbl_live_monitor.setText(f"LIVE HARDWARE: Steer: {steer:4d} | Accel: {accel:4d} | Brake: {brake:4d} | Active: {pin_str}")
+        pin_str = ", ".join(active_pins) if active_pins else tr("mapping_wizard.none")
+        self.lbl_live_monitor.setText(tr("mapping_wizard.live_monitor", steer=steer, accel=accel, brake=brake, pins=pin_str))
 
         now = time.time()
         if now - self._last_trigger_time < self._debounce_interval:
@@ -605,7 +606,7 @@ class MappingWizardDialog(QDialog):
         self.config_manager.set(pin_key, config_action)
         self.config_manager.save()
 
-        assigned_text = f"Pin {clean_pin}"
+        assigned_text = tr("mapping_wizard.assigned_pin", pin=clean_pin)
         self._mapped_results[current_target] = assigned_text
 
         # Flash visual feedback and advance
@@ -624,15 +625,15 @@ class MappingWizardDialog(QDialog):
 
         if "Steering" in current_target or axis_id == "steer":
             self.config_manager.set("steer_target", "Left Stick X")
-            assigned_text = "Steering Axis (Left Stick X)"
+            assigned_text = tr("mapping_wizard.assigned_steer")
         elif "Throttle" in current_target or axis_id == "accel":
             self.config_manager.set("accel_target", "Right Trigger (RT)")
-            assigned_text = "Throttle Pedal (Right Trigger)"
+            assigned_text = tr("mapping_wizard.assigned_throttle")
         elif "Brake" in current_target or axis_id == "brake":
             self.config_manager.set("brake_target", "Left Trigger (LT)")
-            assigned_text = "Brake Pedal (Left Trigger)"
+            assigned_text = tr("mapping_wizard.assigned_brake")
         else:
-            assigned_text = f"Axis {axis_id.upper()}"
+            assigned_text = tr("mapping_wizard.assigned_axis", axis=axis_id.upper())
 
         self.config_manager.save()
         self._mapped_results[current_target] = assigned_text
@@ -651,7 +652,7 @@ class MappingWizardDialog(QDialog):
         """Skips the current control without updating config."""
         current_target = TARGET_CONTROLS[self._current_step_index]
         if current_target not in self._mapped_results:
-            self._mapped_results[current_target] = "Preserved / Skipped"
+            self._mapped_results[current_target] = tr("mapping_wizard.val_preserved")
         self._advance_step()
 
     def _on_btn_back_clicked(self) -> None:
@@ -670,15 +671,15 @@ class MappingWizardDialog(QDialog):
         self.btn_cancel.setVisible(False)
         self.btn_finish.setVisible(True)
 
-        self.lbl_step_counter.setText("COMPLETED")
+        self.lbl_step_counter.setText(tr("mapping_wizard.completed"))
         self.progress_bar.setValue(len(TARGET_CONTROLS))
 
         self.table_summary.setRowCount(len(TARGET_CONTROLS))
         for row, target in enumerate(TARGET_CONTROLS):
-            assigned = self._mapped_results.get(target, "Existing")
+            assigned = self._mapped_results.get(target, tr("mapping_wizard.val_existing"))
             item_target = QTableWidgetItem(f" {target}")
             item_assigned = QTableWidgetItem(f" {assigned}")
-            item_status = QTableWidgetItem(" [OK] ACTIVE")
+            item_status = QTableWidgetItem(f" {tr('mapping_wizard.status_active')}")
 
             item_status.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item_status.setForeground(Qt.GlobalColor.green)
@@ -727,7 +728,7 @@ class SingleButtonMapperDialog(QDialog):
         self.config_manager = config_manager or ConfigManager()
         self.accent_color = self.config_manager.get_theme_accent() if hasattr(self.config_manager, "get_theme_accent") else "#00e5ff"
 
-        self.setWindowTitle(f"QUICK BIND // {self.target_action.upper()}")
+        self.setWindowTitle(tr("mapping_wizard.quick_bind_window", target=self.target_action.upper()))
         self.setFixedSize(500, 260)
         self.setModal(True)
 
@@ -748,7 +749,7 @@ class SingleButtonMapperDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(14)
 
-        lbl_header = QLabel("SINGLE BUTTON QUICK BIND")
+        lbl_header = QLabel(tr("mapping_wizard.quick_bind_header"))
         lbl_header.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         lbl_header.setStyleSheet("color: #94a3b8; letter-spacing: 1px;")
         layout.addWidget(lbl_header)
@@ -760,7 +761,7 @@ class SingleButtonMapperDialog(QDialog):
         card_layout.setContentsMargins(16, 16, 16, 16)
         card_layout.setSpacing(10)
 
-        lbl_target_title = QLabel(f"TARGET: {self.target_action.upper()}")
+        lbl_target_title = QLabel(tr("mapping_wizard.quick_bind_target", target=self.target_action.upper()))
         lbl_target_title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         lbl_target_title.setStyleSheet(f"color: {self.accent_color}; letter-spacing: 0.5px;")
         card_layout.addWidget(lbl_target_title)
@@ -771,7 +772,7 @@ class SingleButtonMapperDialog(QDialog):
         status_layout = QHBoxLayout(self.frame_status)
         status_layout.setContentsMargins(12, 8, 12, 8)
 
-        self.lbl_status = QLabel("Awaiting hardware input... Press button on wheel")
+        self.lbl_status = QLabel(tr("mapping_wizard.quick_bind_awaiting"))
         self.lbl_status.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
         self.lbl_status.setStyleSheet("color: #f1f5f9;")
         status_layout.addWidget(self.lbl_status)
@@ -782,7 +783,7 @@ class SingleButtonMapperDialog(QDialog):
         # Cancel button row
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton(tr("common.cancel"))
         self.btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(self.btn_cancel)
         layout.addLayout(btn_row)
@@ -874,7 +875,7 @@ class SingleButtonMapperDialog(QDialog):
                 border-radius: 4px;
             }
         """)
-        self.lbl_status.setText(f"[MAPPED] Pin {clean_pin} -> {self.target_action}")
+        self.lbl_status.setText(f"[{tr('mapping_wizard.tag_mapped')}] Pin {clean_pin} -> {self.target_action}")
         self.lbl_status.setStyleSheet("color: #0a0c10; font-weight: 700;")
 
         self.mapping_completed.emit(self.target_action, self.mapped_pin)

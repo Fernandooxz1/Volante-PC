@@ -519,7 +519,7 @@ class MainWindow(QMainWindow):
 
         # 2. Actualizar Volante Vectorial
         self.wheel_gauge.set_angle(snapshot.steer_angle)
-        self.wheel_gauge.set_raw_value(snapshot.raw_steer)
+        self.wheel_gauge._raw_value = snapshot.raw_steer
 
         # 3. Actualizar Barras de Pedales
         self.pedal_throttle.set_value(snapshot.throttle_pct, snapshot.raw_accel)
@@ -583,13 +583,18 @@ class MainWindow(QMainWindow):
     def _toggle_connection(self) -> None:
         if self._last_status in ("connected", "connecting"):
             self.engine.disconnect()
-            self._log("Desconectando puerto serie...", "info")
+            self._last_status = "disconnected"
+            self.status_dot.setStyleSheet("color: #ff3344; font-size: 16px; margin-right: 4px;")
+            self.status_lbl.setText(tr("status.disconnected"))
+            self.btn_connect.setText(tr("status.connect"))
+            self.lbl_sb_port.setText(f"{tr('status.port')}: --")
+            self._log(tr("status.disconnected"), "info")
         else:
             port = self.port_combo.currentText().strip()
             if not port:
-                self._log("No hay un puerto serie seleccionado.", "warn")
+                self._log(tr("status.no_ports_found"), "warn")
                 return
-            self._log(f"Intentando conectar a {port} a 115200 baudios...", "info")
+            self._log(f"Conectando a {port}...", "info")
             self.engine.connect(port)
 
     def _on_mode_changed(self, new_mode: str) -> None:

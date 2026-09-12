@@ -226,6 +226,7 @@ class Engine:
         self._steer_filter = SteeringFilter()
 
         # Conexión serie
+        self._serial_lock = threading.Lock()
         self._serial: Optional[serial.Serial] = serial_instance
         self._active_port: Optional[str] = port
         self._last_reconnect_attempt: float = 0.0
@@ -236,6 +237,7 @@ class Engine:
         self._thread: Optional[threading.Thread] = None
         self._status: str = "disconnected"
         self._last_error: Optional[str] = None
+        self._manual_disconnect: bool = False
 
         # Modo de operación
         self._mode: str = MODE_CONDUCCION
@@ -378,29 +380,67 @@ class Engine:
     # Manejo de Conexión Serie y Reconexión Automática
     # =========================================================================
 
+    def _update_telemetry_status(self, status: str) -> None:
+        """Actualiza atómicamente el estado de la conexión en la instantánea de telemetría."""
+        with self._telemetry_lock:
+            snap = self._telemetry_snapshot
+            self._telemetry_snapshot = TelemetrySnapshot(
+                timestamp=time.time(),
+                status=status,
+                active_port=self._active_port,
+                mode=self._mode,
+                preset=snap.preset,
+                led_color=snap.led_color,
+                raw_steer=snap.raw_steer,
+                raw_accel=snap.raw_accel,
+                raw_brake=snap.raw_brake,
+                raw_buttons=snap.raw_buttons,
+                mapped_steer=snap.mapped_steer,
+                mapped_accel=snap.mapped_accel,
+                mapped_brake=snap.mapped_brake,
+                mapped_buttons=snap.mapped_buttons,
+                steer_angle=snap.steer_angle,
+                steer_phys_norm=snap.steer_phys_norm,
+                steer_out_norm=snap.steer_out_norm,
+                throttle_pct=snap.throttle_pct,
+                brake_pct=snap.brake_pct,
+                gamepad_steer=snap.gamepad_steer,
+                gamepad_accel=snap.gamepad_accel,
+                gamepad_brake=snap.gamepad_brake,
+                active_gamepad_buttons=snap.active_gamepad_buttons,
+                loop_hz=0.0 if status == "disconnected" else snap.loop_hz,
+                gamepad_connected=self.gamepad_manager.is_connected,
+            )
+
     def connect(self, port: Optional[str] = None) -> bool:
         """Conecta o cambia el puerto serie objetivo."""
+        self._manual_disconnect = False
         if port is not None:
             self.target_port = port
 
         self._close_serial()
-        return self._attempt_connection()
+        res = self._attempt_connection()
+        self._update_telemetry_status(self._status)
+        return res
 
     def disconnect(self) -> None:
         """Desconecta el puerto serie manualmente."""
+        self._manual_disconnect = True
         self._close_serial()
         self._status = "disconnected"
+        self._update_telemetry_status("disconnected")
         if self.gamepad_manager.is_connected:
             self.gamepad_manager.reset()
 
     def _close_serial(self) -> None:
-        if self._serial is not None:
-            try:
-                self._serial.close()
-            except Exception as e:
-                logger.debug("Error cerrando puerto serie: %s", e)
-            self._serial = None
-        self._active_port = None
+        with self._serial_lock:
+            if self._serial is not None:
+                try:
+                    self._serial.close()
+                except Exception as e:
+                    logger.debug("Error cerrando puerto serie: %s", e)
+                self._serial = None
+            self._active_port = None
 
     def _attempt_connection(self) -> bool:
         """Intenta abrir la conexión serie con timeout de bajo retardo."""
@@ -408,10 +448,12 @@ class Engine:
         if not port:
             self._status = "disconnected"
             self._last_error = "No se detectó ningún puerto Arduino disponible."
+            self._update_telemetry_status("disconnected")
             return False
 
         try:
             self._status = "connecting"
+            self._update_telemetry_status("connecting")
             logger.info("Intentando conectar con Arduino en %s (%d baud)...", port, self.baud_rate)
             ser = serial.Serial(
                 port=port,
@@ -422,12 +464,14 @@ class Engine:
                 timeout=0.005,  # 5 ms timeout no bloqueante
             )
             ser.reset_input_buffer()
-            self._serial = ser
-            self._active_port = port
+            with self._serial_lock:
+                self._serial = ser
+                self._active_port = port
             self._status = "connected"
             self._last_error = None
             self._parser.reset()
             self._steer_filter.reset()
+            self._update_telemetry_status("connected")
 
             # Enviar color de LED inmediatamente tras conectar
             self.send_led_color(self._current_led_color)
@@ -436,8 +480,9 @@ class Engine:
 
         except (serial.SerialException, OSError) as e:
             self._close_serial()
-            self._status = "reconnecting" if self.auto_reconnect else "error"
+            self._status = "reconnecting" if (self.auto_reconnect and not self._manual_disconnect) else "error"
             self._last_error = f"Error conectando en {port}: {e}"
+            self._update_telemetry_status(self._status)
             logger.warning("Fallo al conectar en %s: %s", port, e)
             return False
 
@@ -448,8 +493,9 @@ class Engine:
         if self.gamepad_manager.is_connected:
             self.gamepad_manager.reset()
 
-        self._status = "reconnecting" if self.auto_reconnect else "disconnected"
+        self._status = "reconnecting" if (self.auto_reconnect and not self._manual_disconnect) else "disconnected"
         self._last_error = reason
+        self._update_telemetry_status(self._status)
 
     # =========================================================================
     # Modos de Operación y Presets
@@ -652,8 +698,11 @@ class Engine:
         now = time.perf_counter()
 
         # 1. Gestionar reconexión automática si no hay conexión serie
-        if self._serial is None or not self._serial.is_open:
-            if self.auto_reconnect and (now - self._last_reconnect_attempt >= self._reconnect_interval):
+        with self._serial_lock:
+            has_serial = self._serial is not None and self._serial.is_open
+
+        if not has_serial:
+            if self.auto_reconnect and not self._manual_disconnect and (now - self._last_reconnect_attempt >= self._reconnect_interval):
                 self._last_reconnect_attempt = now
                 self._attempt_connection()
             return
@@ -663,18 +712,22 @@ class Engine:
 
         # 3. Lectura de bytes entrantes del puerto serie
         chunk = b""
-        try:
-            in_waiting = self._serial.in_waiting
-            if in_waiting > 0:
-                chunk = self._serial.read(in_waiting)
-            else:
-                # Lectura breve con timeout de 5ms para alinearse con el paquete de Arduino
-                chunk = self._serial.read(1)
-                if chunk and self._serial.in_waiting > 0:
-                    chunk += self._serial.read(self._serial.in_waiting)
-        except (serial.SerialException, OSError) as e:
-            self._handle_disconnect(str(e))
-            return
+        with self._serial_lock:
+            ser = self._serial
+            if ser is None or not ser.is_open:
+                return
+            try:
+                in_waiting = ser.in_waiting
+                if in_waiting > 0:
+                    chunk = ser.read(in_waiting)
+                else:
+                    # Lectura breve con timeout de 5ms para alinearse con el paquete de Arduino
+                    chunk = ser.read(1)
+                    if chunk and ser.in_waiting > 0:
+                        chunk += ser.read(ser.in_waiting)
+            except (serial.SerialException, OSError, TypeError, AttributeError, ValueError) as e:
+                self._handle_disconnect(str(e))
+                return
 
         # 4. Parsear paquetes binarios (0xAA 0x55)
         if chunk:
@@ -685,26 +738,28 @@ class Engine:
 
     def _manage_led_transmission(self, now: float) -> None:
         """Envía comandos de LED o el latido de presencia cada 2 segundos."""
-        if not self._serial or not self._serial.is_open:
-            return
+        with self._serial_lock:
+            ser = self._serial
+            if not ser or not ser.is_open:
+                return
 
-        cmd_to_send: Optional[bytes] = None
-        if self._pending_led_command is not None:
-            cmd_to_send = self._pending_led_command
-            self._pending_led_command = None
-            self._last_led_send_time = now
-        elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
-            # Latido periódico para que Arduino mantenga pcConnected = true
-            color_to_keep = "Naranja" if self._mode == MODE_CRUCETAS else self._current_led_color
-            cmd_to_send = encode_led_command(color_to_keep)
-            self._last_led_send_time = now
+            cmd_to_send: Optional[bytes] = None
+            if self._pending_led_command is not None:
+                cmd_to_send = self._pending_led_command
+                self._pending_led_command = None
+                self._last_led_send_time = now
+            elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
+                # Latido periódico para que Arduino mantenga pcConnected = true
+                color_to_keep = "Naranja" if self._mode == MODE_CRUCETAS else self._current_led_color
+                cmd_to_send = encode_led_command(color_to_keep)
+                self._last_led_send_time = now
 
-        if cmd_to_send:
-            try:
-                self._serial.write(cmd_to_send)
-                self._serial.flush()
-            except (serial.SerialException, OSError) as e:
-                self._handle_disconnect(f"Error transmitiendo LED: {e}")
+            if cmd_to_send:
+                try:
+                    ser.write(cmd_to_send)
+                    ser.flush()
+                except (serial.SerialException, OSError, TypeError, AttributeError, ValueError) as e:
+                    self._handle_disconnect(f"Error transmitiendo LED: {e}")
 
     # =========================================================================
     # Procesamiento de Paquetes: DSP + Calibración + Gamepad + Eventos
@@ -766,14 +821,10 @@ class Engine:
         invert_accel = bool(self.config_manager.get("invert_accel", False))
         invert_brake = bool(self.config_manager.get("invert_brake", False))
 
-        steer_calc = 1023 - steer_raw if invert_steer else steer_raw
-        accel_calc = 1023 - accel_raw if invert_accel else accel_raw
-        brake_calc = 1023 - brake_raw if invert_brake else brake_raw
-
         # Clamping de seguridad
-        steer_calc = max(0, min(1023, steer_calc))
-        accel_calc = max(0, min(1023, accel_calc))
-        brake_calc = max(0, min(1023, brake_calc))
+        steer_calc = max(0, min(1023, steer_raw))
+        accel_calc = max(0, min(1023, accel_raw))
+        brake_calc = max(0, min(1023, brake_raw))
 
         # ---------------------------------------------------------------------
         # 4. Filtro DSP Anti-Jitter (SteeringFilter)
@@ -794,6 +845,7 @@ class Engine:
             sensitivity=float(self.config_manager.get("sensitivity", 1.0)),
             anti_deadzone=float(self.config_manager.get("anti_deadzone", 0.0)),
             rest_deadzone=float(self.config_manager.get("rest_deadzone", 0.01)),
+            invert=invert_steer,
         )
 
         # Pedales (acelerador y freno)
@@ -805,6 +857,7 @@ class Engine:
             val_max=int(self.config_manager.get("accel_max", 1023)),
             deadzone=deadzone,
             max_output=255,
+            invert=invert_accel,
         )
 
         brake_val_trigger, brake_norm = calculate_pedal(
@@ -813,6 +866,7 @@ class Engine:
             val_max=int(self.config_manager.get("brake_max", 1023)),
             deadzone=deadzone,
             max_output=255,
+            invert=invert_brake,
         )
 
         # Indicadores mapeados para interfaz (0..1023)

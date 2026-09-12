@@ -96,6 +96,18 @@ class TestCalibration(unittest.TestCase):
         self.assertEqual(val_max, 255)
         self.assertAlmostEqual(pct_max, 1.0)
 
+    def test_calculate_pedal_custom_limits_and_invert(self):
+        # Caso con límites físicos reducidos e invertido (ej. potenciómetro invertido 1..493)
+        # Reposo físico: raw_val = 493 (da 0 con invert=True)
+        val_rest, pct_rest = calculate_pedal(raw_val=493, val_min=1, val_max=493, deadzone=0.05, max_output=255, invert=True)
+        self.assertEqual(val_rest, 0)
+        self.assertEqual(pct_rest, 0.0)
+
+        # A fondo físico: raw_val = 1 (da 255 con invert=True)
+        val_full, pct_full = calculate_pedal(raw_val=1, val_min=1, val_max=493, deadzone=0.05, max_output=255, invert=True)
+        self.assertEqual(val_full, 255)
+        self.assertAlmostEqual(pct_full, 1.0)
+
     def test_evaluate_and_generate_curve(self):
         points = generate_curve_points(slope=1.85, sensitivity=1.0, anti_deadzone=0.0, num_points=21)
         self.assertEqual(len(points), 21)
