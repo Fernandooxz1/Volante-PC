@@ -260,6 +260,7 @@ class Engine:
         # Bus de eventos de entrada (Press-to-Map)
         self._listener_lock = threading.Lock()
         self._input_listeners: List[InputEventListener] = []
+        self._mapping_mode_active: bool = False
 
         # Métricas de rendimiento de bucle a 100 Hz
         self._loop_hz: float = 0.0
@@ -510,15 +511,12 @@ class Engine:
             return
 
         self._mode = mode
+        self.config_manager.set("mode", mode)
         logger.info("Modo cambiado a: %s", mode)
 
-        # Transmitir color de LED según el modo seleccionado
-        if mode == MODE_CRUCETAS:
-            # Color Naranja (código 7) característico para modo D-Pad
-            self.send_led_color("Naranja")
-        else:
-            self._update_led_color_from_config()
-            self.send_led_color(self._current_led_color)
+        # Transmitir color de LED según el modo y preset seleccionado
+        self._update_led_color_from_config()
+        self.send_led_color(self._current_led_color)
 
     def toggle_mode(self) -> str:
         """Alterna entre 'Conducción' y 'Crucetas / D-Pad' y retorna el nuevo modo."""
@@ -531,14 +529,25 @@ class Engine:
         success = self.config_manager.load_preset(preset_name)
         if success:
             logger.info("Preset cargado: %s", preset_name)
-            # Sincronizar modo si el preset es de crucetas
-            if "CRUCETA" in preset_name.upper():
+            # Sincronizar modo si el preset lo define o por nombre
+            preset_mode = self.config_manager.get("mode")
+            if preset_mode in AVAILABLE_MODES:
+                self._mode = preset_mode
+            elif "CRUCETA" in preset_name.upper():
                 self._mode = MODE_CRUCETAS
             else:
                 self._mode = MODE_CONDUCCION
 
             self._update_led_color_from_config()
             self.send_led_color(self._current_led_color)
+        return success
+
+    def save_preset(self, preset_name: str) -> bool:
+        """Guarda el estado actual (incluyendo modo y botón de ciclo) como preset."""
+        self.config_manager.set("mode", self._mode)
+        success = self.config_manager.save_current_as_preset(preset_name)
+        if success:
+            logger.info("Preset guardado con éxito: %s (Modo: %s)", preset_name, self._mode)
         return success
 
     def cycle_presets(self) -> str:
@@ -592,12 +601,28 @@ class Engine:
 
     def send_led_color(self, color: str | int) -> None:
         """Encola la transmisión de un comando de color LED (0xBB 0x66 <código>)."""
+        if isinstance(color, int):
+            inv = {v: k for k, v in LED_COLORS.items()}
+            self._current_led_color = inv.get(color, "Apagado").capitalize()
+        elif isinstance(color, str):
+            self._current_led_color = color.strip().capitalize()
         packet = encode_led_command(color)
         self._pending_led_command = packet
 
     # =========================================================================
     # Bus Reactivo de Eventos de Entrada (Press-to-Map Wizard)
     # =========================================================================
+
+    def set_mapping_mode(self, active: bool) -> None:
+        """Activa o desactiva explícitamente el modo de mapeo para suspender funciones secundarias."""
+        with self._listener_lock:
+            self._mapping_mode_active = bool(active)
+
+    @property
+    def is_mapping_active(self) -> bool:
+        """Retorna True si hay un asistente de mapeo escuchando o el modo mapeo está forzado."""
+        with self._listener_lock:
+            return len(self._input_listeners) > 0 or self._mapping_mode_active
 
     def set_input_listener(self, listener: Optional[InputEventListener]) -> None:
         """
@@ -750,8 +775,7 @@ class Engine:
                 self._last_led_send_time = now
             elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
                 # Latido periódico para que Arduino mantenga pcConnected = true
-                color_to_keep = "Naranja" if self._mode == MODE_CRUCETAS else self._current_led_color
-                cmd_to_send = encode_led_command(color_to_keep)
+                cmd_to_send = encode_led_command(self._current_led_color)
                 self._last_led_send_time = now
 
             if cmd_to_send:
@@ -811,7 +835,8 @@ class Engine:
         cycle_btn_configured = str(self.config_manager.get("preset_cycle_btn", "Ninguno"))
         current_cycle_state = self._get_configured_pin_state(cycle_btn_configured, buttons)
         if current_cycle_state == 1 and self._last_btn_cycle_state == 0:
-            self.cycle_presets()
+            if not self.is_mapping_active:
+                self.cycle_presets()
         self._last_btn_cycle_state = current_cycle_state
 
         # ---------------------------------------------------------------------
@@ -892,10 +917,16 @@ class Engine:
                     if target_action and target_action != "Ninguno":
                         active_buttons.add(target_action)
 
-        # Lógica de Crucetas / D-Pad
+        # Lógica de Crucetas / D-Pad y Gatillos Digitales
         final_steer = val_steer
         final_accel = accel_val_trigger
         final_brake = brake_val_trigger
+
+        # Si hay botones físicos asignados digitalmente a LT o RT
+        if "Left Trigger (LT)" in active_buttons or "Button LT" in active_buttons:
+            final_brake = max(final_brake, 255)
+        if "Right Trigger (RT)" in active_buttons or "Button RT" in active_buttons:
+            final_accel = max(final_accel, 255)
 
         if self._mode == MODE_CRUCETAS and self._dpad_from_axes:
             # Traducir ejes analógicos a pulsaciones virtuales del D-Pad

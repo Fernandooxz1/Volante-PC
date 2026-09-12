@@ -13,8 +13,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QKeyEvent
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -30,31 +32,54 @@ from core.config_manager import ConfigManager
 from core.protocol import CONFIG_BUTTON_KEYS, PIN_NAMES
 from ui.i18n import tr
 
-TARGET_CONTROLS: List[str] = [
-    "Left Trigger (LT) - Brake",
-    "Right Trigger (RT) - Throttle",
-    "Steering Wheel Axis",
+TARGET_CONTROLS_CONDUCCION: List[str] = [
     "Button A",
     "Button B",
     "Button X",
     "Button Y",
+    "Left Trigger (LT)",
+    "Right Trigger (RT)",
     "Button LB",
     "Button RB",
+    "Button L3",
+    "Button R3",
     "Button Start",
-    "Button Back",
+    "Botón PRESET (Alternar Presets)",
+    "Embrague (Pedalera)",
+    "Color del LED RGB",
+]
+
+TARGET_CONTROLS_CRUCETAS: List[str] = [
     "D-Pad UP",
     "D-Pad DOWN",
     "D-Pad LEFT",
     "D-Pad RIGHT",
+    "Button Back (Select)",
+    "Button A",
+    "Button B",
+    "Button X",
+    "Button Y",
+    "Left Trigger (LT)",
+    "Right Trigger (RT)",
+    "Botón PRESET (Alternar Presets)",
+    "Color del LED RGB",
 ]
 
-# Map physical pin names to config keys in ConfigManager
+# Exportación para compatibilidad previa
+TARGET_CONTROLS: List[str] = TARGET_CONTROLS_CONDUCCION
+
+# Mapeo de nombres físicos de pines a claves en ConfigManager
 PIN_NAME_TO_KEY: Dict[str, str] = dict(zip(PIN_NAMES, CONFIG_BUTTON_KEYS))
 
-# Action normalization mapping for ConfigManager / Gamepad compatibility
+# Mapeo de normalización de acciones para Gamepad y ConfigManager
 ACTION_NORMALIZATION: Dict[str, str] = {
     "Button LB": "Button LB (Left Shoulder)",
     "Button RB": "Button RB (Right Shoulder)",
+    "Button L3": "Button L3 (Left Click)",
+    "Button R3": "Button R3 (Right Click)",
+    "Button Back (Select)": "Button Back",
+    "Left Trigger (LT)": "Left Trigger (LT)",
+    "Right Trigger (RT)": "Right Trigger (RT)",
     "Left Trigger (LT) - Brake": "Left Trigger (LT)",
     "Right Trigger (RT) - Throttle": "Right Trigger (RT)",
     "Steering Wheel Axis": "Left Stick X",
@@ -62,22 +87,30 @@ ACTION_NORMALIZATION: Dict[str, str] = {
 
 
 def normalize_target_action(action: str) -> str:
-    """Normalize user-facing action name to configuration dictionary value."""
+    """Normaliza el nombre de la acción al formato interno de ConfigManager."""
     return ACTION_NORMALIZATION.get(action, action)
 
 
 def get_control_type(control_name: str) -> str:
-    """Returns classification of control: 'axis', 'trigger', or 'button'."""
+    """Clasifica el control: 'axis', 'trigger', 'preset', 'clutch', 'led' o 'button'."""
     if "Axis" in control_name:
         return "axis"
     elif "Trigger" in control_name:
         return "trigger"
+    elif "PRESET" in control_name:
+        return "preset"
+    elif "Embrague" in control_name:
+        return "clutch"
+    elif "LED" in control_name or "Color" in control_name:
+        return "led"
     return "button"
 
 
 def get_control_description(control_name: str) -> str:
-    """Returns technical motorsport description for the target action."""
+    """Retorna la descripción motorsport para el control objetivo."""
     descriptions = {
+        "Left Trigger (LT)": tr("mapping_wizard.desc_brake"),
+        "Right Trigger (RT)": tr("mapping_wizard.desc_throttle"),
         "Left Trigger (LT) - Brake": tr("mapping_wizard.desc_brake"),
         "Right Trigger (RT) - Throttle": tr("mapping_wizard.desc_throttle"),
         "Steering Wheel Axis": tr("mapping_wizard.desc_steer"),
@@ -87,14 +120,141 @@ def get_control_description(control_name: str) -> str:
         "Button Y": tr("mapping_wizard.desc_btn_y"),
         "Button LB": tr("mapping_wizard.desc_btn_lb"),
         "Button RB": tr("mapping_wizard.desc_btn_rb"),
+        "Button L3": tr("mapping_wizard.desc_btn_l3"),
+        "Button R3": tr("mapping_wizard.desc_btn_r3"),
         "Button Start": tr("mapping_wizard.desc_btn_start"),
         "Button Back": tr("mapping_wizard.desc_btn_back"),
+        "Button Back (Select)": tr("mapping_wizard.desc_btn_back"),
         "D-Pad UP": tr("mapping_wizard.desc_dpad_up"),
         "D-Pad DOWN": tr("mapping_wizard.desc_dpad_down"),
         "D-Pad LEFT": tr("mapping_wizard.desc_dpad_left"),
         "D-Pad RIGHT": tr("mapping_wizard.desc_dpad_right"),
+        "Botón PRESET (Alternar Presets)": tr("mapping_wizard.desc_preset"),
+        "Embrague (Pedalera)": tr("mapping_wizard.desc_clutch"),
+        "Color del LED RGB": tr("mapping_wizard.desc_led_color"),
     }
     return descriptions.get(control_name, tr("mapping_wizard.desc_default"))
+
+
+class ClutchTargetDialog(QDialog):
+    """Modal motorsport para consultar a qué botón virtual de Xbox desea mapear el Embrague."""
+
+    def __init__(
+        self,
+        detected_pin: str,
+        accent_color: str = "#00e5ff",
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent)
+        self.detected_pin = detected_pin
+        self.accent_color = accent_color
+        self.selected_action: str = "Button LB (Left Shoulder)"
+
+        self.setWindowTitle("MAPEAR EMBRAGUE // BOTÓN VIRTUAL")
+        self.setFixedSize(520, 310)
+        self.setModal(True)
+        self._build_ui()
+        apply_dark_motorsport_style(self, self.accent_color)
+
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(12)
+
+        title = QLabel(f"EMBRAGUE DETECTADO EN PIN {self.detected_pin.upper()}")
+        title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        title.setStyleSheet("color: #00e676; letter-spacing: 0.5px;")
+        layout.addWidget(title)
+
+        prompt = QLabel("¿A qué botón virtual desea mapearlo?\n(En simuladores como Forza o Assetto Corsa se suele usar LB, L3 o A)")
+        prompt.setFont(QFont("Segoe UI", 10))
+        prompt.setStyleSheet("color: #94a3b8;")
+        layout.addWidget(prompt)
+
+        quick_layout = QHBoxLayout()
+        quick_layout.setSpacing(8)
+        quick_options = [
+            ("LB", "Button LB (Left Shoulder)"),
+            ("L3", "Button L3 (Left Click)"),
+            ("A", "Button A"),
+            ("X", "Button X"),
+            ("LT", "Left Trigger (LT)"),
+            ("RB", "Button RB (Right Shoulder)"),
+            ("R3", "Button R3 (Right Click)"),
+        ]
+        for label, action in quick_options:
+            btn = QPushButton(label)
+            btn.setFixedWidth(54)
+            btn.clicked.connect(lambda checked, a=action: self._choose_and_accept(a))
+            quick_layout.addWidget(btn)
+        quick_layout.addStretch()
+        layout.addLayout(quick_layout)
+
+        combo_lbl = QLabel("O elija de la lista / escriba manualmente (ej. LB, L3, A):")
+        combo_lbl.setFont(QFont("Segoe UI", 9))
+        combo_lbl.setStyleSheet("color: #64748b;")
+        layout.addWidget(combo_lbl)
+
+        self.combo_target = QComboBox(self)
+        self.combo_target.setEditable(True)
+        all_choices = [
+            "Button LB (Left Shoulder)",
+            "Button L3 (Left Click)",
+            "Button A",
+            "Button X",
+            "Left Trigger (LT)",
+            "Button RB (Right Shoulder)",
+            "Button R3 (Right Click)",
+            "Button B",
+            "Button Y",
+        ]
+        for c in all_choices:
+            self.combo_target.addItem(c)
+        layout.addWidget(self.combo_target)
+
+        layout.addStretch()
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.clicked.connect(self.reject)
+        btn_row.addWidget(btn_cancel)
+
+        btn_ok = QPushButton("Aceptar")
+        btn_ok.setProperty("primary", "true")
+        btn_ok.clicked.connect(self._on_accept)
+        btn_row.addWidget(btn_ok)
+
+        layout.addLayout(btn_row)
+
+    def _choose_and_accept(self, action: str) -> None:
+        self.selected_action = action
+        self.accept()
+
+    def _on_accept(self) -> None:
+        raw_text = self.combo_target.currentText().strip()
+        raw_upper = raw_text.upper()
+        if raw_upper in ("LB", "BUTTON LB"):
+            self.selected_action = "Button LB (Left Shoulder)"
+        elif raw_upper in ("L3", "BUTTON L3"):
+            self.selected_action = "Button L3 (Left Click)"
+        elif raw_upper in ("RB", "BUTTON RB"):
+            self.selected_action = "Button RB (Right Shoulder)"
+        elif raw_upper in ("R3", "BUTTON R3"):
+            self.selected_action = "Button R3 (Right Click)"
+        elif raw_upper in ("A", "BUTTON A"):
+            self.selected_action = "Button A"
+        elif raw_upper in ("B", "BUTTON B"):
+            self.selected_action = "Button B"
+        elif raw_upper in ("X", "BUTTON X"):
+            self.selected_action = "Button X"
+        elif raw_upper in ("Y", "BUTTON Y"):
+            self.selected_action = "Button Y"
+        elif raw_upper in ("LT", "BUTTON LT"):
+            self.selected_action = "Left Trigger (LT)"
+        else:
+            self.selected_action = raw_text if raw_text else "Button LB (Left Shoulder)"
+        self.accept()
 
 
 class InputDispatcher(QObject):
@@ -209,6 +369,7 @@ class MappingWizardDialog(QDialog):
         self,
         engine: Optional[Any] = None,
         config_manager: Optional[ConfigManager] = None,
+        mode: Optional[str] = None,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
@@ -216,8 +377,21 @@ class MappingWizardDialog(QDialog):
         self.config_manager = config_manager or ConfigManager()
         self.accent_color = self.config_manager.get_theme_accent() if hasattr(self.config_manager, "get_theme_accent") else "#00e5ff"
 
+        # Resolver modo de mapeo activo
+        if mode:
+            self.mode = mode
+        elif self.engine and hasattr(self.engine, "mode"):
+            self.mode = self.engine.mode
+        else:
+            self.mode = str(self.config_manager.get("mode", "Conducción"))
+
+        if "CRUCETA" in self.mode.upper():
+            self.target_controls = list(TARGET_CONTROLS_CRUCETAS)
+        else:
+            self.target_controls = list(TARGET_CONTROLS_CONDUCCION)
+
         self.setWindowTitle(tr("mapping_wizard.window_title"))
-        self.setMinimumSize(680, 520)
+        self.setMinimumSize(680, 540)
         self.setModal(True)
 
         # State tracking
@@ -262,14 +436,14 @@ class MappingWizardDialog(QDialog):
         header_layout.setSpacing(6)
 
         title_row = QHBoxLayout()
-        self.lbl_header_title = QLabel(tr("mapping_wizard.header_title"))
+        self.lbl_header_title = QLabel(f"{tr('mapping_wizard.header_title')} // {self.mode.upper()}")
         self.lbl_header_title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         self.lbl_header_title.setStyleSheet("color: #94a3b8; letter-spacing: 1px;")
         title_row.addWidget(self.lbl_header_title)
 
         title_row.addStretch()
 
-        self.lbl_step_counter = QLabel(tr("mapping_wizard.step_counter", current=1, total=len(TARGET_CONTROLS)))
+        self.lbl_step_counter = QLabel(tr("mapping_wizard.step_counter", current=1, total=len(self.target_controls)))
         self.lbl_step_counter.setFont(QFont("Consolas", 11, QFont.Weight.Bold))
         self.lbl_step_counter.setStyleSheet(f"color: {self.accent_color}; letter-spacing: 1px;")
         title_row.addWidget(self.lbl_step_counter)
@@ -277,7 +451,7 @@ class MappingWizardDialog(QDialog):
         header_layout.addLayout(title_row)
 
         self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, len(TARGET_CONTROLS))
+        self.progress_bar.setRange(0, len(self.target_controls))
         self.progress_bar.setValue(1)
         header_layout.addWidget(self.progress_bar)
 
@@ -292,7 +466,7 @@ class MappingWizardDialog(QDialog):
 
         # Type badge and name row
         type_row = QHBoxLayout()
-        self.lbl_type_badge = QLabel(tr("mapping_wizard.badge_analog_pedal"))
+        self.lbl_type_badge = QLabel(tr("mapping_wizard.badge_digital_button"))
         self.lbl_type_badge.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
         self.lbl_type_badge.setStyleSheet("color: #00e5ff; background: #0e202d; padding: 3px 8px; border-radius: 3px;")
         type_row.addWidget(self.lbl_type_badge)
@@ -300,13 +474,13 @@ class MappingWizardDialog(QDialog):
         card_layout.addLayout(type_row)
 
         # Large Target Action Name
-        self.lbl_action_name = QLabel("LEFT TRIGGER (LT) - BRAKE")
+        self.lbl_action_name = QLabel(self.target_controls[0].upper())
         self.lbl_action_name.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
         self.lbl_action_name.setStyleSheet("color: #f1f5f9; letter-spacing: 0.5px;")
         card_layout.addWidget(self.lbl_action_name)
 
         # Instruction / Description
-        self.lbl_instruction = QLabel(get_control_description(TARGET_CONTROLS[0]))
+        self.lbl_instruction = QLabel(get_control_description(self.target_controls[0]))
         self.lbl_instruction.setFont(QFont("Segoe UI", 11))
         self.lbl_instruction.setStyleSheet("color: #94a3b8; line-height: 1.4;")
         self.lbl_instruction.setWordWrap(True)
@@ -328,6 +502,49 @@ class MappingWizardDialog(QDialog):
         status_layout.addStretch()
 
         card_layout.addWidget(self.frame_status)
+
+        # Marco Selector de Color de LED (visible solo en el paso de LED)
+        self.frame_color_picker = QFrame()
+        self.frame_color_picker.setVisible(False)
+        color_vbox = QVBoxLayout(self.frame_color_picker)
+        color_vbox.setContentsMargins(0, 4, 0, 4)
+        color_vbox.setSpacing(10)
+
+        grid_colors = QGridLayout()
+        grid_colors.setSpacing(10)
+
+        palette = [
+            ("Rojo", "#ff3344"),
+            ("Verde", "#00e676"),
+            ("Azul", "#00e5ff"),
+            ("Naranja", "#ff9100"),
+            ("Amarillo", "#ffd600"),
+            ("Violeta", "#d500f9"),
+            ("Celeste", "#00b0ff"),
+            ("Apagado", "#64748b"),
+        ]
+
+        for idx, (c_name, c_hex) in enumerate(palette):
+            btn_c = QPushButton(c_name.upper())
+            btn_c.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: #161c24;
+                    color: {c_hex};
+                    border: 2px solid {c_hex};
+                    border-radius: 4px;
+                    font-weight: 700;
+                    padding: 10px 14px;
+                }}
+                QPushButton:hover {{
+                    background-color: {c_hex};
+                    color: #0a0c10;
+                }}
+            """)
+            btn_c.clicked.connect(lambda checked, name=c_name: self._on_color_selected(name))
+            grid_colors.addWidget(btn_c, idx // 4, idx % 4)
+
+        color_vbox.addLayout(grid_colors)
+        card_layout.addWidget(self.frame_color_picker)
 
         # Live telemetry monitor footer
         self.lbl_live_monitor = QLabel(tr("mapping_wizard.live_monitor", steer=512, accel=0, brake=0, pins=tr("mapping_wizard.none")))
@@ -406,6 +623,9 @@ class MappingWizardDialog(QDialog):
 
         self._engine_callback_ref = _callback
 
+        if hasattr(self.engine, "set_mapping_mode"):
+            self.engine.set_mapping_mode(True)
+
         if hasattr(self.engine, "set_input_listener"):
             try:
                 self.engine.set_input_listener(_callback)
@@ -416,6 +636,8 @@ class MappingWizardDialog(QDialog):
         """Detaches listener from engine upon wizard closure."""
         if not self.engine:
             return
+        if hasattr(self.engine, "set_mapping_mode"):
+            self.engine.set_mapping_mode(False)
         if hasattr(self.engine, "set_input_listener"):
             try:
                 self.engine.set_input_listener(None)
@@ -429,7 +651,7 @@ class MappingWizardDialog(QDialog):
 
     def _show_step(self, step_index: int) -> None:
         """Configures the UI for the target step."""
-        if step_index >= len(TARGET_CONTROLS):
+        if step_index >= len(self.target_controls):
             self._show_summary_view()
             return
 
@@ -439,21 +661,43 @@ class MappingWizardDialog(QDialog):
         self._baseline_accel = None
         self._baseline_brake = None
 
-        control_name = TARGET_CONTROLS[step_index]
+        control_name = self.target_controls[step_index]
         ctrl_type = get_control_type(control_name)
 
-        self.lbl_step_counter.setText(tr("mapping_wizard.step_counter", current=step_index + 1, total=len(TARGET_CONTROLS)))
+        self.lbl_step_counter.setText(tr("mapping_wizard.step_counter", current=step_index + 1, total=len(self.target_controls)))
         self.progress_bar.setValue(step_index + 1)
 
         if ctrl_type == "axis":
             self.lbl_type_badge.setText(tr("mapping_wizard.badge_analog_steer"))
             self.lbl_type_badge.setStyleSheet("color: #00e5ff; background: #0d2330; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(True)
+            self.frame_color_picker.setVisible(False)
         elif ctrl_type == "trigger":
             self.lbl_type_badge.setText(tr("mapping_wizard.badge_analog_pedal"))
             self.lbl_type_badge.setStyleSheet("color: #ffd600; background: #262208; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(True)
+            self.frame_color_picker.setVisible(False)
+        elif ctrl_type == "preset":
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_preset"))
+            self.lbl_type_badge.setStyleSheet("color: #ff9100; background: #2b1704; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(True)
+            self.frame_color_picker.setVisible(False)
+        elif ctrl_type == "clutch":
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_clutch"))
+            self.lbl_type_badge.setStyleSheet("color: #d500f9; background: #26052b; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(True)
+            self.frame_color_picker.setVisible(False)
+        elif ctrl_type == "led":
+            self.lbl_type_badge.setText(tr("mapping_wizard.badge_led"))
+            self.lbl_type_badge.setStyleSheet("color: #00e676; background: #092617; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(False)
+            self.frame_color_picker.setVisible(True)
+            self._awaiting_input = False
         else:
             self.lbl_type_badge.setText(tr("mapping_wizard.badge_digital_button"))
             self.lbl_type_badge.setStyleSheet("color: #00e676; background: #092617; padding: 3px 8px; border-radius: 3px;")
+            self.frame_status.setVisible(True)
+            self.frame_color_picker.setVisible(False)
 
         self.lbl_action_name.setText(control_name.upper())
         self.lbl_instruction.setText(get_control_description(control_name))
@@ -543,6 +787,14 @@ class MappingWizardDialog(QDialog):
         pin_str = ", ".join(active_pins) if active_pins else tr("mapping_wizard.none")
         self.lbl_live_monitor.setText(tr("mapping_wizard.live_monitor", steer=steer, accel=accel, brake=brake, pins=pin_str))
 
+        if self._current_step_index >= len(self.target_controls):
+            return
+
+        current_target = self.target_controls[self._current_step_index]
+        ctrl_type = get_control_type(current_target)
+        if ctrl_type == "led":
+            return
+
         now = time.time()
         if now - self._last_trigger_time < self._debounce_interval:
             self._last_buttons = list(buttons)
@@ -565,19 +817,16 @@ class MappingWizardDialog(QDialog):
             self._baseline_brake = brake
             return
 
-        current_target = TARGET_CONTROLS[self._current_step_index]
-        ctrl_type = get_control_type(current_target)
-
         if ctrl_type in ("axis", "trigger"):
             if "Steering" in current_target:
                 if abs(steer - self._baseline_steer) >= self._axis_movement_threshold:
                     self._handle_axis_trigger("steer")
                     return
-            elif "Throttle" in current_target:
+            elif "Throttle" in current_target or current_target == "Right Trigger (RT)":
                 if abs(accel - self._baseline_accel) >= self._axis_movement_threshold:
                     self._handle_axis_trigger("accel")
                     return
-            elif "Brake" in current_target:
+            elif "Brake" in current_target or current_target == "Left Trigger (LT)":
                 if abs(brake - self._baseline_brake) >= self._axis_movement_threshold:
                     self._handle_axis_trigger("brake")
                     return
@@ -593,7 +842,46 @@ class MappingWizardDialog(QDialog):
         if clean_pin not in PIN_NAME_TO_KEY:
             return
 
-        current_target = TARGET_CONTROLS[self._current_step_index]
+        current_target = self.target_controls[self._current_step_index]
+
+        # Caso Especial 1: Botón PRESET (Alternancia rápida estilo 'Q' de CS)
+        if "PRESET" in current_target:
+            self.config_manager.set("preset_cycle_btn", f"Pin {clean_pin}")
+            # Desvincular de btn_map_ para que sea exclusivo de alternar preset
+            pin_key = PIN_NAME_TO_KEY[clean_pin]
+            self.config_manager.set(pin_key, "Ninguno")
+            self.config_manager.save()
+
+            assigned_text = f"Pin {clean_pin} (Ciclo Rápido Preset)"
+            self._mapped_results[current_target] = assigned_text
+            self._awaiting_input = False
+            self._set_status_confirmed(f"{assigned_text} -> PRESET")
+            self._advance_timer.start(500)
+            return
+
+        # Caso Especial 2: Embrague (Pedalera)
+        if "Embrague" in current_target:
+            dlg = ClutchTargetDialog(detected_pin=clean_pin, accent_color=self.accent_color, parent=self)
+            if dlg.exec() == QDialog.DialogCode.Accepted:
+                chosen_action = dlg.selected_action
+                pin_key = PIN_NAME_TO_KEY[clean_pin]
+
+                # Evitar asignaciones duplicadas de esta misma acción
+                for k, v in list(self.config_manager.config.items()):
+                    if k.startswith("btn_map_") and v == chosen_action:
+                        self.config_manager.set(k, "Ninguno")
+
+                self.config_manager.set(pin_key, chosen_action)
+                self.config_manager.save()
+
+                assigned_text = f"Pin {clean_pin} -> {chosen_action}"
+                self._mapped_results[current_target] = assigned_text
+                self._awaiting_input = False
+                self._set_status_confirmed(assigned_text)
+                self._advance_timer.start(500)
+            return
+
+        # Caso Estándar: Botones o Gatillos Digitales
         config_action = normalize_target_action(current_target)
         pin_key = PIN_NAME_TO_KEY[clean_pin]
 
@@ -621,15 +909,15 @@ class MappingWizardDialog(QDialog):
             return
         self._last_trigger_time = now
 
-        current_target = TARGET_CONTROLS[self._current_step_index]
+        current_target = self.target_controls[self._current_step_index]
 
         if "Steering" in current_target or axis_id == "steer":
             self.config_manager.set("steer_target", "Left Stick X")
             assigned_text = tr("mapping_wizard.assigned_steer")
-        elif "Throttle" in current_target or axis_id == "accel":
+        elif "Throttle" in current_target or current_target == "Right Trigger (RT)" or axis_id == "accel":
             self.config_manager.set("accel_target", "Right Trigger (RT)")
             assigned_text = tr("mapping_wizard.assigned_throttle")
-        elif "Brake" in current_target or axis_id == "brake":
+        elif "Brake" in current_target or current_target == "Left Trigger (LT)" or axis_id == "brake":
             self.config_manager.set("brake_target", "Left Trigger (LT)")
             assigned_text = tr("mapping_wizard.assigned_brake")
         else:
@@ -642,6 +930,23 @@ class MappingWizardDialog(QDialog):
         self._set_status_confirmed(f"{assigned_text} -> {current_target}")
         self._advance_timer.start(500)
 
+    def _on_color_selected(self, color_name: str) -> None:
+        """Asigna el color de iluminación del LED y lo envía al Arduino."""
+        self.config_manager.set("led_color", color_name)
+        if self.engine and hasattr(self.engine, "set_led_color"):
+            self.engine.set_led_color(color_name)
+        elif self.engine and hasattr(self.engine, "send_led_color"):
+            self.engine.send_led_color(color_name)
+        self.config_manager.save()
+
+        current_target = self.target_controls[self._current_step_index]
+        assigned_text = f"LED {color_name.upper()}"
+        self._mapped_results[current_target] = assigned_text
+
+        self._awaiting_input = False
+        self._set_status_confirmed(f"{assigned_text} -> Guardado en Preset")
+        self._advance_timer.start(400)
+
     def _advance_step(self) -> None:
         """Advances to the next control in sequence."""
         self._advance_timer.stop()
@@ -650,7 +955,7 @@ class MappingWizardDialog(QDialog):
 
     def _on_btn_skip_clicked(self) -> None:
         """Skips the current control without updating config."""
-        current_target = TARGET_CONTROLS[self._current_step_index]
+        current_target = self.target_controls[self._current_step_index]
         if current_target not in self._mapped_results:
             self._mapped_results[current_target] = tr("mapping_wizard.val_preserved")
         self._advance_step()
@@ -672,10 +977,10 @@ class MappingWizardDialog(QDialog):
         self.btn_finish.setVisible(True)
 
         self.lbl_step_counter.setText(tr("mapping_wizard.completed"))
-        self.progress_bar.setValue(len(TARGET_CONTROLS))
+        self.progress_bar.setValue(len(self.target_controls))
 
-        self.table_summary.setRowCount(len(TARGET_CONTROLS))
-        for row, target in enumerate(TARGET_CONTROLS):
+        self.table_summary.setRowCount(len(self.target_controls))
+        for row, target in enumerate(self.target_controls):
             assigned = self._mapped_results.get(target, tr("mapping_wizard.val_existing"))
             item_target = QTableWidgetItem(f" {target}")
             item_assigned = QTableWidgetItem(f" {assigned}")
@@ -689,7 +994,15 @@ class MappingWizardDialog(QDialog):
             self.table_summary.setItem(row, 2, item_status)
 
     def _on_btn_finish_clicked(self) -> None:
-        """Saves configuration and closes the wizard."""
+        """Saves configuration, updates active preset and closes the wizard."""
+        self.config_manager.set("mode", self.mode)
+        active_preset = str(self.config_manager.get("active_preset", "Personalizado"))
+        if active_preset != "Personalizado":
+            self.config_manager.save_current_as_preset(active_preset)
+
+        if self.engine and hasattr(self.engine, "set_mode"):
+            self.engine.set_mode(self.mode)
+
         self.config_manager.save()
         self.wizard_finished.emit()
         self.accept()
@@ -801,6 +1114,8 @@ class SingleButtonMapperDialog(QDialog):
                 self._dispatcher.raw_input_received.emit(args)
 
         self._engine_callback_ref = _callback
+        if hasattr(self.engine, "set_mapping_mode"):
+            self.engine.set_mapping_mode(True)
         if hasattr(self.engine, "set_input_listener"):
             try:
                 self.engine.set_input_listener(_callback)
@@ -810,6 +1125,8 @@ class SingleButtonMapperDialog(QDialog):
     def _unregister_engine_listener(self) -> None:
         if not self.engine:
             return
+        if hasattr(self.engine, "set_mapping_mode"):
+            self.engine.set_mapping_mode(False)
         if hasattr(self.engine, "set_input_listener"):
             try:
                 self.engine.set_input_listener(None)

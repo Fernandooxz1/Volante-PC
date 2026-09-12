@@ -28,9 +28,12 @@ def qapp():
 from core.config_manager import ConfigManager
 from core.engine import Engine
 from ui.dialogs.mapping_wizard import (
+    ClutchTargetDialog,
     MappingWizardDialog,
     SingleButtonMapperDialog,
     TARGET_CONTROLS,
+    TARGET_CONTROLS_CONDUCCION,
+    TARGET_CONTROLS_CRUCETAS,
 )
 from ui.dialogs.calibration_wizard import CalibrationWizardDialog
 from ui.dialogs.theme_dialog import ThemeDialog, PRESET_COLORS
@@ -59,71 +62,83 @@ def engine(config_manager):
 
 
 def test_target_controls_list():
-    expected = [
-        "Left Trigger (LT) - Brake",
-        "Right Trigger (RT) - Throttle",
-        "Steering Wheel Axis",
-        "Button A",
-        "Button B",
-        "Button X",
-        "Button Y",
-        "Button LB",
-        "Button RB",
-        "Button Start",
-        "Button Back",
-        "D-Pad UP",
-        "D-Pad DOWN",
-        "D-Pad LEFT",
-        "D-Pad RIGHT",
-    ]
-    assert TARGET_CONTROLS == expected
+    assert "Button A" in TARGET_CONTROLS_CONDUCCION
+    assert "Embrague (Pedalera)" in TARGET_CONTROLS_CONDUCCION
+    assert "Botón PRESET (Alternar Presets)" in TARGET_CONTROLS_CONDUCCION
+    assert "D-Pad UP" not in TARGET_CONTROLS_CONDUCCION
+    assert "Button Back (Select)" not in TARGET_CONTROLS_CONDUCCION
+
+    assert "D-Pad UP" in TARGET_CONTROLS_CRUCETAS
+    assert "Button Back (Select)" in TARGET_CONTROLS_CRUCETAS
+    assert "Button LB" not in TARGET_CONTROLS_CRUCETAS
+    assert "Button RB" not in TARGET_CONTROLS_CRUCETAS
+    assert "Button L3" not in TARGET_CONTROLS_CRUCETAS
+    assert "Button R3" not in TARGET_CONTROLS_CRUCETAS
+    assert "Button Start" not in TARGET_CONTROLS_CRUCETAS
 
 
-def test_mapping_wizard_flow(qapp, config_manager, engine):
-    dialog = MappingWizardDialog(engine=engine, config_manager=config_manager)
+def test_mapping_wizard_flow_conduccion(qapp, config_manager, engine):
+    dialog = MappingWizardDialog(engine=engine, config_manager=config_manager, mode="Conducción")
     assert dialog.isModal()
     assert dialog._current_step_index == 0
-    assert dialog.lbl_action_name.text() == "LEFT TRIGGER (LT) - BRAKE"
+    assert dialog.lbl_action_name.text() == "BUTTON A"
 
-    # Step 0: Brake Axis
-    engine._emit_input_event("axis", "brake", 700)
-    qapp.processEvents()
-    assert config_manager.get("brake_target") == "Left Trigger (LT)"
-
-    # Step 1: Throttle Axis
-    dialog._advance_step()
-    qapp.processEvents()
-    time.sleep(0.4)
-    engine._emit_input_event("axis", "accel", 800)
-    qapp.processEvents()
-    assert config_manager.get("accel_target") == "Right Trigger (RT)"
-
-    # Step 2: Steering Wheel Axis
-    dialog._advance_step()
-    qapp.processEvents()
-    time.sleep(0.4)
-    engine._emit_input_event("axis", "steer", 900)
-    qapp.processEvents()
-    assert config_manager.get("steer_target") == "Left Stick X"
-
-    # Step 3: Button A
-    dialog._advance_step()
-    qapp.processEvents()
-    time.sleep(0.4)
+    # Paso 0: Botón A -> Pulsar D6
     engine._emit_input_event("button", "D6", 1)
     qapp.processEvents()
     assert config_manager.get("btn_map_p6") == "Button A"
 
-    # Step navigation: Skip and Back
+    # Navegación
     dialog._advance_step()
     qapp.processEvents()
-    assert dialog._current_step_index == 4  # Button B
+    assert dialog._current_step_index == 1  # Button B
     dialog._on_btn_skip_clicked()
     qapp.processEvents()
-    assert dialog._current_step_index == 5  # Button X
+    assert dialog._current_step_index == 2  # Button X
     dialog._on_btn_back_clicked()
     qapp.processEvents()
-    assert dialog._current_step_index == 4
+    assert dialog._current_step_index == 1
+
+    dialog.close()
+
+
+def test_mapping_wizard_flow_crucetas(qapp, config_manager, engine):
+    dialog = MappingWizardDialog(engine=engine, config_manager=config_manager, mode="Crucetas / D-Pad")
+    assert dialog.lbl_action_name.text() == "D-PAD UP"
+    assert "D-Pad UP" in dialog.target_controls
+    assert "Button Back (Select)" in dialog.target_controls
+    assert "Button LB" not in dialog.target_controls
+    assert "Button Start" not in dialog.target_controls
+    dialog.close()
+
+
+def test_clutch_dialog(qapp):
+    clutch_dlg = ClutchTargetDialog(detected_pin="D12")
+    assert clutch_dlg.detected_pin == "D12"
+    clutch_dlg._choose_and_accept("Button LB (Left Shoulder)")
+    assert clutch_dlg.selected_action == "Button LB (Left Shoulder)"
+
+
+def test_mapping_wizard_preset_and_led(qapp, config_manager, engine):
+    dialog = MappingWizardDialog(engine=engine, config_manager=config_manager, mode="Conducción")
+    preset_idx = dialog.target_controls.index("Botón PRESET (Alternar Presets)")
+    dialog._show_step(preset_idx)
+    qapp.processEvents()
+
+    # Mapear botón PRESET a Pin A4
+    engine._emit_input_event("button", "A4", 1)
+    qapp.processEvents()
+    assert config_manager.get("preset_cycle_btn") == "Pin A4"
+    assert config_manager.get("btn_map_pa4") == "Ninguno"
+
+    # Paso LED
+    led_idx = dialog.target_controls.index("Color del LED RGB")
+    dialog._show_step(led_idx)
+    qapp.processEvents()
+    assert not dialog.frame_color_picker.isHidden()
+    dialog._on_color_selected("Verde")
+    assert config_manager.get("led_color") == "Verde"
+    assert engine._current_led_color == "Verde"
 
     dialog.close()
 

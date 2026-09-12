@@ -336,6 +336,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.badge_analog_steer": "[EJE ANALÓGICO DE DIRECCIÓN]",
         "mapping_wizard.badge_analog_pedal": "[GATILLO / PEDAL ANALÓGICO]",
         "mapping_wizard.badge_digital_button": "[PULSADOR DIGITAL DEL VOLANTE]",
+        "mapping_wizard.badge_preset": "[TECLA RÁPIDA DE PRESET]",
+        "mapping_wizard.badge_clutch": "[PEDALERA // D12]",
+        "mapping_wizard.badge_led": "[ARDUINO // ILUMINACIÓN LED]",
 
         # Descripciones de Controles
         "mapping_wizard.desc_brake": "Entrada analógica de freno. Pise firmemente el pedal de freno o presione el pulsador designado.",
@@ -347,12 +350,17 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.desc_btn_y": "Botón de acción / Mirar atrás / DRS. Presione el pulsador en el volante.",
         "mapping_wizard.desc_btn_lb": "Leva izquierda / Reducción de marcha. Accione la leva izquierda o presione el pulsador.",
         "mapping_wizard.desc_btn_rb": "Leva derecha / Subida de marcha. Accione la leva derecha o presione el pulsador.",
+        "mapping_wizard.desc_btn_l3": "Botón L3 (Click stick izquierdo). Presione el pulsador en el volante.",
+        "mapping_wizard.desc_btn_r3": "Botón R3 (Click stick derecho). Presione el pulsador en el volante.",
         "mapping_wizard.desc_btn_start": "Pausa / Menú del juego / Encendido. Presione el pulsador en el volante.",
         "mapping_wizard.desc_btn_back": "Telemetría / Cambiar vista / Limitador de pit. Presione el pulsador en el volante.",
         "mapping_wizard.desc_dpad_up": "Cruceta Arriba / Reparto de frenada delantero / Navegación MFD. Presione el selector direccional.",
         "mapping_wizard.desc_dpad_down": "Cruceta Abajo / Reparto de frenada trasero / Navegación MFD. Presione el selector direccional.",
         "mapping_wizard.desc_dpad_left": "Cruceta Izquierda / Mezcla pobre de combustible / Selección MFD. Presione el selector direccional.",
         "mapping_wizard.desc_dpad_right": "Cruceta Derecha / Mezcla rica de combustible / Selección MFD. Presione el selector direccional.",
+        "mapping_wizard.desc_preset": "Pulse el botón que alternará rápidamente entre el preset actual y el anterior (estilo Q en CS).",
+        "mapping_wizard.desc_clutch": "Pulse el pedal de embrague (generalmente conectado al pin D12).",
+        "mapping_wizard.desc_led_color": "Seleccione el color de iluminación del LED RGB para este preset.",
         "mapping_wizard.desc_default": "Presione el pulsador físico o accione el pedal para vincular.",
 
         # Estados y Monitor de Hardware
@@ -722,6 +730,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.badge_analog_steer": "[ANALOG STEERING AXIS]",
         "mapping_wizard.badge_analog_pedal": "[ANALOG TRIGGER / PEDAL]",
         "mapping_wizard.badge_digital_button": "[DIGITAL WHEEL BUTTON]",
+        "mapping_wizard.badge_preset": "[QUICK PRESET TOGGLE]",
+        "mapping_wizard.badge_clutch": "[PEDALS // D12 CLUTCH]",
+        "mapping_wizard.badge_led": "[ARDUINO // RGB LED COLOR]",
 
         # Control Descriptions
         "mapping_wizard.desc_brake": "Analog brake input. Depress brake pedal firmly or press designated button.",
@@ -733,12 +744,17 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.desc_btn_y": "Action button / look back / DRS. Press physical wheel button.",
         "mapping_wizard.desc_btn_lb": "Left paddle shifter / downshift. Pull left paddle or press button.",
         "mapping_wizard.desc_btn_rb": "Right paddle shifter / upshift. Pull right paddle or press button.",
+        "mapping_wizard.desc_btn_l3": "Button L3 (Left thumbstick click). Press physical wheel button.",
+        "mapping_wizard.desc_btn_r3": "Button R3 (Right thumbstick click). Press physical wheel button.",
         "mapping_wizard.desc_btn_start": "Pause / Game menu / Ignition. Press physical button.",
         "mapping_wizard.desc_btn_back": "Telemetry overlay / Change view / Pit limiter. Press physical button.",
         "mapping_wizard.desc_dpad_up": "Directional up / Brake bias forward / MFD nav. Press directional switch.",
         "mapping_wizard.desc_dpad_down": "Directional down / Brake bias rearward / MFD nav. Press directional switch.",
         "mapping_wizard.desc_dpad_left": "Directional left / Fuel mix lean / MFD select. Press directional switch.",
         "mapping_wizard.desc_dpad_right": "Directional right / Fuel mix rich / MFD select. Press directional switch.",
+        "mapping_wizard.desc_preset": "Press the button that will toggle quickly between this preset and previous (CS 'Q' style).",
+        "mapping_wizard.desc_clutch": "Press the clutch pedal (typically wired to pin D12).",
+        "mapping_wizard.desc_led_color": "Select RGB LED lighting color on Arduino for this preset.",
         "mapping_wizard.desc_default": "Press physical button or move pedal to bind.",
 
         # Status & Hardware Monitor

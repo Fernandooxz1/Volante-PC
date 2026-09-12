@@ -554,7 +554,28 @@ class MainWindow(QMainWindow):
                         font-size: 10px;
                     """)
 
-        # 6. Barra de estado y métricas
+        # 6. Sincronización de Preset y Modo si cambiaron por botón físico (estilo 'Q')
+        if hasattr(snapshot, "preset") and snapshot.preset and snapshot.preset != self.preset_combo.currentText():
+            self._is_updating_ui = True
+            try:
+                idx = self.preset_combo.findText(snapshot.preset)
+                if idx >= 0:
+                    self.preset_combo.setCurrentIndex(idx)
+                else:
+                    self.preset_combo.addItem(snapshot.preset)
+                    self.preset_combo.setCurrentText(snapshot.preset)
+            finally:
+                self._is_updating_ui = False
+            self._sync_sliders_from_config()
+
+        if hasattr(snapshot, "mode") and snapshot.mode and snapshot.mode != self.mode_combo.currentText():
+            self._is_updating_ui = True
+            try:
+                self.mode_combo.setCurrentText(snapshot.mode)
+            finally:
+                self._is_updating_ui = False
+
+        # 7. Barra de estado y métricas
         self.lbl_sb_hz.setText(f"Tasa: {snapshot.loop_hz:.0f} Hz")
         self.hz_badge.setText(f"{snapshot.loop_hz:.0f} HZ // {status.upper()}")
 
@@ -590,7 +611,7 @@ class MainWindow(QMainWindow):
             self.lbl_sb_port.setText(f"{tr('status.port')}: --")
             self._log(tr("status.disconnected"), "info")
         else:
-            port = self.port_combo.currentText().strip()
+            port = self.port_combo.currentText()
             if not port:
                 self._log(tr("status.no_ports_found"), "warn")
                 return
@@ -598,9 +619,14 @@ class MainWindow(QMainWindow):
             self.engine.connect(port)
 
     def _on_mode_changed(self, new_mode: str) -> None:
+        if self._is_updating_ui or not new_mode:
+            return
         if hasattr(self.engine, "set_mode"):
             self.engine.set_mode(new_mode)
             self._log(f"Modo operativo cambiado a: {new_mode}", "info")
+        else:
+            self.config_manager.set("mode", new_mode)
+            self.config_manager.save()
 
     def _on_slider_changed(self, key: str, value: float) -> None:
         if self._is_updating_ui:
@@ -738,8 +764,18 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def _open_mapping_wizard(self) -> None:
-        dlg = MappingWizardDialog(engine=self.engine, config_manager=self.config_manager, parent=self)
-        dlg.wizard_finished.connect(lambda: self._sync_sliders_from_config())
+        current_mode = getattr(self.engine, "mode", MODE_CONDUCCION)
+        dlg = MappingWizardDialog(
+            engine=self.engine,
+            config_manager=self.config_manager,
+            mode=current_mode,
+            parent=self,
+        )
+        dlg.wizard_finished.connect(lambda: (
+            self._sync_presets_from_config(),
+            self._sync_sliders_from_config(),
+            self._on_preset_selected(self.config_manager.get("active_preset", "Personalizado"))
+        ))
         dlg.exec()
 
     def _open_theme_dialog(self) -> None:

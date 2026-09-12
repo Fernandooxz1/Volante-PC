@@ -241,6 +241,88 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(self.config_manager.get("active_preset"), "F1 RACING CRUCETAS")
         self.assertEqual(self.engine.mode, MODE_CRUCETAS)
 
+        # Soltar D2 (flanco de bajada)
+        self.engine.process_packet(512, 0, 0, [0] * 11)
+
+        # Pulsar D2 nuevamente (estilo tecla Q de Counter-Strike)
+        self.engine.process_packet(512, 0, 0, btn_cycle)
+
+        # Debe volver a F1 RACING y Modo Conducción
+        self.assertEqual(self.config_manager.get("active_preset"), "F1 RACING")
+        self.assertEqual(self.engine.mode, MODE_CONDUCCION)
+
+    def test_preset_cycle_suppressed_during_mapping(self):
+        self.config_manager.set("preset_cycle_btn", "Pin D2")
+        self.config_manager.set("active_preset", "F1 RACING")
+        self.config_manager.set("previous_preset", "F1 RACING CRUCETAS")
+
+        btn_cycle = [0] * 11
+        btn_cycle[0] = 1
+
+        # Caso 1: Asistente escuchando mediante listener
+        self.engine.set_input_listener(lambda s, i, v: None)
+        self.assertTrue(self.engine.is_mapping_active)
+
+        # Pulsar D2 mientras el asistente está activo
+        self.engine.process_packet(512, 0, 0, btn_cycle)
+        # NO debe alternar preset
+        self.assertEqual(self.config_manager.get("active_preset"), "F1 RACING")
+
+        # Soltar D2 y cerrar listener
+        self.engine.process_packet(512, 0, 0, [0] * 11)
+        self.engine.set_input_listener(None)
+        self.assertFalse(self.engine.is_mapping_active)
+
+        # Caso 2: Modo mapeo explícito
+        self.engine.set_mapping_mode(True)
+        self.assertTrue(self.engine.is_mapping_active)
+        self.engine.process_packet(512, 0, 0, btn_cycle)
+        self.assertEqual(self.config_manager.get("active_preset"), "F1 RACING")
+
+        # Desactivar modo mapeo
+        self.engine.process_packet(512, 0, 0, [0] * 11)
+        self.engine.set_mapping_mode(False)
+        self.assertFalse(self.engine.is_mapping_active)
+
+        # Ahora sí debe alternar normalmente al pulsar D2
+        self.engine.process_packet(512, 0, 0, btn_cycle)
+        self.assertEqual(self.config_manager.get("active_preset"), "F1 RACING CRUCETAS")
+
+    def test_led_color_in_crucetas_mode_not_forced_to_naranja(self):
+        class MockSerial:
+            def __init__(self):
+                self.is_open = True
+                self.written = []
+
+            def write(self, data):
+                self.written.append(data)
+
+            def flush(self):
+                pass
+
+        mock_ser = MockSerial()
+        self.engine._serial = mock_ser
+
+        # Cambiar a modo Crucetas
+        self.engine.set_mode(MODE_CRUCETAS)
+        self.assertEqual(self.engine.mode, MODE_CRUCETAS)
+
+        # Establecer color Rojo
+        self.engine.send_led_color("Rojo")
+        self.assertEqual(self.engine._current_led_color, "Rojo")
+
+        # Ejecutar transmisión inmediata
+        now = time.time()
+        self.engine._manage_led_transmission(now)
+        self.assertIn(bytes([0xBB, 0x66, 1]), mock_ser.written)  # 1 = Rojo
+
+        # Simular latido periódico pasados 3 segundos
+        mock_ser.written.clear()
+        self.engine._manage_led_transmission(now + 3.0)
+        # El latido en modo crucetas debe mantener Rojo y NO sobreescribir a Naranja
+        self.assertEqual(len(mock_ser.written), 1)
+        self.assertEqual(mock_ser.written[0], bytes([0xBB, 0x66, 1]))  # Debe ser Rojo (1), NO Naranja (7)
+
     def test_led_command_queued(self):
         self.engine.set_led_color("Rojo")
         self.assertIsNotNone(self.engine._pending_led_command)

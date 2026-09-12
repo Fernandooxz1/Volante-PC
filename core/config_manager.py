@@ -44,11 +44,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "btn_map_pa4": "D-Pad UP",
     "btn_map_p12": "Ninguno",
     "preset_cycle_btn": "Pin D2",
+    "mode": "Conducción",
     "active_preset": "Personalizado",
     "previous_preset": "F1 RACING CRUCETAS",
     "led_color": "Azul",
     "custom_presets": {
         "F1 RACING": {
+            "mode": "Conducción",
+            "preset_cycle_btn": "Pin D2",
             "sensitivity": 1.0,
             "slope": 2.2,
             "anti_deadzone": 0.0,
@@ -71,6 +74,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "btn_map_p12": "Ninguno"
         },
         "F1 RACING CRUCETAS": {
+            "mode": "Crucetas / D-Pad",
+            "preset_cycle_btn": "Pin D2",
             "sensitivity": 1.0,
             "slope": 1.85,
             "anti_deadzone": 0.0,
@@ -237,6 +242,8 @@ class ConfigManager:
                                 "accel_min", "accel_max", "brake_min", "brake_max",
                                 "invert_steer", "invert_accel", "invert_brake"):
                         self.config[k] = v
+                if "mode" not in preset_data:
+                    self.config["mode"] = "Crucetas / D-Pad" if "CRUCETA" in preset_name.upper() else "Conducción"
                 self.config["previous_preset"] = self.config.get("active_preset", "Personalizado")
                 self.config["active_preset"] = preset_name
                 return True
@@ -247,7 +254,7 @@ class ConfigManager:
             return False
 
     def save_current_as_preset(self, preset_name: str) -> bool:
-        """Guarda la configuración actual de sintonía y botones como un preset nombrado."""
+        """Guarda la configuración actual de sintonía, botones y modo como un preset nombrado."""
         clean_name = preset_name.strip()
         if not clean_name or clean_name == "Personalizado":
             return False
@@ -257,6 +264,8 @@ class ConfigManager:
                 self.config["custom_presets"] = {}
 
             preset_dict: Dict[str, Any] = {
+                "mode": self.config.get("mode", "Conducción"),
+                "preset_cycle_btn": self.config.get("preset_cycle_btn", "Pin D2"),
                 "sensitivity": self.config.get("sensitivity", 1.0),
                 "slope": self.config.get("slope", 1.85),
                 "anti_deadzone": self.config.get("anti_deadzone", 0.0),
