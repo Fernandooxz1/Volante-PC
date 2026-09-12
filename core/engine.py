@@ -66,22 +66,22 @@ def find_available_ports() -> List[str]:
     """
     Retorna la lista de puertos serie activos en el sistema,
     descartando puertos UART nativos de placa madre en Linux y ordenando
-    los puertos con adaptadores USB/Arduino al principio.
+    los puertos con adaptadores USB/Arduino al principio (compatible Linux y Windows).
     """
     ports = serial.tools.list_ports.comports()
-    filtered: List[str] = []
+    valid_ports = []
     for p in ports:
         if sys.platform.startswith("linux") and p.device.startswith("/dev/ttyS") and (p.hwid == "n/a" or not p.hwid):
             continue
-        filtered.append(p.device)
+        valid_ports.append(p)
 
-    filtered.sort(
-        key=lambda x: (
-            not any(k in x.upper() for k in ["USB", "ACM", "ARDUINO", "CH340", "FTDI"]),
-            x,
-        )
-    )
-    return filtered
+    def sort_key(p):
+        info_str = f"{p.device} {p.description or ''} {p.hwid or ''} {p.manufacturer or ''}".upper()
+        is_usb = any(k in info_str for k in ["USB", "ACM", "ARDUINO", "CH340", "FTDI", "CP210"])
+        return (not is_usb, p.device)
+
+    valid_ports.sort(key=sort_key)
+    return [p.device for p in valid_ports]
 
 
 def auto_detect_arduino_port() -> Optional[str]:

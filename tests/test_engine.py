@@ -367,6 +367,31 @@ class TestEngine(unittest.TestCase):
 
         self.engine.stop()
 
+    def test_find_available_ports_sorting(self):
+        """Verifica que find_available_ports ordena puertos USB/Arduino por delante de puertos heredados."""
+        from unittest.mock import MagicMock, patch
+        from core.engine import find_available_ports, auto_detect_arduino_port
+
+        p1 = MagicMock()
+        p1.device = "COM1"
+        p1.description = "Communications Port (COM1)"
+        p1.hwid = "ACPI\\PNP0501"
+        p1.manufacturer = "(Standard port types)"
+
+        p2 = MagicMock()
+        p2.device = "COM3"
+        p2.description = "USB-SERIAL CH340 (COM3)"
+        p2.hwid = "USB VID:PID=1A86:7523"
+        p2.manufacturer = "wch.cn"
+
+        with patch("serial.tools.list_ports.comports", return_value=[p1, p2]):
+            ports = find_available_ports()
+            self.assertEqual(ports[0], "COM3")
+            self.assertEqual(ports[1], "COM1")
+
+            detected = auto_detect_arduino_port()
+            self.assertEqual(detected, "COM3")
+
 
 if __name__ == "__main__":
     unittest.main()

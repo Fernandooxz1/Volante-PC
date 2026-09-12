@@ -27,6 +27,7 @@ ehthumbs.db
 
 # Compiled executable binaries
 *.exe
+!windows/drivers/*.exe
 
 # IDE/Editor configurations
 .vscode/
@@ -39,7 +40,10 @@ ehthumbs.db
 .project
 .settings/
 
-# PyInstaller builds, specs, and virtual environments
+# PyInstaller & Inno Setup builds
+build/
+dist/
+dist_installer/
 python/build/
 python/dist/
 python/*.spec

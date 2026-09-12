@@ -13,6 +13,7 @@ Integra:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -88,6 +89,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(860, 520)
         self.resize(1100, 720)
+
+        # Cargar icono de la aplicación
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for icon_name in ("volante-pc.ico", "volante-pc.png", "volante-pc.svg"):
+            icon_path = os.path.join(base_dir, icon_name)
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+                break
 
         # Construir UI
         self._build_toolbar()
@@ -583,8 +592,11 @@ class MainWindow(QMainWindow):
         self.lbl_sb_gamepad.setText(f"{tr('status.virtual_gamepad')}: {'OK' if gp_ok else 'ERR'}")
         if not gp_ok:
             self.lbl_sb_gamepad.setStyleSheet("color: #ff3344; font-weight: bold;")
+            err = self.engine.gamepad_manager.error_message or tr("status.gamepad_error_tooltip")
+            self.lbl_sb_gamepad.setToolTip(err)
         else:
             self.lbl_sb_gamepad.setStyleSheet("color: #00e676;")
+            self.lbl_sb_gamepad.setToolTip("")
 
     # -------------------------------------------------------------------------
     # Manejadores de Sintonía, Presets y Hardware

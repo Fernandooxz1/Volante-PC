@@ -145,13 +145,28 @@ def run_cli_dashboard(port: str | None = None) -> None:
 
 def run_gui(port: str | None = None) -> None:
     """Ejecuta la aplicación gráfica principal PyQt6 Motorsport DDU."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("VolantePC.Simracing.DDU")
+        except Exception:
+            pass
+
     from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QIcon
     from core.engine import Engine
     from ui.main_window import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("Volante-PC")
     app.setOrganizationName("VolantePC")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for icon_name in ("volante-pc.ico", "volante-pc.png", "volante-pc.svg"):
+        icon_path = os.path.join(base_dir, icon_name)
+        if os.path.exists(icon_path):
+            app.setWindowIcon(QIcon(icon_path))
+            break
 
     engine = Engine(port=port)
     engine.start()

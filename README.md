@@ -57,6 +57,22 @@ El instalador:
 
 ---
 
+## Instalación en Windows (10 / 11)
+
+### Opción A: Instalador Todo-en-Uno (Recomendado para Usuarios)
+Sin necesidad de instalar Python ni configurar terminales:
+1. Conecta tu **Arduino UNO** a la PC por USB.
+2. Descarga y ejecuta **`VolantePC_Setup.exe`** desde [Releases](https://github.com/Fernandooxz1/Volante-PC/releases).
+3. El instalador configura la aplicación, instala silenciosamente el controlador de mando virtual Xbox 360 (**ViGEmBus**) y crea el acceso directo en el **Escritorio**.
+4. Haz doble clic en el icono **Volante-PC** de tu escritorio y comienza a jugar.
+
+### Opción B: Instalación desde Código Fuente (Desarrolladores)
+Si descargas o clonas el repositorio:
+1. Haz doble clic en **`install.bat`**.
+2. El asistente creará el entorno virtual, instalará las librerías necesarias, verificará el driver ViGEmBus y generará el acceso directo en el Escritorio.
+
+---
+
 ## Modos de Uso
 
 ### 1. Panel de Control Nativo (Recomendado)

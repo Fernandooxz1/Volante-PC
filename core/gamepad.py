@@ -47,7 +47,19 @@ def check_gamepad_prerequisites() -> Tuple[bool, str]:
             )
         return True, "Permisos de uinput correctos."
     elif sys.platform == 'win32':
-        return True, "Windows detectado (requiere ViGEmBus)."
+        system_root = os.environ.get('SystemRoot', r'C:\Windows')
+        possible_paths = [
+            os.path.join(system_root, 'System32', 'drivers', 'ViGEmBus.sys'),
+            os.path.join(system_root, 'Sysnative', 'drivers', 'ViGEmBus.sys'),
+        ]
+        driver_found = any(os.path.exists(p) for p in possible_paths)
+        if not driver_found:
+            return False, (
+                "Controlador ViGEmBus no detectado en el sistema.\n"
+                "Para emular el mando virtual de Xbox 360 en Windows, instala ViGEmBus:\n"
+                "Ejecuta 'windows/drivers/ViGEmBus_Setup.exe' o el instalador del proyecto."
+            )
+        return True, "Driver ViGEmBus detectado en Windows."
     else:
         return True, "Plataforma no linux/windows."
 
@@ -65,9 +77,22 @@ class VirtualGamepadManager:
         """Inicializa el gamepad virtual de Xbox 360."""
         can_init, msg = check_gamepad_prerequisites()
         if not can_init:
-            self.error_message = msg
-            self.is_connected = False
-            return False, msg
+            # En Windows intentamos crear VX360Gamepad por si el driver está cargado en otra ruta
+            if sys.platform == 'win32':
+                try:
+                    self.gamepad = vg.VX360Gamepad()
+                    self.is_connected = True
+                    self.error_message = None
+                    self._pressed_buttons.clear()
+                    return True, "Gamepad virtual Xbox 360 inicializado correctamente."
+                except Exception:
+                    self.error_message = msg
+                    self.is_connected = False
+                    return False, msg
+            else:
+                self.error_message = msg
+                self.is_connected = False
+                return False, msg
 
         try:
             self.gamepad = vg.VX360Gamepad()
@@ -77,7 +102,13 @@ class VirtualGamepadManager:
             return True, "Gamepad virtual Xbox 360 inicializado correctamente."
         except Exception as e:
             self.is_connected = False
-            self.error_message = f"Error inicializando vgamepad: {e}"
+            if sys.platform == 'win32':
+                self.error_message = (
+                    f"Error inicializando vgamepad: {e}.\n"
+                    "Asegúrate de tener instalado el controlador ViGEmBus."
+                )
+            else:
+                self.error_message = f"Error inicializando vgamepad: {e}"
             return False, self.error_message
 
     def apply_inputs(
