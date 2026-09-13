@@ -50,6 +50,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "led_color": "Azul",
     "f1_telemetry_enabled": True,
     "f1_telemetry_port": 20777,
+    "esp32_broadcast_enabled": True,
+    "esp32_broadcast_host": "255.255.255.255",
+    "esp32_broadcast_port": 20778,
     "custom_presets": {
         "F1 RACING": {
             "mode": "Conducción",

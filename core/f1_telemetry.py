@@ -32,9 +32,15 @@ class F1TelemetryReceiver:
     Escucha en segundo plano y extrae RPM, marcha actual, velocidad y porcentaje de luces de cambio.
     """
 
-    def __init__(self, port: int = DEFAULT_F1_UDP_PORT, host: str = "0.0.0.0"):
+    def __init__(
+        self,
+        port: int = DEFAULT_F1_UDP_PORT,
+        host: str = "0.0.0.0",
+        esp32_bridge: Optional[Any] = None,
+    ):
         self.port = port
         self.host = host
+        self.esp32_bridge = esp32_bridge
 
         self._lock = threading.Lock()
         self._running = False
@@ -161,6 +167,16 @@ class F1TelemetryReceiver:
                 self._rev_lights_percent = min(100, max(0, rev_pct))
                 self._last_packet_time = time.time()
 
+            # Retransmitir paquete optimizado hacia la ESP32 por WiFi
+            if self.esp32_bridge:
+                self.esp32_bridge.send_telemetry(
+                    rpm=rpm,
+                    gear=gear,
+                    speed=speed,
+                    rev_lights_percent=min(100, max(0, rev_pct)),
+                    drs=drs,
+                )
+
             return True
 
         except Exception as e:
@@ -171,6 +187,10 @@ class F1TelemetryReceiver:
         """Inicia el socket UDP y el hilo de escucha en segundo plano."""
         if self._running:
             return True
+
+        # Iniciar puente ESP32 si está asignado
+        if self.esp32_bridge and not getattr(self.esp32_bridge, "is_running", False):
+            self.esp32_bridge.start()
 
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -209,6 +229,11 @@ class F1TelemetryReceiver:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=0.5)
         self._thread = None
+
+        # Detener puente ESP32 si está asignado
+        if self.esp32_bridge and getattr(self.esp32_bridge, "is_running", False):
+            self.esp32_bridge.stop()
+
         logger.info("Receptor de telemetría F1 UDP detenido.")
 
     def _listen_loop(self) -> None:

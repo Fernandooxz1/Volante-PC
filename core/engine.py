@@ -28,6 +28,7 @@ import serial.tools.list_ports
 from core.calibration import calculate_pedal, calculate_steering
 from core.config_manager import ConfigManager
 from core.dsp import SteeringFilter
+from core.esp32_bridge import ESP32Bridge
 from core.f1_telemetry import F1TelemetryReceiver
 from core.gamepad import BUTTON_MAPPING_TABLE, VirtualGamepadManager
 from core.protocol import (
@@ -267,9 +268,22 @@ class Engine:
         self._pending_led_command: Optional[bytes] = None
         self._last_led_send_time: float = 0.0
 
+        # Puente de telemetría hacia ESP32 por WiFi
+        esp32_enabled = bool(self.config_manager.get("esp32_broadcast_enabled", True))
+        esp32_host = str(self.config_manager.get("esp32_broadcast_host", "255.255.255.255"))
+        esp32_port = int(self.config_manager.get("esp32_broadcast_port", 20778))
+        self._esp32_bridge: ESP32Bridge = ESP32Bridge(
+            host=esp32_host,
+            port=esp32_port,
+            enabled=esp32_enabled,
+        )
+
         # Receptor de telemetría F1 UDP
         f1_port = int(self.config_manager.get("f1_telemetry_port", 20777))
-        self._f1_receiver: F1TelemetryReceiver = F1TelemetryReceiver(port=f1_port)
+        self._f1_receiver: F1TelemetryReceiver = F1TelemetryReceiver(
+            port=f1_port,
+            esp32_bridge=self._esp32_bridge,
+        )
 
         # Estado previo de hardware para detección de eventos y flancos
         self._prev_raw_buttons: List[int] = [0] * len(PIN_NAMES)
@@ -829,7 +843,10 @@ class Engine:
         active_preset = str(self.config_manager.get("active_preset", "Personalizado"))
         custom_presets = self.config_manager.get("custom_presets", {})
         preset_data = custom_presets.get(active_preset, {})
-        f1_enabled = preset_data.get("f1_telemetry", self.config_manager.get("f1_telemetry", ("F1" in active_preset.upper())))
+        f1_enabled = preset_data.get(
+            "f1_telemetry",
+            self.config_manager.get("f1_telemetry_enabled", self.config_manager.get("f1_telemetry", ("F1" in active_preset.upper()))),
+        )
 
         if f1_enabled and self._f1_receiver and self._f1_receiver.is_active:
             shift_color = self._f1_receiver.get_shift_led_color()
