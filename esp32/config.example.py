@@ -21,7 +21,7 @@ DASHBOARD_TYPE = "discrete"
 # ==============================================================================
 # Pin de datos y cantidad de NeoPixels WS2812B
 PIN_NEOPIXEL = 13
-NEOPIXEL_COUNT = 10
+NEOPIXEL_COUNT = 8
 
 # 7 Segmentos compartidos (Ánodo Común - con resistencia de 330Ω o 470Ω cada uno)
 PIN_SEG_A = 16

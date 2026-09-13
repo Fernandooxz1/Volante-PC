@@ -1,41 +1,44 @@
-# Dashboard Hardware para ESP32: 7 Segmentos + Tira de 10 NeoPixels
+# Dashboard Hardware para ESP32: 7 Segmentos + Barra de 8 NeoPixels
 
 Panel digital de telemetría para simulador de carreras con:
 1. **1 Display de 7 Segmentos Ánodo Común (Marcha)**.
 2. **1 Display de 7 Segmentos de 3 Dígitos Ánodo Común (Velocidad en KM/H)**.
-3. **10 LEDs NeoPixel WS2812B 5050 SMD independientes en cascada (Shift Lights / RPM)**.
+3. **8 LEDs NeoPixel WS2812B 5050 SMD independientes en cascada (Shift Lights / RPM)**.
 
 ---
 
-## 💡 ¿Cómo se conectan los 10 NeoPixels separados?
+## 💡 ¿Cómo se conectan los 8 NeoPixels separados?
 
 Los LEDs WS2812B funcionan en **cascada (daisy chain)**. Aunque sean plaquitas o LEDs separados, solo se usa **1 solo pin de la ESP32 (GPIO 13)**:
 
 ```text
-[ Pin GPIO 13 ] ────────► [ DIN ]  LED 1  [ DOUT ] ────┐
-                                                       ▼
-                                                   [ DIN ]  LED 2  [ DOUT ] ────┐
-                                                                                ▼
-                                                                            [ DIN ]  LED 3 ... hasta LED 10
+               ┌──► VCC de los 8 LEDs unidos en paralelo a VIN (5V) de la ESP32
+               └──► GND de los 8 LEDs unidos en paralelo a GND de la ESP32
+
+[ ESP32: GPIO 13 ] ────► [ DIN ] LED 1 [ DOUT ] ────┐
+                                                    ▼
+                                                [ DIN ] LED 2 [ DOUT ] ────┐
+                                                                           ▼
+                                                                       [ DIN ] LED 3 ... hasta el LED 8
 ```
 
-- **VCC (+5V):** Todos los pines `+5V` / `VCC` de los 10 LEDs van unidos en paralelo al pin **VIN (5V)** de la ESP32.
-- **GND:** Todos los pines `GND` de los 10 LEDs van unidos en paralelo al pin **GND** de la ESP32.
-- **DATOS (En serie de uno a otro):**
+- **VCC (+5V):** Todos los pines `+5V` / `VCC` de los 8 LEDs van unidos en paralelo al pin **VIN (5V)** de la ESP32.
+- **GND:** Todos los pines `GND` de los 8 LEDs van unidos en paralelo al pin **GND** de la ESP32.
+- **DATOS (En serie de uno al siguiente):**
   - **ESP32 GPIO 13** ➔ al pin **`DIN`** del 1° LED.
   - El **`DOUT`** del 1° LED ➔ al **`DIN`** del 2° LED.
   - El **`DOUT`** del 2° LED ➔ al **`DIN`** del 3° LED...
-  - ... así sucesivamente hasta el 10° LED (el `DOUT` del 10° queda libre).
+  - ... así sucesivamente hasta el 8° LED (el `DOUT` del 8° queda libre).
 
 ---
 
-## 🚦 Escala de Colores para los 10 LEDs de RPM
+## 🚦 Escala de Colores para los 8 LEDs de RPM
 
-* **LEDs 1, 2 y 3 (Verdes):** 🟢 50% a 70% RPM (bajas/medias vueltas).
-* **LEDs 4, 5 y 6 (Amarillos):** 🟡 70% a 85% RPM (subiendo revoluciones).
-* **LEDs 7 y 8 (Rojos):** 🔴 85% a 93% RPM (zona alta).
-* **LEDs 9 y 10 (Azules):** 🔵 93% a 95% RPM (¡Punto óptimo de cambio!).
-* **Corte (> 95% RPM):** ¡Los 10 LEDs destellan al unísono en **Azul/Blanco** (Shift Light Flash estilo F1 real)!
+* **LEDs 1 y 2 (Verdes):** 🟢 50% a 70% RPM (bajas/medias revoluciones).
+* **LEDs 3 y 4 (Amarillos):** 🟡 70% a 85% RPM (subiendo vueltas).
+* **LEDs 5 y 6 (Rojos):** 🔴 85% a 93% RPM (zona alta).
+* **LEDs 7 y 8 (Azules):** 🔵 93% a 95% RPM (¡Punto óptimo de cambio!).
+* **Corte (> 95% RPM):** ¡Los 8 LEDs destellan al unísono en **Azul/Blanco** (Shift Light Flash estilo F1)!
 
 ---
 
