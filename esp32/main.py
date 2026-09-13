@@ -1,7 +1,7 @@
 """
 Volante-PC // Dashboard de Telemetría Motorsport para ESP32 (MicroPython).
 Recibe paquetes UDP ultraligeros desde la PC por WiFi y muestra los datos
-en tiempo real en una pantalla IPS 1.3" ST7789 (240x240 SPI) o en consola.
+en hardware discreto (7 Segmentos Ánodo Común + Tira NeoPixel 8 LEDs) o pantalla ST7789.
 
 Protocolo Volante-PC (9 bytes):
 - Sync: 0xAA 0x55
@@ -19,7 +19,8 @@ import network
 
 import config
 
-display = None
+discrete_ddu = None
+st7789_ddu = None
 last_packet_time = 0
 
 
@@ -46,35 +47,50 @@ def init_wifi():
     return ip
 
 
-def init_display():
-    """Inicializa la pantalla ST7789 IPS 240x240."""
-    global display
-    try:
-        from ddu_display import DDUDisplay
+def init_dashboard():
+    """Inicializa el hardware según DASHBOARD_TYPE ('discrete' o 'st7789')."""
+    global discrete_ddu, st7789_ddu
+    dash_type = getattr(config, "DASHBOARD_TYPE", "discrete").lower()
 
-        display = DDUDisplay(config)
-        print("[ST7789] Pantalla IPS 240x240 inicializada correctamente.")
-        return display
-    except Exception as e:
-        print(f"[ST7789] Advertencia: no se pudo iniciar pantalla ({e}). Modo consola activo.")
-        display = None
-        return None
+    if dash_type == "discrete":
+        try:
+            from ddu_discrete import DiscreteDDU
+
+            discrete_ddu = DiscreteDDU(config)
+            print("[DDU] Dashboard Discreto activo: 7 Segmentos Ánodo Común + 8 NeoPixels.")
+            return discrete_ddu
+        except Exception as e:
+            print(f"[DDU] Error iniciando hardware discreto: {e}")
+            return None
+
+    elif dash_type == "st7789":
+        try:
+            from ddu_display import DDUDisplay
+
+            st7789_ddu = DDUDisplay(config)
+            print("[ST7789] Pantalla IPS 240x240 inicializada correctamente.")
+            return st7789_ddu
+        except Exception as e:
+            print(f"[ST7789] Advertencia: no se pudo iniciar pantalla ({e}).")
+            return None
+
+    return None
 
 
 def main():
-    global last_packet_time, display
+    global last_packet_time, discrete_ddu, st7789_ddu
 
     print("==================================================")
-    print("  VOLANTE-PC // ESP32 MOTORSPORT DDU (ST7789 IPS) ")
+    print("      VOLANTE-PC // ESP32 MOTORSPORT DDU          ")
     print("==================================================")
 
-    ddu = init_display()
+    init_dashboard()
     ip = init_wifi()
 
-    if ddu:
-        ddu.show_waiting_screen(ip or "SIN WIFI")
+    if st7789_ddu:
+        st7789_ddu.show_waiting_screen(ip or "SIN WIFI")
 
-    # Crear socket UDP en el puerto configurado
+    # Socket UDP
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("0.0.0.0", config.UDP_PORT))
@@ -110,24 +126,32 @@ def main():
                 last_packet_time = time.time()
                 waiting_shown = False
 
-                if ddu:
-                    ddu.update(gear_str, speed, rpm, revs, drs)
+                if discrete_ddu:
+                    discrete_ddu.update_telemetry(gear_str, speed, revs, drs)
+                elif st7789_ddu:
+                    st7789_ddu.update(gear_str, speed, rpm, revs, drs)
                 else:
-                    # Salida por consola serial si no hay pantalla conectada
                     print(f"[DDU] M: {gear_str} | Vel: {speed:3d} km/h | RPM: {rpm:<5} | Revs: {revs:2d}% | DRS: {drs}")
 
         except OSError:
             pass
 
-        # Si pasan más de 2.5 segundos sin telemetría, volver a pantalla de espera
+        # Si pasan más de 2.5 segundos sin telemetría, restaurar estado de reposo
         if not waiting_shown and (time.time() - last_packet_time) > 2.5:
-            if ddu:
-                ddu.show_waiting_screen(ip or "--")
+            if discrete_ddu:
+                discrete_ddu.update_telemetry("N", 0, 0, 0)
+            elif st7789_ddu:
+                st7789_ddu.show_waiting_screen(ip or "--")
             else:
                 print("[DDU] Esperando telemetría de F1...")
             waiting_shown = True
 
-        time.sleep_ms(10)  # ~100 Hz de sondeo UDP de baja latencia
+        # Multiplexado de los 7 segmentos (refresco cada ~2ms por dígito)
+        if discrete_ddu:
+            discrete_ddu.refresh_step()
+            time.sleep_ms(2)
+        else:
+            time.sleep_ms(10)
 
 
 if __name__ == "__main__":
