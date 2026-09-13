@@ -19,8 +19,9 @@ DASHBOARD_TYPE = "discrete"
 # ==============================================================================
 # HARDWARE DISCRETO (7 SEGMENTOS + NEOPIXEL WS2812B)
 # ==============================================================================
-# Pin de datos de la tira de 8 NeoPixels WS2812B
+# Pin de datos y cantidad de NeoPixels WS2812B
 PIN_NEOPIXEL = 13
+NEOPIXEL_COUNT = 10
 
 # 7 Segmentos compartidos (Ánodo Común - con resistencia de 330Ω o 470Ω cada uno)
 PIN_SEG_A = 16

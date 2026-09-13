@@ -72,8 +72,9 @@ class DiscreteDDU:
         for p in self.digit_pins:
             p.value(0)
 
-        # 3. Configurar tira de 8 NeoPixels WS2812B
-        self.np = neopixel.NeoPixel(Pin(config.PIN_NEOPIXEL, Pin.OUT), 8)
+        # 3. Configurar tira NeoPixels WS2812B (10 LEDs por defecto)
+        self.num_leds = getattr(config, "NEOPIXEL_COUNT", 10)
+        self.np = neopixel.NeoPixel(Pin(config.PIN_NEOPIXEL, Pin.OUT), self.num_leds)
         self.clear_leds()
 
         # Buffers de visualización
@@ -84,7 +85,7 @@ class DiscreteDDU:
 
     def clear_leds(self):
         """Apaga todos los LEDs de la tira."""
-        for i in range(8):
+        for i in range(self.num_leds):
             self.np[i] = COLOR_OFF
         self.np.write()
 
@@ -104,11 +105,11 @@ class DiscreteDDU:
 
         self.chars_to_display = [g_char, sp_str[0], sp_str[1], sp_str[2]]
 
-        # 3. Actualizar tira de 8 NeoPixels
+        # 3. Actualizar tira de NeoPixels
         self._update_neopixels(revs_pct, drs)
 
     def _update_neopixels(self, revs_pct: int, drs: int):
-        """Mapea el porcentaje de revoluciones en los 8 NeoPixels."""
+        """Mapea el porcentaje de revoluciones en los NeoPixels."""
         clamped = max(0, min(100, revs_pct))
 
         # Shift Flash cuando se supera el 95% de RPM
@@ -119,25 +120,32 @@ class DiscreteDDU:
                 self._last_flash_time = now
 
             flash_color = COLOR_BLUE if self._flash_state else COLOR_WHITE
-            for i in range(8):
+            for i in range(self.num_leds):
                 self.np[i] = flash_color
             self.np.write()
             return
 
-        # Escala progresiva de 8 LEDs:
-        # 0 y 1: Verdes (50% a 70%)
-        # 2 y 3: Amarillos (70% a 85%)
-        # 4 y 5: Rojos (85% a 93%)
-        # 6 y 7: Azules (93% a 95%)
-        thresholds = [50, 60, 70, 78, 85, 90, 93, 95]
-        colors = [
-            COLOR_GREEN, COLOR_GREEN,
-            COLOR_YELLOW, COLOR_YELLOW,
-            COLOR_RED, COLOR_RED,
-            COLOR_BLUE, COLOR_BLUE,
-        ]
+        # Escala progresiva:
+        if self.num_leds == 10:
+            # 10 LEDs: 3 Verdes (50-66%), 3 Amarillos (72-84%), 2 Rojos (88-92%), 2 Azules (95-98%)
+            thresholds = [50, 58, 66, 72, 78, 84, 88, 92, 95, 98]
+            colors = [
+                COLOR_GREEN, COLOR_GREEN, COLOR_GREEN,
+                COLOR_YELLOW, COLOR_YELLOW, COLOR_YELLOW,
+                COLOR_RED, COLOR_RED,
+                COLOR_BLUE, COLOR_BLUE,
+            ]
+        else:
+            # 8 LEDs: 2 Verdes, 2 Amarillos, 2 Rojos, 2 Azules
+            thresholds = [50, 60, 70, 78, 85, 90, 93, 95]
+            colors = [
+                COLOR_GREEN, COLOR_GREEN,
+                COLOR_YELLOW, COLOR_YELLOW,
+                COLOR_RED, COLOR_RED,
+                COLOR_BLUE, COLOR_BLUE,
+            ]
 
-        for i in range(8):
+        for i in range(self.num_leds):
             if clamped >= thresholds[i]:
                 self.np[i] = colors[i]
             else:
