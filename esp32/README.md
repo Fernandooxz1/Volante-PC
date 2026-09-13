@@ -1,5 +1,7 @@
 # Dashboard Hardware para ESP32: 7 Segmentos + Barra de 8 NeoPixels
 
+> 📖 **Guía completa paso a paso para armar desde cero:** Consulta [GUIA_INSTALACION_HARDWARE.md](GUIA_INSTALACION_HARDWARE.md) para el tutorial detallado de montaje, checklist, identificación de pines con multímetro y pruebas.
+
 Panel digital de telemetría para simulador de carreras con:
 1. **1 Display de 7 Segmentos Ánodo Común (Marcha)**.
 2. **1 Display de 7 Segmentos de 3 Dígitos Ánodo Común (Velocidad en KM/H)**.
