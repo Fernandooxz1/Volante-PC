@@ -16,6 +16,13 @@ import socket
 import struct
 import time
 import network
+import machine
+
+# Desactivar detector de Brownout (BOD) para tolerar caídas de tensión al compartir USB
+try:
+    machine.mem32[0x3FF480D4] = 0
+except Exception:
+    pass
 
 import config
 
@@ -28,6 +35,10 @@ def init_wifi():
     """Conecta la ESP32 a la red WiFi configurada."""
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
+    try:
+        wlan.config(txpower=8.5)
+    except Exception:
+        pass
 
     if wlan.isconnected():
         return wlan.ifconfig()[0]
