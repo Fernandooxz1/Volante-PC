@@ -19,7 +19,9 @@
 // --- Pines ---
 #define PIN_I2C_SDA     21
 #define PIN_I2C_SCL     22
-#define PIN_HALL_ACCEL  36
+#define PIN_HALL_ACCEL  32
+#define PIN_HALL_VCC    33
+#define PIN_HALL_GND    25
 #define PIN_HALL_BRAKE  34
 #define PIN_NEOPIXEL    13
 #define NUM_PIXELS      5
@@ -120,7 +122,12 @@ void setup() {
   // I2C para AS5600
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
 
-  // ADC para acelerador (GPIO 36 / SENSOR_VP)
+  // Alimentación y lectura ADC para SS49E
+  pinMode(PIN_HALL_VCC, OUTPUT);
+  digitalWrite(PIN_HALL_VCC, HIGH); // 3.3V al pin izquierdo
+  pinMode(PIN_HALL_GND, OUTPUT);
+  digitalWrite(PIN_HALL_GND, LOW);  // 0V al pin central
+
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_HALL_ACCEL, ADC_11db);
   analogSetPinAttenuation(PIN_HALL_BRAKE, ADC_11db);

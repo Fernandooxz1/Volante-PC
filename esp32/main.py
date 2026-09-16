@@ -38,15 +38,25 @@ try:
 except Exception as e:
     print(f"[AS5600] Error iniciando I2C: {e}")
 
-# Inicialización ADC para Sensor Hall SS49E (Acelerador)
+# Inicialización ADC y Alimentación para Sensor Hall SS49E (Acelerador)
 accel_adc = None
 try:
-    accel_pin = getattr(config, "PIN_HALL_ACCEL", 36)
+    vcc_pin = getattr(config, "PIN_HALL_VCC", None)
+    if vcc_pin is not None:
+        Pin(vcc_pin, Pin.OUT).value(1)
+        print(f"[HALL] Pin de alimentación VCC (3.3V) activado en GPIO {vcc_pin}")
+
+    gnd_pin = getattr(config, "PIN_HALL_GND", None)
+    if gnd_pin is not None:
+        Pin(gnd_pin, Pin.OUT).value(0)
+        print(f"[HALL] Pin de masa GND (0V) activado en GPIO {gnd_pin}")
+
+    accel_pin = getattr(config, "PIN_HALL_ACCEL", 32)
     accel_adc = ADC(Pin(accel_pin))
     accel_adc.atten(ADC.ATTN_11DB)
-    print(f"[HALL] Sensor Acelerador inicializado en GPIO {accel_pin}")
+    print(f"[HALL] Sensor Acelerador inicializado en ADC GPIO {accel_pin}")
 except Exception as e:
-    print(f"[HALL] Error iniciando ADC: {e}")
+    print(f"[HALL] Error iniciando ADC / Alimentación: {e}")
 
 discrete_ddu = None
 st7789_ddu = None
