@@ -84,27 +84,21 @@ class MainWindow(QMainWindow):
         self._last_active_preset: str = self.config_manager.get("active_preset", "Personalizado")
         self._btn_indicators: Dict[str, QLabel] = {}
 
-        # Configuración inicial de la ventana
         self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(860, 520)
         self.resize(1100, 720)
 
-        # Construir UI
         self._build_toolbar()
         self._build_central_ui()
         self._build_statusbar()
 
-        # Cargar valores iniciales en sliders y controles
         self._sync_sliders_from_config()
         self._sync_presets_from_config()
 
-        # Aplicar estilo visual
         self._apply_current_theme()
 
-        # Suscripción al sistema reactivo de traducción
         self._unsubscribe_i18n = subscribe(self._on_language_changed)
 
-        # Timer de refresco de telemetría e interfaz (30 Hz = 33 ms)
         self._telemetry_timer = QTimer(self)
         self._telemetry_timer.setInterval(33)
         self._telemetry_timer.timeout.connect(self._update_telemetry_ui)
@@ -112,39 +106,32 @@ class MainWindow(QMainWindow):
 
         self._log("Volante-PC Simracing Dashboard inicializado.", "info")
 
-    # -------------------------------------------------------------------------
     # Construcción de la Barra de Herramientas (Toolbar)
-    # -------------------------------------------------------------------------
     def _build_toolbar(self) -> None:
         self.toolbar = QToolBar("MainToolbar", self)
         self.toolbar.setMovable(False)
         self.toolbar.setFloatable(False)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolbar)
 
-        # Indicador de estado visual (Punto LED)
         self.status_dot = QLabel("●", self)
         self.status_dot.setStyleSheet("color: #ff3344; font-size: 16px; margin-right: 4px;")
         self.toolbar.addWidget(self.status_dot)
 
-        # Etiqueta de estado
         self.status_lbl = QLabel(tr("status.disconnected"), self)
         self.status_lbl.setStyleSheet("font-weight: 700; margin-right: 12px;")
         self.toolbar.addWidget(self.status_lbl)
 
-        # Selector de Puerto Serie
         self.port_combo = QComboBox(self)
         self.port_combo.setMinimumWidth(140)
         self._refresh_ports()
         self.toolbar.addWidget(self.port_combo)
 
-        # Botón Refrescar Puertos
         self.btn_refresh_ports = QPushButton("↻", self)
         self.btn_refresh_ports.setToolTip(tr("status.refresh_ports"))
         self.btn_refresh_ports.setFixedWidth(32)
         self.btn_refresh_ports.clicked.connect(self._refresh_ports)
         self.toolbar.addWidget(self.btn_refresh_ports)
 
-        # Botón Conectar / Desconectar
         self.btn_connect = QPushButton(tr("status.connect"), self)
         self.btn_connect.setProperty("primary", "true")
         self.btn_connect.clicked.connect(self._toggle_connection)
@@ -209,9 +196,8 @@ class MainWindow(QMainWindow):
         self.btn_lang.clicked.connect(self._toggle_language)
         self.toolbar.addWidget(self.btn_lang)
 
-    # -------------------------------------------------------------------------
     # Construcción de la Interfaz Central
-    # -------------------------------------------------------------------------
+
     def _build_central_ui(self) -> None:
         main_scroll = QScrollArea(self)
         main_scroll.setWidgetResizable(True)
@@ -245,30 +231,24 @@ class MainWindow(QMainWindow):
         ddu_header.addWidget(self.hz_badge)
         left_layout.addLayout(ddu_header)
 
-        # 2. Área principal de instrumentos (Volante al centro + Pedales a los costados)
         gauges_layout = QHBoxLayout()
         gauges_layout.setSpacing(14)
 
-        # Pedal de Freno (Brake)
         self.pedal_brake = PedalBar(label=tr("telemetry.brake"), pedal_type="brake", parent=self)
         gauges_layout.addWidget(self.pedal_brake)
 
-        # Instrumento de Volante (WheelGauge)
         self.wheel_gauge = WheelGauge(parent=self)
         gauges_layout.addWidget(self.wheel_gauge, stretch=2)
 
-        # Pedal de Acelerador (Throttle)
         self.pedal_throttle = PedalBar(label=tr("telemetry.throttle"), pedal_type="throttle", parent=self)
         gauges_layout.addWidget(self.pedal_throttle)
 
         left_layout.addLayout(gauges_layout, stretch=3)
 
-        # 3. Gráfico de Curva Matemática (CurveCanvas)
         self.curve_canvas = CurveCanvas(parent=self)
         self.curve_canvas.setMinimumHeight(150)
         left_layout.addWidget(self.curve_canvas, stretch=2)
 
-        # 4. Indicadores de Pines y Pulsadores Digitales (Pines Arduino)
         buttons_box = QGroupBox(tr("mapping.digital_pins"), self)
         buttons_layout = QGridLayout(buttons_box)
         buttons_layout.setContentsMargins(8, 12, 8, 8)
@@ -321,15 +301,13 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.tabs)
         main_layout.addWidget(right_card, stretch=4)
 
-    # -------------------------------------------------------------------------
     # Pestaña de Sintonía Dinámica y Filtros
-    # -------------------------------------------------------------------------
+
     def _build_tuning_tab(self, parent: QWidget) -> None:
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(12, 14, 12, 12)
         layout.setSpacing(14)
 
-        # 1. Slider: Sensibilidad (0.10 a 2.00)
         self.slider_sens, self.val_sens = self._create_slider_row(
             layout,
             title_key="sliders.sensitivity",
@@ -341,7 +319,6 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("sensitivity", v / 100.0),
         )
 
-        # 2. Slider: Pendiente de Linealidad / Expo (0.50 a 3.00)
         self.slider_slope, self.val_slope = self._create_slider_row(
             layout,
             title_key="sliders.slope",
@@ -353,7 +330,6 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("slope", v / 100.0),
         )
 
-        # 3. Slider: Anti-Deadzone (0.00 a 0.40)
         self.slider_anti_dz, self.val_anti_dz = self._create_slider_row(
             layout,
             title_key="sliders.anti_deadzone",
@@ -365,7 +341,6 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("anti_deadzone", v / 100.0),
         )
 
-        # 4. Slider: Zona Muerta Pedales (0.00 a 0.30)
         self.slider_deadzone, self.val_deadzone = self._create_slider_row(
             layout,
             title_key="sliders.deadzone",
@@ -377,7 +352,6 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("deadzone", v / 100.0),
         )
 
-        # 5. Slider: Filtro Anti-Ruido DSP (0.00 a 0.90)
         self.slider_filter, self.val_filter = self._create_slider_row(
             layout,
             title_key="sliders.filter",
@@ -389,7 +363,6 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("filter", v / 100.0),
         )
 
-        # Inversión de Ejes
         invert_group = QGroupBox(tr("mapping.title"), parent)
         invert_layout = QVBoxLayout(invert_group)
         invert_layout.setContentsMargins(8, 10, 8, 8)
@@ -454,9 +427,8 @@ class MainWindow(QMainWindow):
 
         return slider, val_lbl
 
-    # -------------------------------------------------------------------------
     # Pestaña de Consola y Logs
-    # -------------------------------------------------------------------------
+
     def _build_logs_tab(self, parent: QWidget) -> None:
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -474,9 +446,7 @@ class MainWindow(QMainWindow):
         btn_box.addWidget(btn_clear)
         layout.addLayout(btn_box)
 
-    # -------------------------------------------------------------------------
     # Barra de Estado (Status Bar)
-    # -------------------------------------------------------------------------
     def _build_statusbar(self) -> None:
         statusbar = QStatusBar(self)
         self.setStatusBar(statusbar)
@@ -493,9 +463,7 @@ class MainWindow(QMainWindow):
         statusbar.addWidget(self.lbl_sb_f1, 2)
         statusbar.addPermanentWidget(self.lbl_sb_gamepad)
 
-    # -------------------------------------------------------------------------
-    # Actualización en Tiempo Real (Timer 30 Hz)
-    # -------------------------------------------------------------------------
+    # Actualización en Tiempo Real 
     def _update_telemetry_ui(self) -> None:
         snapshot = self.engine.get_telemetry()
 
@@ -556,7 +524,6 @@ class MainWindow(QMainWindow):
                         font-size: 10px;
                     """)
 
-        # 6. Sincronización de Preset y Modo si cambiaron por botón físico (estilo 'Q')
         if hasattr(snapshot, "preset") and snapshot.preset and snapshot.preset != self.preset_combo.currentText():
             self._is_updating_ui = True
             try:
@@ -593,22 +560,20 @@ class MainWindow(QMainWindow):
             gear = snapshot.f1_gear
             gear_str = "R" if gear == -1 else ("N" if gear == 0 else f"M{gear}")
             self.lbl_sb_f1.setText(
-                f"🏎️ F1: {snapshot.f1_rpm} RPM [{gear_str}] {snapshot.f1_rev_lights}% | LED: {snapshot.led_color}"
+                f" F1: {snapshot.f1_rpm} RPM [{gear_str}] {snapshot.f1_rev_lights}% | LED: {snapshot.led_color}"
             )
             self.lbl_sb_f1.setStyleSheet("color: #00e5ff; font-weight: bold;")
         else:
             active_preset = getattr(snapshot, "preset", "")
             mode = getattr(snapshot, "mode", "")
             if "F1" in active_preset.upper() and mode == "Conducción":
-                self.lbl_sb_f1.setText(f"🏎️ F1 UDP: Puerto 20777 listo | LED: {snapshot.led_color}")
+                self.lbl_sb_f1.setText(f" F1 UDP: Puerto 20777 listo | LED: {snapshot.led_color}")
                 self.lbl_sb_f1.setStyleSheet("color: #64748b;")
             else:
                 self.lbl_sb_f1.setText(f"LED: {snapshot.led_color}")
                 self.lbl_sb_f1.setStyleSheet("color: #64748b;")
 
-    # -------------------------------------------------------------------------
     # Manejadores de Sintonía, Presets y Hardware
-    # -------------------------------------------------------------------------
     def _refresh_ports(self) -> None:
         """Escanea y actualiza los puertos serie disponibles."""
         current = self.port_combo.currentText()
@@ -775,9 +740,8 @@ class MainWindow(QMainWindow):
             self._sync_sliders_from_config()
             self._log(f"Preset '{current}' eliminado.", "info")
 
-    # -------------------------------------------------------------------------
     # Diálogos y Asistentes
-    # -------------------------------------------------------------------------
+
     def _open_calibration_wizard(self) -> None:
         dlg = CalibrationWizardDialog(engine=self.engine, config_manager=self.config_manager, parent=self)
         dlg.calibration_applied.connect(lambda d: self._sync_sliders_from_config())
@@ -852,9 +816,7 @@ class MainWindow(QMainWindow):
         html = f"<span style='color: #64748b;'>[{timestamp}]</span> <span style='color: {color}; font-weight: 600;'>{text}</span>"
         self.log_console.appendHtml(html)
 
-    # -------------------------------------------------------------------------
     # Cierre Seguro de la Ventana
-    # -------------------------------------------------------------------------
     def closeEvent(self, event) -> None:
         self._telemetry_timer.stop()
         if hasattr(self, "_unsubscribe_i18n") and self._unsubscribe_i18n:

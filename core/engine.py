@@ -341,9 +341,7 @@ class Engine:
             f1_rev_lights=0,
         )
 
-    # =========================================================================
     # Ciclo de Vida y Control del Hilo
-    # =========================================================================
 
     @property
     def is_running(self) -> bool:
@@ -432,9 +430,7 @@ class Engine:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.stop()
 
-    # =========================================================================
     # Manejo de Conexión Serie y Reconexión Automática
-    # =========================================================================
 
     def _update_telemetry_status(self, status: str) -> None:
         """Actualiza atómicamente el estado de la conexión en la instantánea de telemetría."""
@@ -559,10 +555,7 @@ class Engine:
         self._last_error = reason
         self._update_telemetry_status(self._status)
 
-    # =========================================================================
     # Modos de Operación y Presets
-    # =========================================================================
-
     def set_mode(self, mode: str) -> None:
         """Cambia el modo de operación ('Conducción' vs 'Crucetas / D-Pad')."""
         if mode not in AVAILABLE_MODES:
@@ -629,10 +622,7 @@ class Engine:
         self.config_manager.save()
         return next_preset
 
-    # =========================================================================
     # Control de LED RGB
-    # =========================================================================
-
     def _update_led_color_from_config(self) -> None:
         """Determina el color LED correspondiente según preset o configuración activa."""
         active_preset = self.config_manager.get("active_preset", "Personalizado")
@@ -676,9 +666,7 @@ class Engine:
         packet = encode_led_command(color)
         self._pending_led_command = packet
 
-    # =========================================================================
     # Bus Reactivo de Eventos de Entrada (Press-to-Map Wizard)
-    # =========================================================================
 
     def set_mapping_mode(self, active: bool) -> None:
         """Activa o desactiva explícitamente el modo de mapeo para suspender funciones secundarias."""
@@ -730,9 +718,7 @@ class Engine:
             except Exception as e:
                 logger.error("Error en callback de evento de entrada (%s, %s): %s", source_type, source_id, e)
 
-    # =========================================================================
     # Telemetría Thread-Safe y Pulso de Cruceta Virtual
-    # =========================================================================
 
     def get_telemetry(self) -> TelemetrySnapshot:
         """Obtiene una copia atómica e inmutable de la última telemetría calculada."""
@@ -748,9 +734,7 @@ class Engine:
         if self.gamepad_manager.is_connected:
             self.gamepad_manager.trigger_button_pulse(direction, duration_ms)
 
-    # =========================================================================
     # Bucle de Ejecución a 100 Hz (time.perf_counter() para Zero-Jitter)
-    # =========================================================================
 
     def _run_loop(self) -> None:
         """Bucle principal de ejecución a 100 Hz con reloj monotónico estricto."""
@@ -906,9 +890,8 @@ class Engine:
         # Guardar lecturas crudas del hardware
         self._last_raw_axes = {"steer": steer_raw, "accel": accel_raw, "brake": brake_raw}
 
-        # ---------------------------------------------------------------------
         # 1. Bus Reactivo de Eventos de Entrada (Press-to-Map)
-        # ---------------------------------------------------------------------
+
         # Botones: Detectar flanco de subida (0 -> 1)
         for i, pin in enumerate(PIN_NAMES):
             curr_state = buttons[i]
@@ -924,9 +907,7 @@ class Engine:
                 self._prev_event_axis_values[axis_name] = curr_val
                 self._emit_input_event("axis", axis_name, curr_val)
 
-        # ---------------------------------------------------------------------
         # 2. Detección del Botón Físico de Ciclo de Presets
-        # ---------------------------------------------------------------------
         cycle_btn_configured = str(self.config_manager.get("preset_cycle_btn", "Ninguno"))
         current_cycle_state = self._get_configured_pin_state(cycle_btn_configured, buttons)
         if current_cycle_state == 1 and self._last_btn_cycle_state == 0:
@@ -934,9 +915,7 @@ class Engine:
                 self.cycle_presets()
         self._last_btn_cycle_state = current_cycle_state
 
-        # ---------------------------------------------------------------------
         # 3. Aplicar Inversión de Ejes Configurada
-        # ---------------------------------------------------------------------
         invert_steer = bool(self.config_manager.get("invert_steer", False))
         invert_accel = bool(self.config_manager.get("invert_accel", False))
         invert_brake = bool(self.config_manager.get("invert_brake", False))
@@ -946,15 +925,12 @@ class Engine:
         accel_calc = max(0, min(1023, accel_raw))
         brake_calc = max(0, min(1023, brake_raw))
 
-        # ---------------------------------------------------------------------
         # 4. Filtro DSP Anti-Jitter (SteeringFilter)
-        # ---------------------------------------------------------------------
         filter_strength = float(self.config_manager.get("filter", 0.0))
         steer_filtered = self._steer_filter.process(steer_calc, filter_strength)
 
-        # ---------------------------------------------------------------------
         # 5. Modelado Matemático de Calibración
-        # ---------------------------------------------------------------------
+
         # Dirección
         val_steer, steer_phys_norm, steer_out_norm = calculate_steering(
             steer=steer_filtered,
@@ -999,9 +975,8 @@ class Engine:
         throttle_pct = round(accel_norm * 100.0, 1)
         brake_pct = round(brake_norm * 100.0, 1)
 
-        # ---------------------------------------------------------------------
         # 6. Mapeo de Botones Activos y Modo Crucetas
-        # ---------------------------------------------------------------------
+
         active_buttons: Set[str] = set()
 
         for i, pin in enumerate(PIN_NAMES):
@@ -1041,9 +1016,8 @@ class Engine:
                 final_accel = 0
                 final_brake = 0
 
-        # ---------------------------------------------------------------------
         # 7. Actualización del Gamepad Virtual
-        # ---------------------------------------------------------------------
+
         steer_target = str(self.config_manager.get("steer_target", "Left Stick X"))
         accel_target = str(self.config_manager.get("accel_target", "Right Trigger (RT)"))
         brake_target = str(self.config_manager.get("brake_target", "Left Trigger (LT)"))
@@ -1059,9 +1033,8 @@ class Engine:
                 active_buttons=active_buttons,
             )
 
-        # ---------------------------------------------------------------------
         # 8. Creación de Instantánea Atómica de Telemetría
-        # ---------------------------------------------------------------------
+
         f1_data = self._f1_receiver.get_telemetry_data() if self._f1_receiver else {}
         active_led = self._determine_active_led_color()
 
