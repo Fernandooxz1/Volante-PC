@@ -4,7 +4,7 @@ Version=1.0
 Name=Volante PC
 GenericName=Emulador de Volante de Carreras
 Comment=Panel de calibración y emulador de volante con Arduino
-Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 volante-pc
+Exec=volante-pc
 Icon=volante-pc
 Terminal=false
 Categories=Game;HardwareSettings;

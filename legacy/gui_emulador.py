@@ -25,6 +25,9 @@ PRESETS = {
         "steer_target": "Left Stick X",
         "accel_target": "Right Trigger (RT)",
         "brake_target": "Left Trigger (LT)",
+        "steer_min": 0,
+        "steer_center": 512,
+        "steer_max": 1023,
     }
 }
 
@@ -57,7 +60,7 @@ class VolanteGUI(ctk.CTk):
         self.resizable(False, False)
 
         # Variables de estado y sincronización (Thread-safe)
-        self.running = False
+        self._running_event = threading.Event()
         self.thread = None
         self.serial_conn = None
         self.lock = threading.Lock()
@@ -65,9 +68,9 @@ class VolanteGUI(ctk.CTk):
         # Ajustes de mapeo y calibración compartidos (Lineal con Anti-Zona Muerta)
         self.steer_target = "Left Stick X"
         self.accel_target = "Right Trigger (RT)"
-        self.brake_target = "Right Trigger (RT)"
+        self.brake_target = "Left Trigger (LT)"
         
-        # Mapeos por defecto de los 10 botones (Pines 2 al 11)
+        # Mapeos por defecto de los 11 botones (Pines 2 al 12)
         self.btn_d2_target = "Ninguno"
         self.btn_d3_target = "Ninguno"
         self.btn_d4_target = "Ninguno"
@@ -78,6 +81,7 @@ class VolanteGUI(ctk.CTk):
         self.btn_a3_target = "Ninguno"
         self.btn_a5_target = "Ninguno"
         self.btn_a4_target = "Ninguno"
+        self.btn_d12_target = "Ninguno"
         
         self.preset_cycle_btn = "Ninguno"
         self.last_btn_cycle_state = 0
@@ -89,17 +93,22 @@ class VolanteGUI(ctk.CTk):
         self.filter_val = 0.55
         self.last_filtered_steer = 512
         self.last_btn_d9_state = 0
+
+        # Calibración de límites y centro de dirección (BUG-012)
+        self.steer_min = 0
+        self.steer_center = 512
+        self.steer_max = 1023
         
-        # Últimos valores leídos de entrada (Raw) y salida (Mapeados)
+        # Últimos valores leídos de entrada (Raw) y salida (Mapeados) - 11 botones (BUG-022)
         self.current_steer = 512
         self.current_accel = 0
         self.current_brake = 0
-        self.current_btn_states = [0] * 10
+        self.current_btn_states = [0] * 11
         
         self.mapped_steer = 512
         self.mapped_accel = 0
         self.mapped_brake = 0
-        self.mapped_btn_states = [0] * 10
+        self.mapped_btn_states = [0] * 11
         
         # Estado de botones virtuales del D-pad para mapeo
         self.virtual_btn_states = {
@@ -130,6 +139,17 @@ class VolanteGUI(ctk.CTk):
 
         # Vincular cierre de la ventana para limpiar el gamepad correctamente
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    @property
+    def running(self):
+        return self._running_event.is_set()
+
+    @running.setter
+    def running(self, value):
+        if value:
+            self._running_event.set()
+        else:
+            self._running_event.clear()
 
     def create_widgets(self):
         # Título principal
@@ -176,7 +196,7 @@ class VolanteGUI(ctk.CTk):
 
         # Fila Botón de Alternar Preset
         ctk.CTkLabel(config_frame, text="Alternar Presets:", font=ctk.CTkFont(size=12, weight="bold")).grid(row=1, column=0, padx=15, pady=5, sticky="w")
-        cycle_options = ["Ninguno", "Pin D2", "Pin D3", "Pin D4", "Pin D5", "Pin D6", "Pin D7", "Pin D8", "Pin A3", "Pin A5", "Pin A4"]
+        cycle_options = ["Ninguno", "Pin D2", "Pin D3", "Pin D4", "Pin D5", "Pin D6", "Pin D7", "Pin D8", "Pin A3", "Pin A5", "Pin A4", "Pin D12"]
         self.preset_cycle_combo = ctk.CTkComboBox(
             config_frame,
             values=cycle_options,
@@ -346,25 +366,25 @@ class VolanteGUI(ctk.CTk):
         self.brake_val_lbl = ctk.CTkLabel(brake_box, text="0%", width=40)
         self.brake_val_lbl.pack(side="left", padx=5)
 
-        # Botones de estado (D2 a D11) como leds horizontales
+        # Botones de estado (D2 a D12) como leds horizontales
         btn_box = ctk.CTkFrame(monitor_frame, fg_color="transparent")
         btn_box.pack(fill="x", padx=15, pady=5)
         
         ctk.CTkLabel(btn_box, text="Botones:", font=ctk.CTkFont(weight="bold")).pack(side="left", padx=(5, 10))
         self.btn_indicators = []
-        pin_names = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "A3", "A5", "A4"]
-        for i in range(10):
+        pin_names = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "A3", "A5", "A4", "D12"]
+        for i in range(11):
             lbl = ctk.CTkLabel(
                 btn_box, 
                 text=pin_names[i], 
                 fg_color="gray25", 
                 text_color="gray70", 
                 corner_radius=4,
-                width=42,
+                width=38,
                 height=22,
                 font=ctk.CTkFont(size=10, weight="bold")
             )
-            lbl.pack(side="left", padx=3)
+            lbl.pack(side="left", padx=2)
             self.btn_indicators.append(lbl)
 
         # Mapeador de Cruceta Virtual (Mapeo)
@@ -462,6 +482,10 @@ class VolanteGUI(ctk.CTk):
                 self.deadzone_val = saved.get("deadzone", 0.23)
                 self.filter_val = saved.get("filter", 0.55)
                 
+                self.steer_min = saved.get("steer_min", 0)
+                self.steer_center = saved.get("steer_center", 512)
+                self.steer_max = saved.get("steer_max", 1023)
+                
                 self.steer_target = saved.get("steer_target", "Left Stick X")
                 self.accel_target = saved.get("accel_target", "Right Trigger (RT)")
                 self.brake_target = saved.get("brake_target", "Left Trigger (LT)")
@@ -476,6 +500,7 @@ class VolanteGUI(ctk.CTk):
                 self.btn_a3_target = saved.get("btn_map_pa3", saved.get("btn_map_p9", "Ninguno"))
                 self.btn_a5_target = saved.get("btn_map_pa5", saved.get("btn_map_p10", "Ninguno"))
                 self.btn_a4_target = saved.get("btn_map_pa4", saved.get("btn_map_p11", "Ninguno"))
+                self.btn_d12_target = saved.get("btn_map_p12", saved.get("btn_map_d12", "Ninguno"))
                 
                 self.preset_cycle_btn = saved.get("preset_cycle_btn", "Ninguno")
                 self.active_preset = saved.get("active_preset", "Personalizado")
@@ -556,6 +581,10 @@ class VolanteGUI(ctk.CTk):
         saved["deadzone"] = self.deadzone_val
         saved["filter"] = self.filter_val
         
+        saved["steer_min"] = getattr(self, "steer_min", 0)
+        saved["steer_center"] = getattr(self, "steer_center", 512)
+        saved["steer_max"] = getattr(self, "steer_max", 1023)
+        
         saved["steer_target"] = self.steer_target
         saved["accel_target"] = self.accel_target
         saved["brake_target"] = self.brake_target
@@ -570,6 +599,7 @@ class VolanteGUI(ctk.CTk):
         saved["btn_map_pa3"] = self.btn_a3_target
         saved["btn_map_pa5"] = self.btn_a5_target
         saved["btn_map_pa4"] = self.btn_a4_target
+        saved["btn_map_p12"] = getattr(self, "btn_d12_target", "Ninguno")
         
         saved["preset_cycle_btn"] = self.preset_cycle_btn
         if hasattr(self, 'preset_combo'):
@@ -606,6 +636,10 @@ class VolanteGUI(ctk.CTk):
             self.anti_deadzone_val = preset.get("anti_deadzone", 0.0)
             self.deadzone_val = preset.get("deadzone", 0.23)
             self.filter_val = preset.get("filter", 0.55)
+
+            self.steer_min = preset.get("steer_min", 0)
+            self.steer_center = preset.get("steer_center", 512)
+            self.steer_max = preset.get("steer_max", 1023)
             
             self.steer_target = preset.get("steer_target", "Left Stick X")
             self.accel_target = preset.get("accel_target", "Right Trigger (RT)")
@@ -621,6 +655,7 @@ class VolanteGUI(ctk.CTk):
             self.btn_a3_target = preset.get("btn_map_pa3", preset.get("btn_map_p9", "Ninguno"))
             self.btn_a5_target = preset.get("btn_map_pa5", preset.get("btn_map_p10", "Ninguno"))
             self.btn_a4_target = preset.get("btn_map_pa4", preset.get("btn_map_p11", "Ninguno"))
+            self.btn_d12_target = preset.get("btn_map_p12", preset.get("btn_map_d12", "Ninguno"))
             self.preset_cycle_btn = preset.get("preset_cycle_btn", "Ninguno")
             
             # Actualizar widgets
@@ -705,6 +740,7 @@ class VolanteGUI(ctk.CTk):
             self.btn_a3_target = self.btn_a3_combo.get() if hasattr(self, 'btn_a3_combo') else self.btn_a3_target
             self.btn_a5_target = self.btn_a5_combo.get() if hasattr(self, 'btn_a5_combo') else self.btn_a5_target
             self.btn_a4_target = self.btn_a4_combo.get() if hasattr(self, 'btn_a4_combo') else self.btn_a4_target
+            self.btn_d12_target = self.btn_d12_combo.get() if hasattr(self, 'btn_d12_combo') else getattr(self, 'btn_d12_target', 'Ninguno')
             self.preset_cycle_btn = self.preset_cycle_combo.get() if hasattr(self, 'preset_cycle_combo') else self.preset_cycle_btn
 
     def toggle_emulation(self):
@@ -748,282 +784,345 @@ class VolanteGUI(ctk.CTk):
         self.monitor_title.configure(text="MONITOR DE SALIDAS (FILTRADO Y CONFIGURADO)")
 
     def stop_emulation(self):
+        was_running = self.running
         self.running = False
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.2)
         
-        if self.serial_conn and self.serial_conn.is_open:
-            self.serial_conn.close()
-            
+        # Cerrar el puerto serie inmediatamente para desbloquear cualquier read() bloqueante en el hilo
+        ser = self.serial_conn
         self.serial_conn = None
+        if ser:
+            try:
+                if getattr(ser, 'is_open', False):
+                    if hasattr(ser, 'cancel_read'):
+                        try:
+                            ser.cancel_read()
+                        except Exception:
+                            pass
+                    ser.close()
+            except Exception as e:
+                print(f"Error cerrando puerto serie en stop_emulation: {e}")
+
+        self.thread = None
         
         # Restablecer UI
         self.connect_btn.configure(text="Iniciar Emulación", fg_color="#2b7a4b", hover_color="#1e5734")
         self.port_combo.configure(state="normal")
         self.refresh_btn.configure(state="normal")
-        self.status_lbl.configure(text="Emulación detenida", text_color="gray")
+        if was_running:
+            self.status_lbl.configure(text="Emulación detenida", text_color="gray")
         self.monitor_title.configure(text="MONITOR DE ENTRADAS (ESTADO RAW)")
 
     def emulation_loop(self):
         pressed_buttons = set()  # Para controlar botones virtuales presionados y evitar que queden pegados
+        fatal_error = False
+
         while self.running:
+            # BUG-002: Acceso seguro a serial_conn verificando ser e is_open
+            ser = self.serial_conn
+            if not ser or not getattr(ser, 'is_open', False):
+                if self.running:
+                    fatal_error = True
+                break
+
+            # 1. Lectura de cabecera y trama serie
             try:
                 # Buscar encabezado de sincronización de 2 bytes (0xAA, 0x55)
-                b1 = self.serial_conn.read(1)
-                if b1 == b'\xaa':
-                    b2 = self.serial_conn.read(1)
-                    if b2 == b'\x55':
-                        # Leer los 6 bytes de datos empaquetados (4 de ejes + 2 de botones)
-                        data_bytes = self.serial_conn.read(6)
-                        if len(data_bytes) == 6:
-                            val = int.from_bytes(data_bytes[0:4], byteorder='little')
-                            buttons_val = int.from_bytes(data_bytes[4:6], byteorder='little')
-                            
-                            # Extraer campos de 10 bits y los botones
-                            steer = val & 0x3FF
-                            accel = (val >> 10) & 0x3FF
-                            brake = (val >> 20) & 0x3FF
-                            
-                            # Extraer los 10 botones individuales (bits 0 a 9)
-                            btn_states = []
-                            for i in range(10):
-                                btn_states.append((buttons_val >> i) & 0x01)
+                b1 = ser.read(1)
+                if not b1:
+                    continue
+                if b1 != b'\xaa':
+                    continue
 
-                            # Detectar flanco de subida del botón de alternar preset
-                            with self.lock:
-                                cycle_btn_name = self.preset_cycle_btn
-                                
-                            current_cycle_state = 0
-                            if cycle_btn_name == "Pin A3" and len(btn_states) > 7:
-                                current_cycle_state = btn_states[7]
-                            elif cycle_btn_name == "Pin A5" and len(btn_states) > 8:
-                                current_cycle_state = btn_states[8]
-                            elif cycle_btn_name == "Pin A4" and len(btn_states) > 9:
-                                current_cycle_state = btn_states[9]
-                            elif cycle_btn_name.startswith("Pin D"):
-                                try:
-                                    pin_num = int(cycle_btn_name[5:])
-                                    idx = pin_num - 2
-                                    if 0 <= idx < len(btn_states):
-                                        current_cycle_state = btn_states[idx]
-                                except ValueError:
-                                    pass
-                                    
-                            if current_cycle_state == 1 and self.last_btn_cycle_state == 0:
-                                self.after(0, self.cycle_presets_desktop)
-                            self.last_btn_cycle_state = current_cycle_state
+                b2 = ser.read(1)
+                if not b2 or b2 != b'\x55':
+                    continue
 
-                            # Limitar rangos analógicos
-                            steer = max(0, min(1023, steer))
-                            accel = max(0, min(1023, accel))
-                            brake = max(0, min(1023, brake))
+                # Leer los 6 bytes de datos empaquetados (4 de ejes + 2 de botones)
+                data_bytes = ser.read(6)
+                if len(data_bytes) != 6:
+                    continue
 
-                            # Leer variables de configuración de forma segura
-                            with self.lock:
-                                sensitivity = self.sensitivity_val
-                                slope = self.slope_val
-                                anti_deadzone = self.anti_deadzone_val
-                                deadzone = self.deadzone_val
-                                filter_strength = self.filter_val
-                                steer_target = self.steer_target
-                                accel_target = self.accel_target
-                                brake_target = self.brake_target
-                                btn_mappings = [
-                                    self.btn_d2_target, self.btn_d3_target, self.btn_d4_target,
-                                    self.btn_d5_target, self.btn_d6_target, self.btn_d7_target,
-                                    self.btn_d8_target, self.btn_a3_target, self.btn_a5_target,
-                                    self.btn_a4_target
-                                ]
+            except (serial.SerialException, AttributeError, OSError) as e:
+                # BUG-002 & BUG-003: Error fatal de comunicación serie / desconexión
+                if self.running:
+                    print(f"Error de desconexión serie en loop: {e}")
+                    fatal_error = True
+                break
+            except Exception as e:
+                if self.running:
+                    print(f"Error inesperado en lectura serie: {e}")
+                    fatal_error = True
+                break
 
-                            # --- FILTRADO AVANZADO ANTI-RUIDO (DSP) ---
-                            if filter_strength > 0:
-                                # A mayor filtro, más estricto es el limitador de saltos de cambio
-                                max_change = int(15 + (1.0 - filter_strength) * 35)
-                                diff = steer - self.last_filtered_steer
-                                if abs(diff) > max_change:
-                                    steer_step = max_change if diff > 0 else -max_change
-                                    steer_filtered = self.last_filtered_steer + steer_step
-                                else:
-                                    steer_filtered = steer
-                                
-                                # Filtro Promedio Móvil Exponencial (EMA)
-                                alpha_steer = 1.0 - filter_strength
-                                steer_smoothed = int(alpha_steer * steer_filtered + (1.0 - alpha_steer) * self.last_filtered_steer)
-                                self.last_filtered_steer = steer_smoothed
-                                steer = steer_smoothed
-                            else:
-                                self.last_filtered_steer = steer
+            # 2. Procesamiento de la trama (BUG-003: errores transitorios no rompen el loop)
+            try:
+                val = int.from_bytes(data_bytes[0:4], byteorder='little')
+                buttons_val = int.from_bytes(data_bytes[4:6], byteorder='little')
+                
+                # Extraer campos de 10 bits
+                steer = val & 0x3FF
+                accel = (val >> 10) & 0x3FF
+                brake = (val >> 20) & 0x3FF
+                
+                # BUG-022: Extraer los 11 botones individuales (bits 0 a 10)
+                btn_states = []
+                for i in range(11):
+                    btn_states.append((buttons_val >> i) & 0x01)
 
-                            # --- PROCESAR DIRECCIÓN CON ANTI-ZONA MUERTA Y PENDIENTE ---
-                            # 1. Normalizar dirección de 0-1023 a rango (-1.0 a 1.0)
-                            x = (steer - 512) / 512.0
+                # Detectar flanco de subida del botón de alternar preset
+                with self.lock:
+                    cycle_btn_name = self.preset_cycle_btn
+                    
+                current_cycle_state = 0
+                if cycle_btn_name == "Pin A3" and len(btn_states) > 7:
+                    current_cycle_state = btn_states[7]
+                elif cycle_btn_name == "Pin A5" and len(btn_states) > 8:
+                    current_cycle_state = btn_states[8]
+                elif cycle_btn_name == "Pin A4" and len(btn_states) > 9:
+                    current_cycle_state = btn_states[9]
+                elif cycle_btn_name == "Pin D12" and len(btn_states) > 10:
+                    current_cycle_state = btn_states[10]
+                elif cycle_btn_name.startswith("Pin D"):
+                    try:
+                        pin_num = int(cycle_btn_name[5:])
+                        idx = pin_num - 2
+                        if 0 <= idx < len(btn_states):
+                            current_cycle_state = btn_states[idx]
+                    except ValueError:
+                        pass
+                        
+                if current_cycle_state == 1 and self.last_btn_cycle_state == 0:
+                    self.after(0, self.cycle_presets_desktop)
+                self.last_btn_cycle_state = current_cycle_state
 
-                            # 2. Aplicar multiplicador de pendiente (slope) y factor de sensibilidad
-                            x_sloped = x * slope * sensitivity
-                            x_sloped = max(-1.0, min(1.0, x_sloped))
+                # Limitar rangos analógicos
+                steer = max(0, min(1023, steer))
+                accel = max(0, min(1023, accel))
+                brake = max(0, min(1023, brake))
 
-                            # 3. Aplicar compensación de Anti-Zona Muerta (Anti-Deadzone)
-                            abs_x = abs(x_sloped)
-                            sign_x = 1.0 if x_sloped >= 0 else -1.0
-                            
-                            # Pequeña zona muerta física en el absoluto centro para evitar vibraciones (1%)
-                            REST_DEADZONE = 0.01
-                            
-                            if abs_x <= REST_DEADZONE:
-                                x_final = 0.0
-                            else:
-                                # Rescalar rango activo aplicando el salto inicial (offset) de la anti-zona muerta
-                                scaled = (abs_x - REST_DEADZONE) / (1.0 - REST_DEADZONE)
-                                x_final_magnitude = anti_deadzone + (1.0 - anti_deadzone) * scaled
-                                x_final = sign_x * x_final_magnitude
+                # Leer variables de configuración de forma segura
+                with self.lock:
+                    sensitivity = self.sensitivity_val
+                    slope = self.slope_val
+                    anti_deadzone = self.anti_deadzone_val
+                    deadzone = self.deadzone_val
+                    filter_strength = self.filter_val
+                    steer_target = self.steer_target
+                    accel_target = self.accel_target
+                    brake_target = self.brake_target
+                    steer_min = getattr(self, 'steer_min', 0)
+                    steer_center = getattr(self, 'steer_center', 512)
+                    steer_max = getattr(self, 'steer_max', 1023)
+                    btn_mappings = [
+                        self.btn_d2_target, self.btn_d3_target, self.btn_d4_target,
+                        self.btn_d5_target, self.btn_d6_target, self.btn_d7_target,
+                        self.btn_d8_target, self.btn_a3_target, self.btn_a5_target,
+                        self.btn_a4_target, getattr(self, 'btn_d12_target', 'Ninguno')
+                    ]
 
-                            # Acotar valor final a rango (-1.0 a 1.0)
-                            x_final = max(-1.0, min(1.0, x_final))
+                # --- FILTRADO AVANZADO ANTI-RUIDO (DSP) ---
+                if filter_strength > 0:
+                    # A mayor filtro, más estricto es el limitador de saltos de cambio
+                    max_change = int(15 + (1.0 - filter_strength) * 35)
+                    diff = steer - self.last_filtered_steer
+                    if abs(diff) > max_change:
+                        steer_step = max_change if diff > 0 else -max_change
+                        steer_filtered = self.last_filtered_steer + steer_step
+                    else:
+                        steer_filtered = steer
+                    
+                    # Filtro Promedio Móvil Exponencial (EMA)
+                    alpha_steer = 1.0 - filter_strength
+                    steer_smoothed = int(alpha_steer * steer_filtered + (1.0 - alpha_steer) * self.last_filtered_steer)
+                    self.last_filtered_steer = steer_smoothed
+                    steer = steer_smoothed
+                else:
+                    self.last_filtered_steer = steer
 
-                            # Convertir a rango de Xbox (-32768 a 32767)
-                            val_steer_mapped = int(x_final * 32767)
-                            val_steer_mapped = max(-32768, min(32767, val_steer_mapped))
+                # --- PROCESAR DIRECCIÓN CON CALIBRACIÓN Y CURVA EXPONENCIAL (BUG-012, BUG-013) ---
+                # 1. Normalizar dirección con steer_min, steer_center, steer_max a [-1.0, 1.0]
+                if steer < steer_center:
+                    denom = steer_center - steer_min
+                    x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
+                    x = max(-1.0, min(0.0, x))
+                else:
+                    denom = steer_max - steer_center
+                    x = (steer - steer_center) / float(denom) if denom > 0 else 0.0
+                    x = max(0.0, min(1.0, x))
 
-                            # --- APLICAR MAPEOS CONFIGURADOS ---
-                            left_stick_x = 0
-                            left_stick_y = 0
-                            right_stick_x = 0
-                            right_stick_y = 0
-                            left_trigger_val = 0
-                            right_trigger_val = 0
+                # 2. Curva exponencial no lineal: sign * (|x| ** slope) * sensitivity
+                abs_x_raw = abs(x)
+                sign_x_raw = 1.0 if x >= 0 else -1.0
+                x_expo = sign_x_raw * (abs_x_raw ** slope) if abs_x_raw > 0 else 0.0
 
-                            # Asignar Dirección
-                            if steer_target == "Left Stick X":
-                                left_stick_x = val_steer_mapped
-                            elif steer_target == "Right Stick X":
-                                right_stick_x = val_steer_mapped
-                            elif steer_target == "Left Stick Y":
-                                left_stick_y = val_steer_mapped
-                            elif steer_target == "Right Stick Y":
-                                right_stick_y = val_steer_mapped
+                x_sloped = x_expo * sensitivity
+                x_sloped = max(-1.0, min(1.0, x_sloped))
 
-                            # Funciones de mapeo de pedales con Zona Muerta (Deadzone) rescalada
-                            def get_pedal_val(pedal_in, max_val):
-                                deadzone_limit = int(deadzone * 1023)
-                                if pedal_in <= deadzone_limit:
-                                    return 0
-                                else:
-                                    # Rescalar rango activo (deadzone_limit .. 1023) a (0 .. max_val)
-                                    val_scaled = (pedal_in - deadzone_limit) / (1023.0 - deadzone_limit)
-                                    return int(val_scaled * max_val)
+                # 3. Aplicar compensación de Anti-Zona Muerta (Anti-Deadzone)
+                abs_x = abs(x_sloped)
+                sign_x = 1.0 if x_sloped >= 0 else -1.0
+                
+                # Pequeña zona muerta física en el absoluto centro para evitar vibraciones (1%)
+                REST_DEADZONE = 0.01
+                
+                if abs_x <= REST_DEADZONE:
+                    x_final = 0.0
+                else:
+                    # Rescalar rango activo aplicando el salto inicial (offset) de la anti-zona muerta
+                    scaled = (abs_x - REST_DEADZONE) / (1.0 - REST_DEADZONE)
+                    x_final_magnitude = anti_deadzone + (1.0 - anti_deadzone) * scaled
+                    x_final = sign_x * x_final_magnitude
 
-                            # En los joysticks analógicos de Xbox/ViGEm, el eje Y está invertido en el driver:
-                            # Negativo (-32768) es hacia ARRIBA (UP)
-                            # Positivo (32767) es hacia ABAJO (DOWN)
+                # Acotar valor final a rango (-1.0 a 1.0)
+                x_final = max(-1.0, min(1.0, x_final))
 
-                            # Procesar Acelerador (A1)
-                            a_val_trigger = get_pedal_val(accel, 255)
-                            a_val_stick = get_pedal_val(accel, 32767)
+                # Convertir a rango de Xbox (-32768 a 32767)
+                val_steer_mapped = int(x_final * 32767)
+                val_steer_mapped = max(-32768, min(32767, val_steer_mapped))
 
-                            if accel_target == "Right Trigger (RT)":
-                                right_trigger_val = a_val_trigger
-                            elif accel_target == "Left Trigger (LT)":
-                                left_trigger_val = a_val_trigger
-                            elif accel_target == "Right Stick Y+ (UP)":
-                                right_stick_y -= get_pedal_val(accel, 32768)  # Negativo = UP
-                            elif accel_target == "Right Stick Y- (DOWN)":
-                                right_stick_y += a_val_stick                  # Positivo = DOWN
-                            elif accel_target == "Left Stick Y+ (UP)":
-                                left_stick_y -= get_pedal_val(accel, 32768)   # Negativo = UP
-                            elif accel_target == "Left Stick Y- (DOWN)":
-                                left_stick_y += a_val_stick                   # Positivo = DOWN
+                # --- APLICAR MAPEOS CONFIGURADOS ---
+                left_stick_x = 0
+                left_stick_y = 0
+                right_stick_x = 0
+                right_stick_y = 0
+                left_trigger_val = 0
+                right_trigger_val = 0
 
-                            # Procesar Freno (A2)
-                            b_val_trigger = get_pedal_val(brake, 255)
-                            b_val_stick = get_pedal_val(brake, 32767)
+                # Asignar Dirección
+                if steer_target == "Left Stick X":
+                    left_stick_x = val_steer_mapped
+                elif steer_target == "Right Stick X":
+                    right_stick_x = val_steer_mapped
+                elif steer_target == "Left Stick Y":
+                    left_stick_y = val_steer_mapped
+                elif steer_target == "Right Stick Y":
+                    right_stick_y = val_steer_mapped
 
-                            if brake_target == "Left Trigger (LT)":
-                                left_trigger_val = b_val_trigger
-                            elif brake_target == "Right Trigger (RT)":
-                                right_trigger_val = b_val_trigger
-                            elif brake_target == "Right Stick Y- (DOWN)":
-                                right_stick_y += b_val_stick                  # Positivo = DOWN
-                            elif brake_target == "Right Stick Y+ (UP)":
-                                right_stick_y -= get_pedal_val(brake, 32768)  # Negativo = UP
-                            elif brake_target == "Left Stick Y- (DOWN)":
-                                left_stick_y += b_val_stick                   # Positivo = DOWN
-                            elif brake_target == "Left Stick Y+ (UP)":
-                                left_stick_y -= get_pedal_val(brake, 32768)   # Negativo = UP
+                # Funciones de mapeo de pedales con Zona Muerta (Deadzone) rescalada
+                def get_pedal_val(pedal_in, max_val):
+                    deadzone_limit = int(deadzone * 1023)
+                    if pedal_in <= deadzone_limit:
+                        return 0
+                    else:
+                        # Rescalar rango activo (deadzone_limit .. 1023) a (0 .. max_val)
+                        val_scaled = (pedal_in - deadzone_limit) / (1023.0 - deadzone_limit)
+                        return int(val_scaled * max_val)
 
-                            # Acotar variables finales
-                            left_stick_x = max(-32768, min(32767, left_stick_x))
-                            left_stick_y = max(-32768, min(32767, left_stick_y))
-                            right_stick_x = max(-32768, min(32767, right_stick_x))
-                            right_stick_y = max(-32768, min(32767, right_stick_y))
-                            left_trigger_val = max(0, min(255, left_trigger_val))
-                            right_trigger_val = max(0, min(255, right_trigger_val))
+                # Procesar Acelerador (A1)
+                a_val_trigger = get_pedal_val(accel, 255)
+                a_val_stick = get_pedal_val(accel, 32767)
 
-                            # --- PROCESAR BOTONES (D2 a D11) ---
-                            active_buttons = set()
-                            for i in range(10):
-                                if btn_states[i] == 1:
-                                    target = btn_mappings[i]
-                                    if target in BUTTON_MAP and BUTTON_MAP[target] is not None:
-                                        active_buttons.add(BUTTON_MAP[target])
+                if accel_target == "Right Trigger (RT)":
+                    right_trigger_val = a_val_trigger
+                elif accel_target == "Left Trigger (LT)":
+                    left_trigger_val = a_val_trigger
+                elif accel_target == "Right Stick Y+ (UP)":
+                    right_stick_y -= get_pedal_val(accel, 32768)
+                elif accel_target == "Right Stick Y- (DOWN)":
+                    right_stick_y += a_val_stick
+                elif accel_target == "Left Stick Y+ (UP)":
+                    left_stick_y -= get_pedal_val(accel, 32768)
+                elif accel_target == "Left Stick Y- (DOWN)":
+                    left_stick_y += a_val_stick
 
-                            # Agregar botones virtuales del D-pad para mapeo
-                            with self.lock:
-                                for v_btn, state in self.virtual_btn_states.items():
-                                    if state == 1:
-                                        target_button = BUTTON_MAP.get(v_btn)
-                                        if target_button is not None:
-                                            active_buttons.add(target_button)
+                # Procesar Freno (A2)
+                b_val_trigger = get_pedal_val(brake, 255)
+                b_val_stick = get_pedal_val(brake, 32767)
 
-                            # Liberar botones que ya no deben estar presionados
-                            to_release = [b for b in pressed_buttons if b not in active_buttons]
-                            for b in to_release:
-                                if b is not None:
-                                    self.gamepad.release_button(button=b)
-                                    pressed_buttons.remove(b)
+                if brake_target == "Left Trigger (LT)":
+                    left_trigger_val = b_val_trigger
+                elif brake_target == "Right Trigger (RT)":
+                    right_trigger_val = b_val_trigger
+                elif brake_target == "Right Stick Y- (DOWN)":
+                    right_stick_y += b_val_stick
+                elif brake_target == "Right Stick Y+ (UP)":
+                    right_stick_y -= get_pedal_val(brake, 32768)
+                elif brake_target == "Left Stick Y- (DOWN)":
+                    left_stick_y += b_val_stick
+                elif brake_target == "Left Stick Y+ (UP)":
+                    left_stick_y -= get_pedal_val(brake, 32768)
 
-                            # Presionar los botones activos si no lo están ya
-                            for b in active_buttons:
-                                if b not in pressed_buttons:
-                                    self.gamepad.press_button(button=b)
-                                    pressed_buttons.add(b)
+                # Acotar variables finales
+                left_stick_x = max(-32768, min(32767, left_stick_x))
+                left_stick_y = max(-32768, min(32767, left_stick_y))
+                right_stick_x = max(-32768, min(32767, right_stick_x))
+                right_stick_y = max(-32768, min(32767, right_stick_y))
+                left_trigger_val = max(0, min(255, left_trigger_val))
+                right_trigger_val = max(0, min(255, right_trigger_val))
 
-                            # Guardar variables calculadas finales de forma segura para la visualización gráfica en UI
-                            with self.lock:
-                                self.current_steer = steer
-                                self.current_accel = accel
-                                self.current_brake = brake
-                                self.current_btn_states = btn_states.copy()
-                                
-                                # Convertir valores calculados finales a escala 0-1023 para la UI
-                                self.mapped_steer = int(((val_steer_mapped + 32768) / 65535.0) * 1023)
-                                
-                                # Para los pedales, mostramos la entrada analógica procesada con la zona muerta
-                                self.mapped_accel = get_pedal_val(accel, 1023)
-                                self.mapped_brake = get_pedal_val(brake, 1023)
-                                self.mapped_btn_states = btn_states.copy()
+                # --- PROCESAR BOTONES (11 botones) ---
+                active_buttons = set()
+                for i in range(min(len(btn_states), len(btn_mappings))):
+                    if btn_states[i] == 1:
+                        target = btn_mappings[i]
+                        if target in BUTTON_MAP and BUTTON_MAP[target] is not None:
+                            active_buttons.add(BUTTON_MAP[target])
 
-                            # Enviar valores actualizados al Gamepad virtual
-                            self.gamepad.left_joystick(x_value=left_stick_x, y_value=left_stick_y)
-                            self.gamepad.right_joystick(x_value=right_stick_x, y_value=right_stick_y)
-                            self.gamepad.left_trigger(value=left_trigger_val)
-                            self.gamepad.right_trigger(value=right_trigger_val)
-                            self.gamepad.update()
+                # Agregar botones virtuales del D-pad para mapeo
+                with self.lock:
+                    for v_btn, state in self.virtual_btn_states.items():
+                        if state == 1:
+                            target_button = BUTTON_MAP.get(v_btn)
+                            if target_button is not None:
+                                active_buttons.add(target_button)
+
+                if self.gamepad:
+                    # Liberar botones que ya no deben estar presionados
+                    to_release = [b for b in pressed_buttons if b not in active_buttons]
+                    for b in to_release:
+                        if b is not None:
+                            try:
+                                self.gamepad.release_button(button=b)
+                            except Exception:
+                                pass
+                            pressed_buttons.remove(b)
+
+                    # Presionar los botones activos si no lo están ya
+                    for b in active_buttons:
+                        if b not in pressed_buttons:
+                            try:
+                                self.gamepad.press_button(button=b)
+                            except Exception:
+                                pass
+                            pressed_buttons.add(b)
+
+                # Guardar variables calculadas finales de forma segura para la visualización gráfica en UI
+                with self.lock:
+                    self.current_steer = steer
+                    self.current_accel = accel
+                    self.current_brake = brake
+                    self.current_btn_states = btn_states.copy()
+                    
+                    self.mapped_steer = int(((val_steer_mapped + 32768) / 65535.0) * 1023)
+                    self.mapped_accel = get_pedal_val(accel, 1023)
+                    self.mapped_brake = get_pedal_val(brake, 1023)
+                    self.mapped_btn_states = btn_states.copy()
+
+                # Enviar valores actualizados al Gamepad virtual
+                if self.gamepad:
+                    self.gamepad.left_joystick(x_value=left_stick_x, y_value=left_stick_y)
+                    self.gamepad.right_joystick(x_value=right_stick_x, y_value=right_stick_y)
+                    self.gamepad.left_trigger(value=left_trigger_val)
+                    self.gamepad.right_trigger(value=right_trigger_val)
+                    self.gamepad.update()
 
             except Exception as e:
-                print(f"Error procesando datos en loop: {e}")
-                self.running = False
-                break
+                # BUG-003: Error transitorio en parseo o procesamiento de paquete: registrar y continuar
+                print(f"Error transitorio procesando paquete: {e}")
+                continue
         
         # Al detener la emulación, liberar todos los botones presionados
-        for b in pressed_buttons:
-            try:
-                self.gamepad.release_button(button=b)
-            except:
-                pass
+        if self.gamepad:
+            for b in list(pressed_buttons):
+                try:
+                    self.gamepad.release_button(button=b)
+                except Exception:
+                    pass
         pressed_buttons.clear()
         
-        # Detener emulación en el hilo principal
-        self.after(10, self.on_emulation_error)
+        # BUG-016: Invocar on_emulation_error SOLO si el bucle terminó por error fatal inesperado
+        if fatal_error and self.running:
+            self.after(10, self.on_emulation_error)
 
     def on_emulation_error(self):
         self.stop_emulation()
@@ -1049,7 +1148,7 @@ class VolanteGUI(ctk.CTk):
         self.brake_bar.set(brake / 1023.0)
 
         # Actualizar indicadores de botones
-        for i in range(10):
+        for i in range(len(self.btn_indicators)):
             if i < len(btn_states) and btn_states[i] == 1:
                 self.btn_indicators[i].configure(fg_color="#2b7a4b", text_color="white")
             else:
@@ -1091,7 +1190,16 @@ class VolanteGUI(ctk.CTk):
         # Detener hilos y cerrar conexiones
         self.stop_emulation()
         if self.gamepad:
-            del self.gamepad
+            try:
+                self.gamepad.reset()
+                self.gamepad.update()
+            except Exception:
+                pass
+            try:
+                del self.gamepad
+            except Exception:
+                pass
+            self.gamepad = None
         self.destroy()
 
 if __name__ == "__main__":

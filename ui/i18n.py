@@ -1,8 +1,5 @@
 """
 Módulo de Internacionalización (i18n) para Volante-PC.
-Soporte bilingüe completo para Español (ES) e Inglés (EN).
-Terminología técnica de ingeniería y simracing sin emojis.
-Implementa el patrón Observer y señal Qt para suscripción reactiva de componentes de interfaz.
 """
 
 import threading
@@ -27,7 +24,6 @@ except Exception:
     except Exception:
         _qt_emitter = None
 
-# Lista de idiomas disponibles y códigos
 SUPPORTED_LANGUAGES = ("es", "en")
 DEFAULT_LANGUAGE = "es"
 
@@ -50,7 +46,7 @@ LANGUAGE_METADATA = {
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "es": {
         # General y Encabezados
-        "app.title": "Volante-PC Simracing Controller",
+        "app.title": "Volante-PC",
         "app.subtitle": "Panel de Control, Telemetría y Emulación de Hardware",
         "app.version": "Versión",
 

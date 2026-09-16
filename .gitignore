@@ -2,6 +2,7 @@
 GLCache/
 
 # Python virtual environments
+venv
 venv/
 python/venv/
 .venv/

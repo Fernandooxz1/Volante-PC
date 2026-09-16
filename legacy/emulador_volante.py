@@ -6,6 +6,41 @@ import serial
 import serial.tools.list_ports
 import vgamepad as vg
 
+BUTTON_MAP = {
+    "Button Start": vg.XUSB_BUTTON.XUSB_GAMEPAD_START,
+    "Button Back": vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK,
+    "Button A": vg.XUSB_BUTTON.XUSB_GAMEPAD_A,
+    "Button B": vg.XUSB_BUTTON.XUSB_GAMEPAD_B,
+    "Button X": vg.XUSB_BUTTON.XUSB_GAMEPAD_X,
+    "Button Y": vg.XUSB_BUTTON.XUSB_GAMEPAD_Y,
+    "Button LB (Left Shoulder)": vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER,
+    "Button RB (Right Shoulder)": vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER,
+    "Button L3 (Left Click)": vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB,
+    "Button R3 (Right Click)": vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB,
+    "D-Pad UP": vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP,
+    "D-Pad DOWN": vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN,
+    "D-Pad LEFT": vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT,
+    "D-Pad RIGHT": vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT,
+    "Ninguno": None,
+}
+
+# Mapeo por defecto de los 11 pines de botones digitales (bits 0 a 10 en protocolo binario)
+# Corresponde a los pines: D2, D3, D4, D5, D6, D7, D8, A3, A5, A4, D12
+DEFAULT_BUTTON_MAPPING = [
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK,            # Bit 0 (D2): Back
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_START,           # Bit 1 (D3): Start
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_B,               # Bit 2 (D4): B
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_X,               # Bit 3 (D5): X
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_A,               # Bit 4 (D6): A
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_Y,               # Bit 5 (D7): Y
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER,  # Bit 6 (D8): RB
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER,   # Bit 7 (A3): LB
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB,      # Bit 8 (A5): L3
+    vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB,     # Bit 9 (A4): R3
+    None,                                        # Bit 10 (D12): Sin asignar / Reservado
+]
+
+
 def find_arduino_port():
     """Busca puertos serie disponibles que puedan ser el Arduino UNO."""
     ports = serial.tools.list_ports.comports()
@@ -103,6 +138,7 @@ def main():
         sys.exit(1)
 
     # Bucle principal de lectura binaria y de baja latencia
+    pressed_buttons = set()
     try:
         while True:
             try:
@@ -146,6 +182,23 @@ def main():
                             val_brake = max(0, min(255, val_brake))
                             gamepad.left_trigger(value=val_brake)
 
+                            # 4. Botones digitales: determinar botones activos y reconciliar
+                            active_buttons = set()
+                            for bit_idx, btn in enumerate(DEFAULT_BUTTON_MAPPING):
+                                if btn is not None and ((buttons_val >> bit_idx) & 0x01):
+                                    active_buttons.add(btn)
+
+                            # Reconciliación: soltar botones liberados y presionar nuevos
+                            to_release = pressed_buttons - active_buttons
+                            for btn in to_release:
+                                gamepad.release_button(button=btn)
+
+                            to_press = active_buttons - pressed_buttons
+                            for btn in to_press:
+                                gamepad.press_button(button=btn)
+
+                            pressed_buttons = active_buttons
+
                             # Aplicar cambios al control virtual
                             gamepad.update()
 
@@ -154,10 +207,20 @@ def main():
 
             except Exception as e:
                 print(f"\n\033[91mError procesando datos: {e}\033[0m")
+                time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\n\n\033[93mDeteniendo emulación por petición del usuario...\033[0m")
     finally:
+        # Liberar botones presionados y restablecer gamepad virtual
+        if 'gamepad' in locals() and gamepad is not None:
+            try:
+                for btn in pressed_buttons:
+                    gamepad.release_button(button=btn)
+                gamepad.reset()
+                gamepad.update()
+            except Exception:
+                pass
         # Cerrar puerto y limpiar
         if 'ser' in locals() and ser.is_open:
             ser.close()
