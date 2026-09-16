@@ -93,7 +93,7 @@ def auto_detect_arduino_port() -> Optional[str]:
         desc = (p.description or "").lower()
         hwid = (p.hwid or "").lower()
         mfg = (p.manufacturer or "").lower()
-        if any(k in desc or k in hwid or k in mfg for k in ["arduino", "ch340", "ftdi", "cp210", "usb serial"]):
+        if any(k in desc or k in hwid or k in mfg for k in ["arduino", "ch340", "ftdi", "cp210", "usb serial", "silicon labs", "espressif", "ch910"]):
             return p.device
 
     for p in ports:
@@ -522,6 +522,11 @@ class Engine:
                 timeout=0.005,  # 5 ms timeout no bloqueante
             )
             ser.reset_input_buffer()
+            try:
+                ser.dtr = False
+                ser.rts = False
+            except Exception:
+                pass
             with self._serial_lock:
                 self._serial = ser
                 self._active_port = port

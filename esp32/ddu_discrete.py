@@ -126,7 +126,16 @@ class DiscreteDDU:
             return
 
         # Escala progresiva:
-        if self.num_leds == 10:
+        if self.num_leds == 5:
+            # 5 LEDs: 2 Verdes (50, 65%), 1 Amarillo (78%), 1 Rojo (88%), 1 Azul (94%)
+            thresholds = [50, 65, 78, 88, 94]
+            colors = [
+                COLOR_GREEN, COLOR_GREEN,
+                COLOR_YELLOW,
+                COLOR_RED,
+                COLOR_BLUE,
+            ]
+        elif self.num_leds == 10:
             # 10 LEDs: 3 Verdes (50-66%), 3 Amarillos (72-84%), 2 Rojos (88-92%), 2 Azules (95-98%)
             thresholds = [50, 58, 66, 72, 78, 84, 88, 92, 95, 98]
             colors = [
