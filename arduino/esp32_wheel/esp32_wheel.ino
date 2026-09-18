@@ -21,10 +21,9 @@
 // --- Pines ---
 #define PIN_I2C_SDA     21
 #define PIN_I2C_SCL     22
-#define PIN_HALL_ACCEL  32
-#define PIN_HALL_VCC    33
-#define PIN_HALL_GND    25
-#define PIN_HALL_BRAKE  34
+#define PIN_HALL_ACCEL  32  // Pedal Acelerador (ADC1)
+#define PIN_HALL_BRAKE  34  // Pedal Freno (ADC1)
+#define PIN_HALL_CLUTCH 35  // Pedal Embrague / Clutch (ADC1)
 #define PIN_NEOPIXEL        13
 #define NUM_PIXELS          8
 #define NEOPIXEL_BRIGHTNESS 40  // CAMBIAR BRILLO DE NEOPIXELS
@@ -141,15 +140,11 @@ void setup() {
   // I2C para AS5600
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
 
-  // Alimentación y lectura ADC para SS49E
-  pinMode(PIN_HALL_VCC, OUTPUT);
-  digitalWrite(PIN_HALL_VCC, HIGH); // 3.3V al pin izquierdo
-  pinMode(PIN_HALL_GND, OUTPUT);
-  digitalWrite(PIN_HALL_GND, LOW);  // 0V al pin central
-
+  // Configuración de resolución y atenuación ADC1 (0..3.3V) para los 3 pedales Hall
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_HALL_ACCEL, ADC_11db);
   analogSetPinAttenuation(PIN_HALL_BRAKE, ADC_11db);
+  analogSetPinAttenuation(PIN_HALL_CLUTCH, ADC_11db);
 
   // NeoPixels
   strip.begin();

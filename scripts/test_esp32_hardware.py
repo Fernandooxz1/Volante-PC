@@ -91,8 +91,12 @@ def main():
                     steer_str = "".join(steer_bar)
 
                     # Barra visual para acelerador
-                    accel_bars = max(0, min(20, int((accel / 1023.0) * 20)))
-                    accel_str = "█" * accel_bars + "░" * (20 - accel_bars)
+                    accel_bars = max(0, min(10, int((accel / 1023.0) * 10)))
+                    accel_str = "█" * accel_bars + "░" * (10 - accel_bars)
+
+                    # Barra visual para freno
+                    brake_bars = max(0, min(10, int((brake / 1023.0) * 10)))
+                    brake_str = "█" * brake_bars + "░" * (10 - brake_bars)
 
                     # Botones de la matriz activos (12 posibles)
                     active_btns = [f"B{i+1}" for i in range(12) if (buttons & (1 << i))]
@@ -100,8 +104,9 @@ def main():
 
                     sys.stdout.write(
                         f"\r[Vol: {steer:4d} [{steer_str}]] "
-                        f"[Pedal: {accel:4d} [{accel_str}]] "
-                        f"[Botones: {btns_str:12s}]"
+                        f"[Gas: {accel:4d} [{accel_str}]] "
+                        f"[Frn: {brake:4d} [{brake_str}]] "
+                        f"[Botones: {btns_str:10s}]"
                     )
                     sys.stdout.flush()
     except KeyboardInterrupt:
