@@ -24,6 +24,8 @@
 #define PIN_HALL_ACCEL  32  // Pedal Acelerador (ADC1)
 #define PIN_HALL_BRAKE  34  // Pedal Freno (ADC1)
 #define PIN_HALL_CLUTCH 35  // Pedal Embrague / Clutch (ADC1)
+#define PIN_HALL_VCC    33  // Alimentación 3.3V para pedales Hall
+#define PIN_HALL_GND    25  // Masa GND para pedales Hall
 #define PIN_NEOPIXEL        13
 #define NUM_PIXELS          8
 #define NEOPIXEL_BRIGHTNESS 40  // CAMBIAR BRILLO DE NEOPIXELS
@@ -139,6 +141,12 @@ void setup() {
 
   // I2C para AS5600
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
+
+  // Alimentación dedicada para los 3 sensores Hall (GPIO 33 a 3.3V, GPIO 25 a 0V)
+  pinMode(PIN_HALL_VCC, OUTPUT);
+  digitalWrite(PIN_HALL_VCC, HIGH);
+  pinMode(PIN_HALL_GND, OUTPUT);
+  digitalWrite(PIN_HALL_GND, LOW);
 
   // Configuración de resolución y atenuación ADC1 (0..3.3V) para los 3 pedales Hall
   analogReadResolution(12);

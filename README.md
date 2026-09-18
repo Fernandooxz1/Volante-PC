@@ -88,9 +88,12 @@ La rama `testESP32` utiliza un microcontrolador **ESP32 Dev Module** a 240 MHz c
    - Comunicación I2C directa: **SDA $\to$ GPIO 21**, **SCL $\to$ GPIO 22**.
    - Resolución de 12 bits reducida a 10 bits (`0..1023`), con desenrollado multi-vuelta universal (*Continuous Angle Tracking*) en la app.
    - Soporte de 180° a 1080° de giro físico y virtual (360° F1, 540° Rally, 900° Camiones).
-2. **Pedal de Acelerador (Sensor Hall SS49E)**:
-   - Señal analógica en **GPIO 32** (ADC1).
-   - Alimentación dedicada: VCC en **GPIO 33 (3.3V)**, GND en **GPIO 25 (0V)**.
+2. **Pedalera de 3 Pedales Hall (Sensores SS49E en bloque consecutivo de 5 pines)**:
+   - **Freno (Señal)**: **GPIO 34** (ADC1).
+   - **Embrague (Señal)**: **GPIO 35** (ADC1).
+   - **Acelerador (Señal)**: **GPIO 32** (ADC1).
+   - **Alimentación Común (+)**: **GPIO 33 (3.3V)**.
+   - **Masa Común (GND)**: **GPIO 25 (0V)**.
 3. **Shift Lights de Telemetría (8x NeoPixel WS2812B SMD en cascada)**:
    - Pin de datos `DIN`: **GPIO 13**.
    - Escala progresiva de F1: 4 Rojos (20%, 35%, 50%, 65%) + 4 Azules (75%, 83%, 90%, 95%) con destello de corte Shift Flash ($\ge$ 97%).
