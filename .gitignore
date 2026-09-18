@@ -48,3 +48,7 @@ python/.build_venv/
 
 # ESP32 local WiFi credentials
 esp32/config.py
+
+# PlatformIO
+.pio/
+**/.pio/

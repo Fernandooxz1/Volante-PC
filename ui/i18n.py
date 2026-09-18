@@ -99,6 +99,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Deslizadores y Parámetros de Sintonía
         "sliders.title": "Ajuste Dinámico y Filtros",
+        "sliders.steer_lock": "GRADOS DE GIRO (BLOQUEO)",
+        "sliders.steer_lock_desc": "Rango total de giro de tope a tope (ej. 360° F1, 540° Rally/GT, 900° Camiones).",
         "sliders.sensitivity": "Sensibilidad",
         "sliders.sensitivity_desc": "Multiplicador de respuesta general del volante. Valores altos aumentan la rapidez de respuesta ante pequeños giros.",
         "sliders.slope": "Pendiente de Linealidad",
@@ -266,6 +268,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "calib.step2_title": "PASO 2: VOLANTE - POSICIÓN CENTRAL",
         "calib.step2_instructions": "Suelte el volante en su posición física CENTRAL neutra. Asegúrese de que esté alineado al centro y presione 'Guardar Centro'.",
         "calib.btn_save_center": "Guardar Posición Central",
+        "calib.btn_quick_center": "CENTRAR VOLANTE (0.0°)",
         "calib.step2_feedback": "Centre el volante y presione 'Guardar Posición Central'.",
         "calib.feedback_center_saved": "Posición Central del Volante: {val}",
 
@@ -493,6 +496,8 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Sliders & Tuning Parameters
         "sliders.title": "Response Dynamics and Filtering",
+        "sliders.steer_lock": "STEERING LOCK (DEGREES)",
+        "sliders.steer_lock_desc": "Total rotation range lock-to-lock (e.g. 360° F1, 540° Rally/GT, 900° Trucks).",
         "sliders.sensitivity": "Sensitivity",
         "sliders.sensitivity_desc": "Overall steering response multiplier. Higher values increase steering responsiveness to wheel movement.",
         "sliders.slope": "Linearity Slope",
@@ -660,6 +665,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "calib.step2_title": "STEP 2: STEERING WHEEL - CENTER POSITION",
         "calib.step2_instructions": "Release the steering wheel completely to its physical CENTER neutral position. Ensure the wheel is straight, then click 'Save Center'.",
         "calib.btn_save_center": "Save Center Position",
+        "calib.btn_quick_center": "CENTER WHEEL (0.0°)",
         "calib.step2_feedback": "Center the wheel, then click 'Save Center Position'.",
         "calib.feedback_center_saved": "Steering Center Position: {val}",
 
@@ -865,6 +871,9 @@ _ALIASES: Dict[str, str] = {
     "percentage": "telemetry.percentage",
 
     # Sliders
+    "steer lock": "sliders.steer_lock",
+    "steer_lock": "sliders.steer_lock",
+    "steering lock": "sliders.steer_lock",
     "sensitivity": "sliders.sensitivity",
     "linearity slope": "sliders.slope",
     "slope": "sliders.slope",

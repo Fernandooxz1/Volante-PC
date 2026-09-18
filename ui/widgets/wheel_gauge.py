@@ -1,6 +1,6 @@
 """
 WheelGauge: Widget de cuadrante de dirección vectorial con estética Motorsport DDU.
-Renderizado de alto rendimiento con QPainter, antialiasing y rotación suave de -90° a +90°.
+Renderizado de alto rendimiento con QPainter, antialiasing y rotación suave multi-giro (-540° a +540°).
 """
 
 import math
@@ -106,9 +106,12 @@ class WheelGauge(QWidget):
             self.update()
 
     def set_max_angle(self, max_angle: float) -> None:
-        """Establece el rango de deflexión máxima (por defecto 90.0°)."""
+        """Establece el rango de deflexión máxima (de 90.0° a 540.0°)."""
         if max_angle > 0:
             self._max_angle = float(max_angle)
+            clamped = max(-self._max_angle, min(self._max_angle, self._angle))
+            if abs(self._angle - clamped) > 0.01:
+                self._angle = clamped
             self.update()
 
     def set_accent_color(self, color: str | QColor) -> None:
@@ -182,8 +185,9 @@ class WheelGauge(QWidget):
 
         # Arco de sector de zona muerta en la parte superior (12 o'clock)
         if self._deadzone > 0.001:
-            dz_span_deg = (self._deadzone * self._max_angle) * 2.0
-            dz_start_angle = 90.0 - (self._deadzone * self._max_angle)
+            dz_angle = self._deadzone * self._max_angle
+            dz_span_deg = min(360.0, dz_angle * 2.0)
+            dz_start_angle = 90.0 - dz_angle
 
             dz_rect = QRectF(cx - r_outer + 1.0, cy - r_outer + 1.0, (r_outer - 1.0) * 2.0, (r_outer - 1.0) * 2.0)
             dz_pen_color = self._accent_color if is_centered else QColor(COLOR_BORDER_ACTIVE)
@@ -192,8 +196,25 @@ class WheelGauge(QWidget):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawArc(dz_rect, int(dz_start_angle * 16), int(dz_span_deg * 16))
 
-        # Marcas de escala exterior (-90, -60, -30, 0, +30, +60, +90)
-        ticks = [-90, -60, -30, 0, 30, 60, 90]
+        # Marcas dinámicas de escala exterior según deflexión máxima
+        if self._max_angle <= 100:
+            interval = 30
+        elif self._max_angle <= 200:
+            interval = 45
+        elif self._max_angle <= 380:
+            interval = 90
+        else:
+            interval = 180
+
+        ticks = []
+        t = 0
+        while t <= self._max_angle:
+            ticks.append(t)
+            if t > 0:
+                ticks.append(-t)
+            t += interval
+        ticks.sort()
+
         for tick in ticks:
             # Ángulo en sistema trigonométrico (0° arriba = 90° trigonométrico)
             angle_rad = math.radians(270.0 + tick)
@@ -411,20 +432,22 @@ class WheelGauge(QWidget):
             "STEER",
         )
 
-        # Texto 2: Lectura digital de grados grande (e.g. "-34.5°" o "0.0°")
-        font_deg = QFont("monospace")
-        font_deg.setStyleHint(QFont.StyleHint.Monospace)
-        font_deg.setBold(True)
-        font_deg.setPixelSize(max(11, int(r_display * 0.40)))
-        painter.setFont(font_deg)
-
+        # Texto 2: Lectura digital de grados grande (e.g. "+180.0°", "+450.0°", "-270.0°", "0.0°")
         if abs(self._angle) < 0.05:
             deg_str = "0.0°"
-            painter.setPen(self._accent_color)
+            deg_color = self._accent_color
         else:
             sign = "+" if self._angle > 0 else ""
             deg_str = f"{sign}{self._angle:.1f}°"
-            painter.setPen(COLOR_TEXT_PRIMARY)
+            deg_color = COLOR_TEXT_PRIMARY
+
+        font_deg = QFont("monospace")
+        font_deg.setStyleHint(QFont.StyleHint.Monospace)
+        font_deg.setBold(True)
+        font_scale = 0.34 if len(deg_str) >= 7 else 0.40
+        font_deg.setPixelSize(max(10, int(r_display * font_scale)))
+        painter.setFont(font_deg)
+        painter.setPen(deg_color)
 
         painter.drawText(
             QRectF(cx - r_display, cy - r_display * 0.28, r_display * 2, r_display * 0.55),
@@ -443,7 +466,7 @@ class WheelGauge(QWidget):
             painter.setPen(COLOR_THROTTLE_GREEN)
             status_str = "CENTER"
         else:
-            norm_pct = int(round((abs(self._angle) / self._max_angle) * 100.0))
+            norm_pct = min(100, int(round((abs(self._angle) / self._max_angle) * 100.0)))
             direction = "R" if self._angle > 0 else "L"
             painter.setPen(COLOR_TEXT_MUTED)
             status_str = f"{direction} {norm_pct}%"

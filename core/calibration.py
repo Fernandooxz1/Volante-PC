@@ -21,24 +21,34 @@ def calculate_steering(
     anti_deadzone: float = 0.0,
     rest_deadzone: float = 0.01,
     invert: bool = False,
+    continuous_deg: float | None = None,
+    steer_lock_deg: float | None = None,
 ) -> Tuple[int, float, float]:
     """
     Calcula el valor final del eje de dirección para el gamepad virtual.
     
+    :param continuous_deg: Ángulo físico continuo en grados (soporte multi-vuelta).
+    :param steer_lock_deg: Rango total de giro configurado (ej. 360, 540, 900 grados).
     :return: Tupla con (valor_int_32767, x_normalizado, y_salida_normalizado)
              valor_int_32767: -32768 a 32767 para el stick virtual de Xbox.
              x_normalizado: -1.0 a 1.0 (posición física relativa al centro).
              y_salida_normalizado: -1.0 a 1.0 (posición después de aplicar expo y anti-deadzone).
     """
-    # 1. Normalización asimétrica respecto al centro físico real
-    if steer < steer_center:
-        range_left = steer_center - steer_min
-        x = (steer - steer_center) / range_left if range_left > 0 else 0.0
-        x = max(-1.0, min(0.0, x))
+    # 1. Normalización respecto al centro físico y rango de giro (lock-to-lock)
+    if continuous_deg is not None and steer_lock_deg is not None and steer_lock_deg > 0:
+        half_lock = steer_lock_deg / 2.0
+        x = continuous_deg / half_lock if half_lock > 0 else 0.0
+        x = max(-1.0, min(1.0, x))
     else:
-        range_right = steer_max - steer_center
-        x = (steer - steer_center) / range_right if range_right > 0 else 0.0
-        x = max(0.0, min(1.0, x))
+        # Normalización asimétrica clásica respecto al centro físico ADC (0..1023)
+        if steer < steer_center:
+            range_left = steer_center - steer_min
+            x = (steer - steer_center) / range_left if range_left > 0 else 0.0
+            x = max(-1.0, min(0.0, x))
+        else:
+            range_right = steer_max - steer_center
+            x = (steer - steer_center) / range_right if range_right > 0 else 0.0
+            x = max(0.0, min(1.0, x))
 
     if invert:
         x = -x

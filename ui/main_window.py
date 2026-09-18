@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
 
         self._sync_sliders_from_config()
         self._sync_presets_from_config()
+        self._apply_preset_settings()
 
         self._apply_current_theme()
 
@@ -238,6 +239,8 @@ class MainWindow(QMainWindow):
         gauges_layout.addWidget(self.pedal_brake)
 
         self.wheel_gauge = WheelGauge(parent=self)
+        initial_steer_lock = float(self.config_manager.get("steer_lock_deg", 360))
+        self.wheel_gauge.set_max_angle(initial_steer_lock / 2.0)
         gauges_layout.addWidget(self.wheel_gauge, stretch=2)
 
         self.pedal_throttle = PedalBar(label=tr("telemetry.throttle"), pedal_type="throttle", parent=self)
@@ -306,7 +309,42 @@ class MainWindow(QMainWindow):
     def _build_tuning_tab(self, parent: QWidget) -> None:
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(12, 14, 12, 12)
-        layout.setSpacing(14)
+        self.btn_quick_center = QPushButton(tr("calib.btn_quick_center"), parent)
+        self.btn_quick_center.setFixedHeight(34)
+        self.btn_quick_center.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_quick_center.setStyleSheet("""
+            QPushButton {
+                background-color: #16202c;
+                color: #00e5ff;
+                border: 1px solid #00e5ff;
+                border-radius: 6px;
+                font-weight: 800;
+                font-size: 11px;
+                letter-spacing: 0.8px;
+            }
+            QPushButton:hover {
+                background-color: #00e5ff;
+                color: #0a0c10;
+            }
+            QPushButton:pressed {
+                background-color: #00b4d8;
+                color: #0a0c10;
+            }
+        """)
+        self.btn_quick_center.clicked.connect(self._on_quick_center_clicked)
+        layout.addWidget(self.btn_quick_center)
+
+        self.slider_degrees, self.val_degrees = self._create_slider_row(
+            layout,
+            title_key="sliders.steer_lock",
+            desc_key="sliders.steer_lock_desc",
+            min_val=180,
+            max_val=1080,
+            initial=int(self.config_manager.get("steer_lock_deg", 360)),
+            format_fn=lambda v: f"{v}°",
+            on_change=lambda v: self._on_steer_lock_changed(v),
+        )
+        self.slider_steer_lock = self.slider_degrees
 
         self.slider_sens, self.val_sens = self._create_slider_row(
             layout,
@@ -466,7 +504,9 @@ class MainWindow(QMainWindow):
     # Actualización en Tiempo Real 
     def _update_telemetry_ui(self) -> None:
         snapshot = self.engine.get_telemetry()
+        self._on_telemetry_snapshot(snapshot)
 
+    def _on_telemetry_snapshot(self, snapshot: TelemetrySnapshot) -> None:
         # 1. Actualizar estado de conexión
         status = snapshot.status
         if status != self._last_status:
@@ -536,6 +576,7 @@ class MainWindow(QMainWindow):
             finally:
                 self._is_updating_ui = False
             self._sync_sliders_from_config()
+            self._apply_preset_settings()
 
         if hasattr(snapshot, "mode") and snapshot.mode and snapshot.mode != self.mode_combo.currentText():
             self._is_updating_ui = True
@@ -630,6 +671,30 @@ class MainWindow(QMainWindow):
             dz = self.config_manager.get("deadzone", 0.13)
             self.pedal_throttle.set_deadzone(dz)
             self.pedal_brake.set_deadzone(dz)
+        elif key == "steer_lock_deg":
+            self.wheel_gauge.set_max_angle(value / 2.0)
+            if hasattr(self.engine, "set_steer_lock"):
+                self.engine.set_steer_lock(value)
+
+    def _on_steer_lock_changed(self, v: int) -> None:
+        if self._is_updating_ui:
+            return
+        self.config_manager.set("steer_lock_deg", v)
+        self.config_manager.save()
+        self.wheel_gauge.set_max_angle(v / 2.0)
+        if hasattr(self.engine, "set_steer_lock"):
+            self.engine.set_steer_lock(v)
+
+    def _on_quick_center_clicked(self) -> None:
+        if hasattr(self.engine, "calibrate_center"):
+            new_center = self.engine.calibrate_center()
+            self._log(f"Centro del volante calibrado en ADC={new_center} (0.0° físico).", "success")
+        else:
+            snap = self.engine.get_telemetry() if hasattr(self.engine, "get_telemetry") else None
+            new_center = snap.raw_steer if snap else 512
+            self.config_manager.set("steer_center", new_center)
+            self.config_manager.save()
+            self._log(f"Centro guardado en ADC={new_center}.", "success")
 
     def _on_checkbox_changed(self, key: str, checked: bool) -> None:
         if self._is_updating_ui:
@@ -641,11 +706,18 @@ class MainWindow(QMainWindow):
     def _sync_sliders_from_config(self) -> None:
         self._is_updating_ui = True
         try:
+            steer_lock = int(self.config_manager.get("steer_lock_deg", 360))
             sens = self.config_manager.get("sensitivity", 1.0)
             slope = self.config_manager.get("slope", 1.85)
             anti_dz = self.config_manager.get("anti_deadzone", 0.0)
             dz = self.config_manager.get("deadzone", 0.13)
             filt = self.config_manager.get("filter", 0.0)
+
+            if hasattr(self, "slider_degrees"):
+                self.slider_degrees.setValue(steer_lock)
+                self.val_degrees.setText(f"{steer_lock}°")
+            if hasattr(self, "wheel_gauge"):
+                self.wheel_gauge.set_max_angle(steer_lock / 2.0)
 
             self.slider_sens.setValue(int(sens * 100))
             self.val_sens.setText(f"{sens:.2f}x")
@@ -687,6 +759,17 @@ class MainWindow(QMainWindow):
         finally:
             self._is_updating_ui = False
 
+    def _apply_preset_settings(self) -> None:
+        """Aplica los ajustes de grados de giro del preset activo al volante y controles dependientes."""
+        steer_lock = int(self.config_manager.get("steer_lock_deg", 360))
+        if hasattr(self, "slider_degrees"):
+            self.slider_degrees.setValue(steer_lock)
+            self.val_degrees.setText(f"{steer_lock}°")
+        if hasattr(self, "wheel_gauge"):
+            self.wheel_gauge.set_max_angle(steer_lock / 2.0)
+        if hasattr(self.engine, "set_steer_lock"):
+            self.engine.set_steer_lock(steer_lock)
+
     def _on_preset_selected(self, preset_name: str) -> None:
         if self._is_updating_ui or not preset_name:
             return
@@ -698,6 +781,7 @@ class MainWindow(QMainWindow):
 
         if success:
             self._sync_sliders_from_config()
+            self._apply_preset_settings()
             self._log(f"Preset '{preset_name}' cargado con éxito.", "success")
 
     def _save_new_preset(self) -> None:
@@ -738,13 +822,14 @@ class MainWindow(QMainWindow):
                 self.config_manager.delete_preset(current)
             self._sync_presets_from_config()
             self._sync_sliders_from_config()
+            self._apply_preset_settings()
             self._log(f"Preset '{current}' eliminado.", "info")
 
     # Diálogos y Asistentes
 
     def _open_calibration_wizard(self) -> None:
         dlg = CalibrationWizardDialog(engine=self.engine, config_manager=self.config_manager, parent=self)
-        dlg.calibration_applied.connect(lambda d: self._sync_sliders_from_config())
+        dlg.calibration_applied.connect(lambda d: (self._sync_sliders_from_config(), self._apply_preset_settings()))
         dlg.exec()
 
     def _open_mapping_wizard(self) -> None:

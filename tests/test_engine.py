@@ -204,7 +204,8 @@ class TestEngine(unittest.TestCase):
         # Ejes analógicos deben ser suprimidos a 0 para no interferir en menús
         self.assertEqual(self.mock_gamepad.last_inputs["steer_val"], 0)
 
-        # Giro fuerte a la derecha (> 0.35)
+        # Giro fuerte a la derecha (> 0.35) pasando por el centro
+        self.engine.process_packet(512, 0, 0, [0] * 11)
         self.engine.process_packet(1023, 0, 0, [0] * 11)
         self.assertIn("D-Pad RIGHT", self.mock_gamepad.last_inputs["active_buttons"])
         self.assertNotIn("D-Pad LEFT", self.mock_gamepad.last_inputs["active_buttons"])
@@ -418,6 +419,36 @@ class TestEngine(unittest.TestCase):
         # Al activar el modo de mapeo, la telemetría debe pausarse y restaurar color base
         self.engine.set_mapping_mode(True)
         self.assertEqual(self.engine._determine_active_led_color(), self.engine.current_led_color)
+
+    def test_continuous_steering_physical_degrees_and_lock(self):
+        """Verifica que el ángulo físico sea estrictamente 1:1 y que el bloqueo se aplique correctamente."""
+        self.config_manager.set("steer_center", 512)
+        self.config_manager.set("steer_lock_deg", 360)
+        self.config_manager.set("sensitivity", 1.0)
+        self.config_manager.set("slope", 1.0)
+        self.engine.reset_steering_turns()
+
+        # Centro: 512 -> 0.0°
+        self.engine.process_packet(512, 0, 0, [0] * 11)
+        snap = self.engine.get_telemetry()
+        self.assertAlmostEqual(snap.steer_angle, 0.0, places=1)
+        self.assertEqual(self.mock_gamepad.last_inputs["steer_val"], 0)
+
+        # Giro a 90° derecha (+256 cuentas = 768)
+        self.engine.process_packet(768, 0, 0, [0] * 11)
+        snap = self.engine.get_telemetry()
+        self.assertAlmostEqual(snap.steer_angle, 90.0, delta=0.5)
+        # Con 360° lock (+/-180°), 90° es ~50% de recorrido (descontando 1% rest_deadzone)
+        self.assertAlmostEqual(self.mock_gamepad.last_inputs["steer_val"], 16383, delta=250)
+
+        # Giro a 180° derecha (+512 cuentas = 1024 -> wrap a 0 con delta < -512)
+        # Pasamos por 1000 primero para evitar salto de mock
+        self.engine.process_packet(1000, 0, 0, [0] * 11)
+        self.engine.process_packet(0, 0, 0, [0] * 11)
+        snap = self.engine.get_telemetry()
+        self.assertAlmostEqual(snap.steer_angle, 180.0, delta=0.5)
+        # Bloqueo total alcanzado a 180°
+        self.assertEqual(self.mock_gamepad.last_inputs["steer_val"], 32767)
 
 
 if __name__ == "__main__":

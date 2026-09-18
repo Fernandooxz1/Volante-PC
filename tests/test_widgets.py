@@ -77,6 +77,47 @@ def test_wheel_gauge_render(qapp):
         assert pix.height() == 260
 
 
+def test_wheel_gauge_multi_turn_angles(qapp):
+    gauge = WheelGauge(max_angle=540.0)
+    assert gauge._max_angle == 540.0
+
+    # Angulos multi-vuelta
+    gauge.set_angle(450.0)
+    assert abs(gauge.get_angle() - 450.0) < 0.01
+
+    gauge.set_angle(-270.0)
+    assert abs(gauge.get_angle() - (-270.0)) < 0.01
+
+    # Clamping a deflexion maxima
+    gauge.set_angle(600.0)
+    assert gauge.get_angle() == 540.0
+    gauge.set_angle(-600.0)
+    assert gauge.get_angle() == -540.0
+
+    # Modificar rango maximo dinamicamente
+    gauge.set_max_angle(180.0)
+    assert gauge._max_angle == 180.0
+    assert gauge.get_angle() == -180.0
+
+    gauge.set_normalized_value(0.5)
+    assert abs(gauge.get_angle() - 90.0) < 0.01
+
+
+def test_wheel_gauge_multi_turn_render(qapp):
+    gauge = WheelGauge()
+    gauge.resize(260, 260)
+
+    # Probar diferentes rangos de bisel: <= 100, <= 200, <= 380, > 380
+    for max_ang in [90.0, 180.0, 270.0, 450.0, 540.0]:
+        gauge.set_max_angle(max_ang)
+        for test_angle in [-max_ang, -max_ang / 2.0, 0.0, max_ang / 2.0, max_ang]:
+            gauge.set_angle(test_angle)
+            pix = gauge.grab()
+            assert not pix.isNull()
+            assert pix.width() == 260
+            assert pix.height() == 260
+
+
 # =============================================================================
 # 2. Pruebas de PedalBar
 # =============================================================================

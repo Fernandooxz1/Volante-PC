@@ -25,6 +25,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "steer_min": 0,
     "steer_center": 512,
     "steer_max": 1023,
+    "steer_lock_deg": 360,
     "invert_steer": False,
     "invert_accel": False,
     "invert_brake": False,
@@ -58,6 +59,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "mode": "Conducción",
             "preset_cycle_btn": "Pin D2",
             "f1_telemetry": True,
+            "steer_lock_deg": 360,
             "sensitivity": 1.0,
             "slope": 2.2,
             "anti_deadzone": 0.0,
@@ -83,6 +85,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "mode": "Crucetas / D-Pad",
             "preset_cycle_btn": "Pin D2",
             "f1_telemetry": False,
+            "steer_lock_deg": 360,
             "sensitivity": 1.0,
             "slope": 1.85,
             "anti_deadzone": 0.0,
@@ -105,6 +108,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "btn_map_p12": "Ninguno"
         },
         "RALLY / DRIFT": {
+            "steer_lock_deg": 540,
             "sensitivity": 1.0,
             "slope": 1.0,
             "anti_deadzone": 0.02,
@@ -116,6 +120,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "led_color": "Amarillo"
         },
         "SIMULADOR CAMIONES": {
+            "steer_lock_deg": 900,
             "sensitivity": 0.7,
             "slope": 1.4,
             "anti_deadzone": 0.0,
@@ -251,6 +256,14 @@ class ConfigManager:
                         self.config[k] = v
                 if "mode" not in preset_data:
                     self.config["mode"] = "Crucetas / D-Pad" if "CRUCETA" in preset_name.upper() else "Conducción"
+                if "steer_lock_deg" not in preset_data:
+                    upper_name = preset_name.upper()
+                    if "TRUCK" in upper_name or "CAMION" in upper_name:
+                        self.config["steer_lock_deg"] = 900
+                    elif "RALLY" in upper_name or "DIRT" in upper_name or "GT" in upper_name:
+                        self.config["steer_lock_deg"] = 540
+                    else:
+                        self.config["steer_lock_deg"] = 360
                 self.config["previous_preset"] = self.config.get("active_preset", "Personalizado")
                 self.config["active_preset"] = preset_name
                 return True
@@ -278,6 +291,7 @@ class ConfigManager:
                 "anti_deadzone": self.config.get("anti_deadzone", 0.0),
                 "deadzone": self.config.get("deadzone", 0.13),
                 "filter": self.config.get("filter", 0.0),
+                "steer_lock_deg": self.config.get("steer_lock_deg", 360),
                 "steer_target": self.config.get("steer_target", "Left Stick X"),
                 "accel_target": self.config.get("accel_target", "Right Trigger (RT)"),
                 "brake_target": self.config.get("brake_target", "Left Trigger (LT)"),

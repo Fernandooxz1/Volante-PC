@@ -291,6 +291,10 @@ class Engine:
         self._last_raw_axes: Dict[str, int] = {"steer": 512, "accel": 0, "brake": 0}
         self._last_btn_cycle_state: int = 0
 
+        # Seguimiento de giro multi-vuelta (AS5600 360° unwrapping)
+        self._steer_turns: int = 0
+        self._last_raw_steer_for_turns: Optional[int] = None
+
         # Bus de eventos de entrada (Press-to-Map)
         self._listener_lock = threading.Lock()
         self._input_listeners: List[InputEventListener] = []
@@ -577,6 +581,11 @@ class Engine:
         self._update_led_color_from_config()
         self.send_led_color(self._current_led_color)
 
+    def set_steer_lock(self, degrees: float) -> None:
+        """Configura el rango de bloqueo de dirección de tope a tope en grados."""
+        self.config_manager.set("steer_lock_deg", float(degrees))
+        logger.info("Rango de giro configurado a: %.1f°", degrees)
+
     def toggle_mode(self) -> str:
         """Alterna entre 'Conducción' y 'Crucetas / D-Pad' y retorna el nuevo modo."""
         new_mode = MODE_CRUCETAS if self._mode == MODE_CONDUCCION else MODE_CONDUCCION
@@ -626,6 +635,21 @@ class Engine:
         self.load_preset(next_preset)
         self.config_manager.save()
         return next_preset
+
+    def reset_steering_turns(self) -> None:
+        """Reinicia el contador de vueltas del volante a cero (centro neutro)."""
+        self._steer_turns = 0
+        self._last_raw_steer_for_turns = None
+
+    def calibrate_center(self, center_val: int | None = None) -> int:
+        """Establece la posición actual (o center_val) como el nuevo centro físico del volante (0.0°)."""
+        if center_val is None:
+            snap = self.get_telemetry()
+            center_val = snap.raw_steer if snap else 512
+        self.config_manager.set("steer_center", center_val)
+        self.config_manager.save()
+        self.reset_steering_turns()
+        return center_val
 
     # Control de LED RGB
     def _update_led_color_from_config(self) -> None:
@@ -851,20 +875,32 @@ class Engine:
             if not ser or not ser.is_open:
                 return
 
-            target_color = self._determine_active_led_color()
-            if target_color != self._last_effective_led_color:
-                self._last_effective_led_color = target_color
-                self._pending_led_command = encode_led_command(target_color)
-
             cmd_to_send: Optional[bytes] = None
-            if self._pending_led_command is not None:
-                cmd_to_send = self._pending_led_command
-                self._pending_led_command = None
-                self._last_led_send_time = now
-            elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
-                # Latido periódico para que Arduino mantenga pcConnected = true
-                cmd_to_send = encode_led_command(target_color)
-                self._last_led_send_time = now
+            snap = self._telemetry_snapshot
+
+            # Prioridad 1: Si hay telemetría activa de F1/ETS2, enviar porcentaje de RPM (0xBB 0x77 <rev_pct>)
+            if snap.f1_telemetry_active:
+                rev_pct = min(100, max(0, snap.f1_rev_lights))
+                last_rev = getattr(self, "_last_sent_rev_pct", -1)
+                if rev_pct != last_rev or (now - self._last_led_send_time >= 0.05):
+                    self._last_sent_rev_pct = rev_pct
+                    cmd_to_send = bytes([0xBB, 0x77, rev_pct])
+                    self._last_led_send_time = now
+            else:
+                self._last_sent_rev_pct = -1
+                target_color = self._determine_active_led_color()
+                if target_color != self._last_effective_led_color:
+                    self._last_effective_led_color = target_color
+                    self._pending_led_command = encode_led_command(target_color)
+
+                if self._pending_led_command is not None:
+                    cmd_to_send = self._pending_led_command
+                    self._pending_led_command = None
+                    self._last_led_send_time = now
+                elif now - self._last_led_send_time >= HEARTBEAT_INTERVAL:
+                    # Latido periódico para que Arduino/ESP32 mantenga conexión viva
+                    cmd_to_send = encode_led_command(target_color)
+                    self._last_led_send_time = now
 
             if cmd_to_send:
                 try:
@@ -930,9 +966,28 @@ class Engine:
         accel_calc = max(0, min(1023, accel_raw))
         brake_calc = max(0, min(1023, brake_raw))
 
-        # 4. Filtro DSP Anti-Jitter (SteeringFilter)
+        # 4. Cálculo de Dirección con soporte Multi-Vuelta continuo (AS5600: 360° = 1024 cuentas)
+        steer_lock_deg = float(self.config_manager.get("steer_lock_deg", 360.0))
+        steer_center = int(self.config_manager.get("steer_center", 512))
+
+        if self._last_raw_steer_for_turns is not None:
+            delta = steer_calc - self._last_raw_steer_for_turns
+            if delta < -512:
+                self._steer_turns += 1
+            elif delta > 512:
+                self._steer_turns -= 1
+        self._last_raw_steer_for_turns = steer_calc
+        cumulative_raw = (self._steer_turns * 1024) + steer_calc
+
+        # Filtro DSP Anti-Jitter sobre el ángulo continuo desenrollado (evita glitch en 0/1023)
         filter_strength = float(self.config_manager.get("filter", 0.0))
-        steer_filtered = self._steer_filter.process(steer_calc, filter_strength)
+        if filter_strength > 0.001:
+            cumulative_filtered = float(self._steer_filter.process(int(round(cumulative_raw)), filter_strength))
+        else:
+            cumulative_filtered = float(cumulative_raw)
+
+        physical_deg = (cumulative_filtered - steer_center) * (360.0 / 1024.0)
+        steer_filtered = int(round(cumulative_filtered))
 
         # 5. Modelado Matemático de Calibración
 
@@ -940,13 +995,15 @@ class Engine:
         val_steer, steer_phys_norm, steer_out_norm = calculate_steering(
             steer=steer_filtered,
             steer_min=int(self.config_manager.get("steer_min", 0)),
-            steer_center=int(self.config_manager.get("steer_center", 512)),
+            steer_center=steer_center,
             steer_max=int(self.config_manager.get("steer_max", 1023)),
             slope=float(self.config_manager.get("slope", 1.85)),
             sensitivity=float(self.config_manager.get("sensitivity", 1.0)),
             anti_deadzone=float(self.config_manager.get("anti_deadzone", 0.0)),
             rest_deadzone=float(self.config_manager.get("rest_deadzone", 0.01)),
             invert=invert_steer,
+            continuous_deg=physical_deg,
+            steer_lock_deg=steer_lock_deg,
         )
 
         # Pedales (acelerador y freno)
@@ -975,8 +1032,8 @@ class Engine:
         gui_accel = max(0, min(1023, int(round(accel_norm * 1023))))
         gui_brake = max(0, min(1023, int(round(brake_norm * 1023))))
 
-        # Ángulo visual del volante (-90° a +90°)
-        steer_angle = round(steer_out_norm * 90.0, 1)
+        # Ángulo visual real del volante en grados físicos (ej. -180.0° a +180.0°, o -450.0° a +450.0°)
+        steer_angle = round(-physical_deg if invert_steer else physical_deg, 1)
         throttle_pct = round(accel_norm * 100.0, 1)
         brake_pct = round(brake_norm * 100.0, 1)
 

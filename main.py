@@ -152,6 +152,7 @@ def run_gui(port: str | None = None) -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Volante-PC")
     app.setOrganizationName("VolantePC")
+    app.setDesktopFileName("volante-pc")
 
     engine = Engine(port=port)
     engine.start()

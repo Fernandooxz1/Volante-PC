@@ -15,6 +15,8 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 // --- Pines ---
 #define PIN_I2C_SDA     21
@@ -23,8 +25,15 @@
 #define PIN_HALL_VCC    33
 #define PIN_HALL_GND    25
 #define PIN_HALL_BRAKE  34
-#define PIN_NEOPIXEL    13
-#define NUM_PIXELS      5
+#define PIN_NEOPIXEL        13
+#define NUM_PIXELS          8
+#define NEOPIXEL_BRIGHTNESS 40  // CAMBIAR BRILLO DE NEOPIXELS
+
+// --- Matriz de Botones 4x3 (4 Filas x 3 Columnas = 12 botones) ---
+// Diodos apuntan hacia las entradas (Filas) con resistencias en las columnas.
+#define MATRIX_ACTIVE_HIGH  true // true: Columna HIGH -> Fila PULLDOWN lee HIGH al presionar
+const uint8_t ROW_PINS[4] = {16, 17, 18, 19}; // 4 Entradas (Filas)
+const uint8_t COL_PINS[3] = {23, 26, 27};     // 3 Salidas (Columnas con resistencias)
 
 // --- Red WiFi y UDP ---
 const char* WIFI_SSID     = "GingerBB";
@@ -47,9 +56,8 @@ VolantePacket packet;
 const unsigned long INTERVALO_SERIAL_MS = 10; // 100 Hz
 unsigned long ultimoTiempoSerial = 0;
 
-// --- Filtros EMA en punto fijo (escala 256) ---
+// --- Filtros EMA en punto fijo para pedales analógicos (escala 256) ---
 const int32_t ALPHA_FIXED = 90; // ~0.35
-int32_t filtradoSteer = 512L * 256;
 int32_t filtradoAccel = 0;
 int32_t filtradoBrake = 0;
 
@@ -75,16 +83,16 @@ uint16_t readAS5600Angle() {
   return 2048;
 }
 
-// --- Actualización de los 5 NeoPixels ---
+// --- Actualización de los 8 NeoPixels ---
 void updateNeoPixels(uint8_t revs_pct) {
-  if (revs_pct < 50) {
+  if (revs_pct < 20) {
     strip.clear();
     strip.show();
     return;
   }
 
-  // Shift Flash a >= 96%
-  if (revs_pct >= 96) {
+  // Shift Flash a >= 97%
+  if (revs_pct >= 97) {
     unsigned long now = millis();
     if (now - lastFlashTime > 70) {
       flashState = !flashState;
@@ -96,14 +104,19 @@ void updateNeoPixels(uint8_t revs_pct) {
     return;
   }
 
-  // Escala para 5 LEDs: [50, 65, 78, 88, 94]
-  const uint8_t thresholds[5] = {50, 65, 78, 88, 94};
-  const uint32_t colors[5] = {
-    strip.Color(0, 180, 0),    // Verde 1 (50%)
-    strip.Color(0, 180, 0),    // Verde 2 (65%)
-    strip.Color(200, 140, 0),  // Amarillo (78%)
-    strip.Color(220, 0, 0),    // Rojo (88%)
-    strip.Color(0, 40, 240)    // Azul (94% Upshift)
+  // Escala Progresiva F1 (4 Rojos + 4 Azules):
+  // 4 Rojos: 20%, 35%, 50%, 65%
+  // 4 Azules: 75%, 83%, 90%, 95%
+  const uint8_t thresholds[8] = {20, 35, 50, 65, 75, 83, 90, 95};
+  const uint32_t colors[8] = {
+    strip.Color(220, 0, 0),    // Rojo 1 (20%)
+    strip.Color(220, 0, 0),    // Rojo 2 (35%)
+    strip.Color(220, 0, 0),    // Rojo 3 (50%)
+    strip.Color(220, 0, 0),    // Rojo 4 (65%)
+    strip.Color(0, 0, 220),   // Azul 1 (75%)
+    strip.Color(0, 0, 220),   // Azul 2 (83%)
+    strip.Color(0, 0, 220),   // Azul 3 (90%)
+    strip.Color(0, 0, 220)    // Azul 4 (95% Upshift)
   };
 
   for (int i = 0; i < NUM_PIXELS; i++) {
@@ -117,7 +130,13 @@ void updateNeoPixels(uint8_t revs_pct) {
 }
 
 void setup() {
+  // Desactivar detector de caídas de tensión (Brownout) para evitar reinicios por consumo pico
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
   Serial.begin(115200);
+
+  // Apagar WiFi para ahorrar ~300mA de consumo pico (usamos USB directo a 100 Hz)
+  WiFi.mode(WIFI_OFF);
 
   // I2C para AS5600
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
@@ -134,23 +153,28 @@ void setup() {
 
   // NeoPixels
   strip.begin();
-  strip.setBrightness(180);
+  strip.setBrightness(NEOPIXEL_BRIGHTNESS);
+  strip.clear();
   strip.show();
+
+  // Configuración de la Matriz 4x3
+  for (int r = 0; r < 4; r++) {
+    pinMode(ROW_PINS[r], MATRIX_ACTIVE_HIGH ? INPUT_PULLDOWN : INPUT_PULLUP);
+  }
+  for (int c = 0; c < 3; c++) {
+    pinMode(COL_PINS[c], OUTPUT);
+    digitalWrite(COL_PINS[c], MATRIX_ACTIVE_HIGH ? LOW : HIGH);
+  }
 
   // Paquete
   packet.header1 = 0xAA;
   packet.header2 = 0x55;
-
-  // WiFi UDP
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  udp.begin(UDP_PORT);
 }
 
 void loop() {
   unsigned long now = millis();
 
-  // 1. Recepción UDP de telemetría (desde core/esp32_bridge.py)
+  // 1. Recepción UDP de telemetría (desde core/esp32_bridge.py si hay WiFi)
   int packetSize = udp.parsePacket();
   if (packetSize >= 9) {
     uint8_t udpBuffer[16];
@@ -162,15 +186,34 @@ void loop() {
     }
   }
 
-  // 2. Recepción Serial de fallback (Comando 0xBB 0x66 <color>)
+  // 2. Recepción Serial de telemetría y comandos por cable USB
   while (Serial.available() >= 3) {
     if (Serial.peek() == 0xBB) {
-      Serial.read();
-      if (Serial.read() == 0x66) {
+      Serial.read(); // Consume 0xBB
+      uint8_t cmd = Serial.read();
+      if (cmd == 0x77) {
+        // Telemetría directa de RPM por USB: 0xBB 0x77 <rev_pct>
+        uint8_t rev_pct = Serial.read();
+        currentRevPercent = rev_pct;
+        lastTelemetryTime = now;
+        updateNeoPixels(currentRevPercent);
+      } else if (cmd == 0x66) {
+        // Comando de color estático / heartbeat
         uint8_t colorCode = Serial.read();
         if (now - lastTelemetryTime > 2000) {
-          // Color estático si no hay juego emitiendo UDP
+          if (colorCode == 0) {
+            strip.clear();
+            strip.show();
+          } else {
+            uint32_t c = strip.Color(0, 0, 180); // Azul
+            if (colorCode == 1) c = strip.Color(180, 0, 0); // Rojo
+            else if (colorCode == 2) c = strip.Color(0, 180, 0); // Verde
+            for (int i = 0; i < NUM_PIXELS; i++) strip.setPixelColor(i, c);
+            strip.show();
+          }
         }
+      } else {
+        Serial.read();
       }
     } else {
       Serial.read();
@@ -187,28 +230,42 @@ void loop() {
   if (now - ultimoTiempoSerial >= INTERVALO_SERIAL_MS) {
     ultimoTiempoSerial = now;
 
-    // Volante (AS5600: 0..4095 -> 10 bits: 0..1023)
+    // Volante (AS5600: 0..4095 -> 10 bits: 0..1023 digital directo I2C)
+    // Se envía directo sin filtro lineal para permitir el salto circular instantáneo 1023 <-> 0 (desenrollado multi-vuelta)
     uint16_t angleRaw = readAS5600Angle() >> 2;
-    int32_t steerFixed = (int32_t)angleRaw << 8;
-    filtradoSteer += (((steerFixed - filtradoSteer) * ALPHA_FIXED) >> 8);
+    uint32_t steer = constrain(angleRaw, 0, 1023);
 
-    // Acelerador (SS49E: 0..4095 -> 10 bits: 0..1023)
+    // Acelerador (SS49E: 0..4095 -> 10 bits: 0..1023 con EMA)
     uint16_t accelRaw = analogRead(PIN_HALL_ACCEL) >> 2;
     int32_t accelFixed = (int32_t)accelRaw << 8;
     filtradoAccel += (((accelFixed - filtradoAccel) * ALPHA_FIXED) >> 8);
 
-    // Freno (Opcional en GPIO 34)
+    // Freno (Opcional en GPIO 34 con EMA)
     uint16_t brakeRaw = analogRead(PIN_HALL_BRAKE) >> 2;
     int32_t brakeFixed = (int32_t)brakeRaw << 8;
     filtradoBrake += (((brakeFixed - filtradoBrake) * ALPHA_FIXED) >> 8);
 
     // Empaquetar valores en 30 bits
-    uint32_t steer = constrain(filtradoSteer >> 8, 0, 1023);
     uint32_t accel = constrain(filtradoAccel >> 8, 0, 1023);
     uint32_t brake = constrain(filtradoBrake >> 8, 0, 1023);
 
+    // Escaneo de Matriz 4x3 (12 botones)
+    uint16_t matrixButtons = 0;
+    for (int c = 0; c < 3; c++) {
+      digitalWrite(COL_PINS[c], MATRIX_ACTIVE_HIGH ? HIGH : LOW);
+      delayMicroseconds(5); // Estabilización
+      for (int r = 0; r < 4; r++) {
+        bool pressed = (digitalRead(ROW_PINS[r]) == (MATRIX_ACTIVE_HIGH ? HIGH : LOW));
+        if (pressed) {
+          int btnIndex = (r * 3) + c; // Botón 0 a 11
+          matrixButtons |= (1 << btnIndex);
+        }
+      }
+      digitalWrite(COL_PINS[c], MATRIX_ACTIVE_HIGH ? LOW : HIGH);
+    }
+
     packet.axes = (steer & 0x3FF) | ((accel & 0x3FF) << 10) | ((brake & 0x3FF) << 20);
-    packet.buttons = 0;
+    packet.buttons = matrixButtons;
 
     Serial.write((uint8_t*)&packet, sizeof(VolantePacket));
   }

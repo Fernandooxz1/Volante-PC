@@ -80,19 +80,30 @@ volante-pc --cli
 
 ---
 
-## Requisitos de Hardware y Conexiones
+## Requisitos de Hardware y Conexiones (ESP32 Standalone)
 
-1. **Arduino UNO** (o clon con chip CH340 / ATmega16U2).
-2. **3 Potenciómetros lineales de 10k Ohms**:
-   - 1x para el **Volante** (Dirección) -> Pin **A0**
-   - 1x para el **Pedal de Acelerador** -> Pin **A1**
-   - 1x para el **Pedal de Freno** -> Pin **A2**
-3. **Pulsadores / Botones**: Pines **D2..D8, A3, A5, A4, D12** (con `INPUT_PULLUP`).
-4. **1x LED RGB de Ánodo Común**:
-   - Rojo -> Pin **D9**
-   - Verde -> Pin **D10**
-   - Azul -> Pin **D11**
-   - Ánodo Común -> **5V**
+La rama `testESP32` utiliza un microcontrolador **ESP32 Dev Module** a 240 MHz con transmisión serie USB directa a 100 Hz (`arduino/esp32_wheel` compilable con PlatformIO):
+
+1. **Volante Multi-Vuelta (Sensor Magnético AS5600)**:
+   - Comunicación I2C directa: **SDA $\to$ GPIO 21**, **SCL $\to$ GPIO 22**.
+   - Resolución de 12 bits reducida a 10 bits (`0..1023`), con desenrollado multi-vuelta universal (*Continuous Angle Tracking*) en la app.
+   - Soporte de 180° a 1080° de giro físico y virtual (360° F1, 540° Rally, 900° Camiones).
+2. **Pedal de Acelerador (Sensor Hall SS49E)**:
+   - Señal analógica en **GPIO 32** (ADC1).
+   - Alimentación dedicada: VCC en **GPIO 33 (3.3V)**, GND en **GPIO 25 (0V)**.
+3. **Shift Lights de Telemetría (8x NeoPixel WS2812B SMD en cascada)**:
+   - Pin de datos `DIN`: **GPIO 13**.
+   - Escala progresiva de F1: 4 Rojos (20%, 35%, 50%, 65%) + 4 Azules (75%, 83%, 90%, 95%) con destello de corte Shift Flash ($\ge$ 97%).
+4. **Matriz de Botones 4x3 (12 botones físicos)**:
+   - **3 Columnas (Salidas con resistencias en serie)**: **GPIO 23, GPIO 26, GPIO 27**.
+   - **4 Filas (Entradas con diodos apuntando a filas)**: **GPIO 16, GPIO 17, GPIO 18, GPIO 19** con `INPUT_PULLDOWN`.
+
+---
+
+## Roadmap / Pendientes
+
+- [ ] **Sensores Hall Restantes (2 pedales)**: Implementar y calibrar los otros 2 sensores de efecto Hall SS49E para el **Pedal de Freno** (asignado en GPIO 34) y el **Pedal de Embrague (Clutch)**. *Actualmente solo está operativo el pedal de acelerador.*
+- [ ] **Display de 7 Segmentos**: Implementar visualizador de 7 segmentos en la ESP32 para indicador de marcha actual (*Gear: R, N, 1..8*) y velocímetro digital en KM/H con datos de telemetría de juegos (F1 2021 / Assetto Corsa / ETS2).
 
 ---
 
@@ -100,30 +111,34 @@ volante-pc --cli
 
 ```
 Volante-PC/
+├── arduino/
+│   └── esp32_wheel/                     # Firmware unificado ESP32 (PlatformIO / Arduino C++)
+│       ├── platformio.ini               # Configuración de build PlatformIO para esp32dev
+│       └── esp32_wheel.ino              # Firmware 100 Hz (AS5600, SS49E, Matriz 4x3, 8 NeoPixels)
 ├── core/                                # Motor agnóstico de hardware y matemáticas
-│   ├── protocol.py                      # Parser binario de 8 bytes y emisor de comandos LED
-│   ├── dsp.py                           # Slew-rate limiter y filtro EMA adaptativo
-│   ├── calibration.py                   # Curva exponencial, normalización, zonas muertas
+│   ├── protocol.py                      # Parser binario de 8 bytes y emisor serie/UDP
+│   ├── dsp.py                           # Slew-rate limiter y filtro EMA adaptativo continuo
+│   ├── calibration.py                   # Curva exponencial, normalización continua, bloqueo de grados
 │   ├── gamepad.py                       # Abstracción vgamepad (uinput / ViGEmBus)
 │   ├── config_manager.py                # Persistencia atómica de configuración JSON y presets
-│   └── engine.py                        # Bucle a 100 Hz en hilo independiente y bus de eventos
+│   └── engine.py                        # Bucle a 100 Hz, desenrollado multi-vuelta y calibración
 ├── ui/                                  # Capa de interfaz gráfica nativa PyQt6
 │   ├── i18n.py                          # Sistema de internacionalización bilingüe (EN / ES)
 │   ├── themes.py                        # Paleta black, temas de acento y generador QSS
 │   ├── widgets/                         # Widgets de telemetría de competición
-│   │   ├── wheel_gauge.py               # Volante vectorial con grados
+│   │   ├── wheel_gauge.py               # Volante vectorial multi-vuelta con marcas dinámicas
 │   │   ├── pedal_bar.py                 # Barras verticales con línea de deadzone
 │   │   ├── curve_canvas.py              # Gráfico cartesiano interactivo de curva expo
-│   │   ├── button_grid.py               # Píldoras de estado de los 11 pines físicos
-│   │   └── led_indicator.py             # Barra de LEDs de modo y sincronización RGB
+│   │   └── button_grid.py               # Píldoras de estado de pines físicos
 │   ├── dialogs/                         # Asistentes interactivos
-│   │   ├── mapping_wizard.py            # Asistente de mapeo (completo e individual)
+│   │   ├── mapping_wizard.py            # Asistente de mapeo de botones
 │   │   ├── calibration_wizard.py        # Asistente de calibración de límites
 │   │   └── theme_dialog.py              # Selector visual de colores y temas
-│   └── main_window.py                   # Ventana principal integrada estilo DDU
-├── tests/                               # Suite de pruebas automatizadas (67 tests)
-├── main.py                              # Punto de entrada unificado (--gui, --daemon, --cli)
-└── install.sh                           # Instalador para Arch Linux y Debian/Fedora
+│   └── main_window.py                   # Ventana principal integrada estilo DDU con centrado rápido
+├── scripts/                             # Scripts de diagnóstico y prueba de hardware
+│   └── test_esp32_hardware.py           # Monitor interactivo en consola para ESP32
+├── tests/                               # Suite de pruebas automatizadas (101 tests)
+└── main.py                              # Punto de entrada unificado (--gui, --daemon, --cli)
 ```
 
 ---

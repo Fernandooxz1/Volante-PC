@@ -117,6 +117,27 @@ class TestCalibration(unittest.TestCase):
         for i in range(len(points) - 1):
             self.assertLessEqual(points[i][1], points[i + 1][1])
 
+    def test_calculate_steering_with_lock_degrees(self):
+        # Modo 900° (Camiones / ETS2): +/- 450° de bloqueo
+        val_center, x_c, _ = calculate_steering(512, continuous_deg=0.0, steer_lock_deg=900.0)
+        self.assertEqual(val_center, 0)
+        self.assertAlmostEqual(x_c, 0.0)
+
+        # A 450° (bloqueo total a la derecha)
+        val_right, x_r, _ = calculate_steering(512, continuous_deg=450.0, steer_lock_deg=900.0)
+        self.assertEqual(val_right, 32767)
+        self.assertAlmostEqual(x_r, 1.0)
+
+        # A -450° (bloqueo total a la izquierda)
+        val_left, x_l, _ = calculate_steering(512, continuous_deg=-450.0, steer_lock_deg=900.0)
+        self.assertEqual(val_left, -32767)
+        self.assertAlmostEqual(x_l, -1.0)
+
+        # Más allá del bloqueo (clamped a 1.0)
+        val_over, x_o, _ = calculate_steering(512, continuous_deg=600.0, steer_lock_deg=900.0)
+        self.assertEqual(val_over, 32767)
+        self.assertAlmostEqual(x_o, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
