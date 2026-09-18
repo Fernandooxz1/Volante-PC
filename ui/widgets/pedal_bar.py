@@ -19,6 +19,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import QWidget
 
 from ui.widgets.theme import (
+    COLOR_ACCENT_CYAN,
     COLOR_BG_CARD,
     COLOR_BG_DEEP,
     COLOR_BORDER_ACTIVE,
@@ -35,7 +36,7 @@ from ui.widgets.theme import (
 
 class PedalBar(QWidget):
     """
-    Barra vertical de instrumentación para pedales (Acelerador / Freno).
+    Barra vertical de instrumentación para pedales (Acelerador / Freno / Embrague).
     Muestra el porcentaje efectivo (0..100%), lectura cruda de ADC (0..1023),
     y la línea punteada del umbral de zona muerta activa.
     """
@@ -60,6 +61,8 @@ class PedalBar(QWidget):
             self._bar_color = parse_color(color)
         elif self._pedal_type == "brake":
             self._bar_color = COLOR_BRAKE_RED
+        elif self._pedal_type == "clutch":
+            self._bar_color = COLOR_ACCENT_CYAN
         else:
             self._bar_color = COLOR_THROTTLE_GREEN
 
@@ -115,10 +118,12 @@ class PedalBar(QWidget):
         self.update()
 
     def set_pedal_type(self, pedal_type: str) -> None:
-        """Configura el tipo ('throttle' o 'brake')."""
+        """Configura el tipo ('throttle', 'brake' o 'clutch')."""
         self._pedal_type = pedal_type.lower()
         if self._pedal_type == "brake":
             self._bar_color = COLOR_BRAKE_RED
+        elif self._pedal_type == "clutch":
+            self._bar_color = COLOR_ACCENT_CYAN
         else:
             self._bar_color = COLOR_THROTTLE_GREEN
         self.update()

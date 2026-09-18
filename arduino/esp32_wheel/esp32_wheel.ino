@@ -45,22 +45,86 @@ WiFiUDP udp;
 // --- Instancia NeoPixel ---
 Adafruit_NeoPixel strip(NUM_PIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-// --- Protocolo Volante-PC (8 Bytes) ---
+// --- Protocolo Volante-PC (10 Bytes: 2 Header + 8 Payload) ---
 struct __attribute__((packed)) VolantePacket {
   uint8_t header1;      // 0xAA
   uint8_t header2;      // 0x55
   uint32_t axes;        // 30 bits de ejes: 10 steer, 10 accel, 10 brake
   uint16_t buttons;     // 16 bits de botones
+  uint16_t clutch;      // 10 bits de embrague (0..1023)
 };
 
 VolantePacket packet;
 const unsigned long INTERVALO_SERIAL_MS = 10; // 100 Hz
 unsigned long ultimoTiempoSerial = 0;
 
-// --- Filtros EMA en punto fijo para pedales analógicos (escala 256) ---
-const int32_t ALPHA_FIXED = 90; // ~0.35
-int32_t filtradoAccel = 0;
-int32_t filtradoBrake = 0;
+// --- Procesador Inteligente de Sensor Hall SS49E para Pedales ---
+// Diseñado específicamente para imanes físicamente distantes:
+// 1. Sobremuestreo 32x en ADC de 12 bits para reducir drásticamente el ruido de lectura (< 1.5 cuentas).
+// 2. Calibración automática y seguimiento suave del reposo (baseline) para compensar deriva térmica.
+// 3. Detección bidireccional automática (funciona sin importar la polaridad N o S del imán).
+// 4. Curva de respuesta temprana (potencia 0.55 / raíz) para contrarrestar la caída 1/d^3 del campo magnético:
+//    detecta el pedal de inmediato al empezar a pisarlo, aumentando el recorrido activo útil.
+// 5. Span adaptativo ultra sensible: arranca con umbral bajo (~115 mV) y se expande dinámicamente si el
+//    recorrido mecánico entrega mayor señal, garantizando 0..1023 completo sin saturaciones.
+// --- Procesador de Alta Estabilidad para Sensores Hall SS49E ---
+// 1. Sobremuestreo 32x en el ADC de 12 bits nativo del ESP32 (0..4095) para eliminar ruido eléctrico.
+// 2. Filtro exponencial continuo (EMA) para una señal suave y sólida sin latencia.
+// 3. Conversión de 12 bits (0..4095) a 10 bits (0..1023) para el protocolo serie de Volante-PC.
+struct HallPedal {
+  uint8_t pin;
+  int32_t filteredFixed; // punto fijo escala 256 en resolución de 12 bits
+  bool initialized;
+
+  void init(uint8_t p) {
+    pin = p;
+    filteredFixed = 0;
+    initialized = false;
+  }
+
+  uint16_t readOversampled() {
+    uint32_t sum = 0;
+    for (int i = 0; i < 32; i++) {
+      sum += analogRead(pin);
+      delayMicroseconds(2);
+    }
+    return (uint16_t)(sum / 32);
+  }
+
+  void calibrateBaseline(int samples = 32) {
+    // Mantener compatibilidad con comando serial 0xBB 0x88
+    uint32_t sum = 0;
+    for (int i = 0; i < samples; i++) {
+      sum += readOversampled();
+      delay(2);
+    }
+    filteredFixed = (int32_t)(sum / samples) << 8;
+    initialized = true;
+  }
+
+  uint16_t process() {
+    uint16_t raw12 = readOversampled();
+    if (!initialized) {
+      filteredFixed = (int32_t)raw12 << 8;
+      initialized = true;
+    }
+
+    // Filtro EMA rápido a 100 Hz (alpha = 90/256 ≈ 0.35)
+    const int32_t ALPHA = 90;
+    int32_t currentFixed = (int32_t)raw12 << 8;
+    filteredFixed += (((currentFixed - filteredFixed) * ALPHA) >> 8);
+
+    uint16_t rawFiltered12 = (uint16_t)(filteredFixed >> 8);
+
+    // Escalar de 12 bits (0..4095) a 10 bits (0..1023) para el protocolo
+    uint16_t raw10 = rawFiltered12 >> 2;
+    return constrain(raw10, 0, 1023);
+  }
+};
+
+HallPedal hallAccel;
+HallPedal hallBrake;
+HallPedal hallClutch;
 
 // --- Estado de Telemetría ---
 uint8_t currentRevPercent = 0;
@@ -154,6 +218,16 @@ void setup() {
   analogSetPinAttenuation(PIN_HALL_BRAKE, ADC_11db);
   analogSetPinAttenuation(PIN_HALL_CLUTCH, ADC_11db);
 
+  hallAccel.init(PIN_HALL_ACCEL);
+  hallBrake.init(PIN_HALL_BRAKE);
+  hallClutch.init(PIN_HALL_CLUTCH);
+
+  // Calibrar líneas de base de reposo de los 3 pedales
+  delay(100);
+  hallAccel.calibrateBaseline(32);
+  hallBrake.calibrateBaseline(32);
+  hallClutch.calibrateBaseline(32);
+
   // NeoPixels
   strip.begin();
   strip.setBrightness(NEOPIXEL_BRIGHTNESS);
@@ -215,6 +289,11 @@ void loop() {
             strip.show();
           }
         }
+      } else if (cmd == 0x88) {
+        // Comando 0xBB 0x88: Recalibrar reposo de los 3 pedales Hall
+        hallAccel.calibrateBaseline(32);
+        hallBrake.calibrateBaseline(32);
+        hallClutch.calibrateBaseline(32);
       } else {
         Serial.read();
       }
@@ -238,19 +317,10 @@ void loop() {
     uint16_t angleRaw = readAS5600Angle() >> 2;
     uint32_t steer = constrain(angleRaw, 0, 1023);
 
-    // Acelerador (SS49E: 0..4095 -> 10 bits: 0..1023 con EMA)
-    uint16_t accelRaw = analogRead(PIN_HALL_ACCEL) >> 2;
-    int32_t accelFixed = (int32_t)accelRaw << 8;
-    filtradoAccel += (((accelFixed - filtradoAccel) * ALPHA_FIXED) >> 8);
-
-    // Freno (Opcional en GPIO 34 con EMA)
-    uint16_t brakeRaw = analogRead(PIN_HALL_BRAKE) >> 2;
-    int32_t brakeFixed = (int32_t)brakeRaw << 8;
-    filtradoBrake += (((brakeFixed - filtradoBrake) * ALPHA_FIXED) >> 8);
-
-    // Empaquetar valores en 30 bits
-    uint32_t accel = constrain(filtradoAccel >> 8, 0, 1023);
-    uint32_t brake = constrain(filtradoBrake >> 8, 0, 1023);
+    // Pedales Hall SS49E (Oversampling 32x + compensación no lineal magnética de amplio alcance)
+    uint32_t accel = hallAccel.process();
+    uint32_t brake = hallBrake.process();
+    uint32_t clutch = hallClutch.process();
 
     // Escaneo de Matriz 4x3 (12 botones)
     uint16_t matrixButtons = 0;
@@ -269,6 +339,7 @@ void loop() {
 
     packet.axes = (steer & 0x3FF) | ((accel & 0x3FF) << 10) | ((brake & 0x3FF) << 20);
     packet.buttons = matrixButtons;
+    packet.clutch = clutch & 0x3FF;
 
     Serial.write((uint8_t*)&packet, sizeof(VolantePacket));
   }

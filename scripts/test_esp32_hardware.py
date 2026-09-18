@@ -64,24 +64,19 @@ def main():
     time.sleep(0.2)
 
     print("✅ Barrido de 8 LEDs completado.")
-    print("Mueve el volante y presiona el pedal para ver las lecturas en vivo:\n")
-
-    min_accel = 1023
-    max_accel = 0
+    print("Mueve el volante y presiona los 3 pedales (Gas, Freno, Embrague):\n")
 
     try:
         while True:
             header = ser.read(2)
             if header == b"\xaa\x55":
-                payload = ser.read(6)
-                if len(payload) == 6:
-                    axes, buttons = struct.unpack("<IH", payload)
+                payload = ser.read(8)
+                if len(payload) >= 6:
+                    axes, buttons = struct.unpack("<IH", payload[:6])
+                    clutch = struct.unpack("<H", payload[6:8])[0] if len(payload) >= 8 else 0
                     steer = axes & 0x3FF
                     accel = (axes >> 10) & 0x3FF
                     brake = (axes >> 20) & 0x3FF
-
-                    if accel < min_accel: min_accel = accel
-                    if accel > max_accel: max_accel = accel
 
                     # Barra visual para volante (centro ~512)
                     steer_pos = max(0, min(29, int((steer / 1023.0) * 29)))
@@ -90,13 +85,17 @@ def main():
                     steer_bar[steer_pos] = "O"
                     steer_str = "".join(steer_bar)
 
-                    # Barra visual para acelerador
+                    # Barra visual para acelerador (Gas)
                     accel_bars = max(0, min(10, int((accel / 1023.0) * 10)))
                     accel_str = "█" * accel_bars + "░" * (10 - accel_bars)
 
                     # Barra visual para freno
                     brake_bars = max(0, min(10, int((brake / 1023.0) * 10)))
                     brake_str = "█" * brake_bars + "░" * (10 - brake_bars)
+
+                    # Barra visual para embrague (Clutch)
+                    clutch_bars = max(0, min(10, int((clutch / 1023.0) * 10)))
+                    clutch_str = "█" * clutch_bars + "░" * (10 - clutch_bars)
 
                     # Botones de la matriz activos (12 posibles)
                     active_btns = [f"B{i+1}" for i in range(12) if (buttons & (1 << i))]
@@ -106,6 +105,7 @@ def main():
                         f"\r[Vol: {steer:4d} [{steer_str}]] "
                         f"[Gas: {accel:4d} [{accel_str}]] "
                         f"[Frn: {brake:4d} [{brake_str}]] "
+                        f"[Emb: {clutch:4d} [{clutch_str}]] "
                         f"[Botones: {btns_str:10s}]"
                     )
                     sys.stdout.flush()

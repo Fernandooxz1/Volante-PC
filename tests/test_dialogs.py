@@ -207,10 +207,13 @@ def test_calibration_wizard_flow(qapp, config_manager, engine):
     dialog._on_action_2_clicked()  # Throttle max
     assert dialog.saved_accel_max == 1010
 
-    dialog.set_sensor_values(steer=510, accel=10, brake=995)
+    dialog.set_sensor_values(steer=510, accel=10, brake=995, clutch=1005)
     qapp.processEvents()
     dialog._on_action_3_clicked()  # Brake max
     assert dialog.saved_brake_max == 995
+
+    dialog._on_action_4_clicked()  # Clutch max
+    assert dialog.saved_clutch_max == 1005
 
     # Step 5: Summary and Commit
     dialog._on_next_step()
@@ -227,6 +230,7 @@ def test_calibration_wizard_flow(qapp, config_manager, engine):
     assert config_manager.get("accel_max") == 1010
     assert config_manager.get("brake_min") == 15
     assert config_manager.get("brake_max") == 995
+    assert config_manager.get("clutch_min") == 0 or config_manager.get("clutch_max") == 1005
     assert config_manager.get("invert_steer") is False
     dialog.close()
 

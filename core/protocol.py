@@ -14,7 +14,8 @@ from typing import Dict, List, Optional, Tuple
 
 SYNC_BYTE_1 = 0xAA
 SYNC_BYTE_2 = 0x55
-PAYLOAD_LEN = 6  # 4 bytes axes + 2 bytes buttons
+PAYLOAD_LEN = 6  # 4 bytes axes + 2 bytes buttons (legacy Arduino)
+PAYLOAD_LEN_EXT = 8  # 4 bytes axes + 2 bytes buttons + 2 bytes clutch (ESP32)
 
 PIN_NAMES = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'A3', 'A5', 'A4', 'D12']
 
@@ -53,13 +54,14 @@ def encode_led_command(color: str | int) -> bytes:
     return bytes([0xBB, 0x66, code])
 
 
-def unpack_payload(payload: bytes) -> Tuple[int, int, int, List[int]]:
+def unpack_payload(payload: bytes) -> Tuple[int, int, int, List[int]] | Tuple[int, int, int, List[int], int]:
     """
-    Desempaqueta los 6 bytes de carga útil en:
+    Desempaqueta los bytes de carga útil en:
     - steer_raw (0..1023)
     - accel_raw (0..1023)
     - brake_raw (0..1023)
     - buttons (lista de 11 enteros 0 o 1)
+    - clutch_raw (0..1023, presente si len(payload) >= 8)
     """
     axes_val = int.from_bytes(payload[0:4], byteorder='little', signed=False)
     buttons_val = int.from_bytes(payload[4:6], byteorder='little', signed=False)
@@ -70,6 +72,10 @@ def unpack_payload(payload: bytes) -> Tuple[int, int, int, List[int]]:
 
     buttons = [(buttons_val >> i) & 0x01 for i in range(11)]
 
+    if len(payload) >= 8:
+        clutch_raw = int.from_bytes(payload[6:8], byteorder='little', signed=False) & 0x3FF
+        return steer_raw, accel_raw, brake_raw, buttons, clutch_raw
+
     return steer_raw, accel_raw, brake_raw, buttons
 
 
@@ -77,8 +83,10 @@ class StreamParser:
     """
     Máquina de estados para parsear el flujo continuo de bytes del puerto serie.
     Maneja desincronizaciones, ruido y fragmentación de paquetes.
+    Soporta paquetes de longitud configurable (6 bytes legacy u 8 bytes con clutch).
     """
-    def __init__(self):
+    def __init__(self, payload_len: Optional[int] = None):
+        self._payload_len = payload_len
         self._state = 0  # 0: waiting 0xAA, 1: waiting 0x55, 2: reading payload
         self._buffer = bytearray()
 
@@ -86,7 +94,7 @@ class StreamParser:
         self._state = 0
         self._buffer.clear()
 
-    def parse_bytes(self, chunk: bytes) -> List[Tuple[int, int, int, List[int]]]:
+    def parse_bytes(self, chunk: bytes) -> List[Tuple]:
         packets = []
         for b in chunk:
             if self._state == 0:
@@ -101,9 +109,18 @@ class StreamParser:
                 else:
                     self._state = 0
             elif self._state == 2:
+                # Si estamos en modo auto-detect y ya tenemos 6 bytes, pero llega un sync byte 0xAA
+                if self._payload_len is None and len(self._buffer) == 6 and b == SYNC_BYTE_1:
+                    packets.append(unpack_payload(bytes(self._buffer)))
+                    self._buffer.clear()
+                    self._state = 1
+                    continue
+
                 self._buffer.append(b)
-                if len(self._buffer) == PAYLOAD_LEN:
+                target_len = self._payload_len if self._payload_len is not None else PAYLOAD_LEN_EXT
+                if len(self._buffer) == target_len:
                     packets.append(unpack_payload(bytes(self._buffer)))
                     self._state = 0
                     self._buffer.clear()
+
         return packets

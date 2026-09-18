@@ -60,29 +60,75 @@ class TestProtocol(unittest.TestCase):
         self.assertEqual(buttons[7], 1)
         self.assertEqual(buttons[3], 0)
 
+    def test_unpack_payload_with_clutch(self):
+        axes_val = 512 | (100 << 10) | (1000 << 20)
+        buttons_val = 1 | (1 << 2)
+        clutch_val = 750
+
+        payload = (
+            axes_val.to_bytes(4, byteorder="little")
+            + buttons_val.to_bytes(2, byteorder="little")
+            + clutch_val.to_bytes(2, byteorder="little")
+        )
+        self.assertEqual(len(payload), 8)
+
+        steer, accel, brake, buttons, clutch = unpack_payload(payload)
+
+        self.assertEqual(steer, 512)
+        self.assertEqual(accel, 100)
+        self.assertEqual(brake, 1000)
+        self.assertEqual(clutch, 750)
+        self.assertEqual(len(buttons), 11)
+        self.assertEqual(buttons[0], 1)
+        self.assertEqual(buttons[2], 1)
+
+    def test_stream_parser_extended_packets_with_clutch(self):
+        parser = StreamParser(payload_len=8)
+
+        axes_val = 512 | (256 << 10) | (128 << 20)
+        buttons_val = 0x01
+        clutch_val = 450
+        payload = (
+            axes_val.to_bytes(4, byteorder="little")
+            + buttons_val.to_bytes(2, byteorder="little")
+            + clutch_val.to_bytes(2, byteorder="little")
+        )
+        packet = bytes([0xAA, 0x55]) + payload
+
+        packets = parser.parse_bytes(packet)
+        self.assertEqual(len(packets), 1)
+        steer, accel, brake, buttons, clutch = packets[0]
+        self.assertEqual(steer, 512)
+        self.assertEqual(accel, 256)
+        self.assertEqual(brake, 128)
+        self.assertEqual(clutch, 450)
+        self.assertEqual(buttons[0], 1)
+
     def test_stream_parser_clean_packets(self):
         parser = StreamParser()
 
         axes_val = 512 | (256 << 10) | (128 << 20)
         buttons_val = 0x01
-        payload = axes_val.to_bytes(4, byteorder="little") + buttons_val.to_bytes(2, byteorder="little")
+        clutch_val = 0
+        payload = axes_val.to_bytes(4, byteorder="little") + buttons_val.to_bytes(2, byteorder="little") + clutch_val.to_bytes(2, byteorder="little")
         packet = bytes([0xAA, 0x55]) + payload
 
         packets = parser.parse_bytes(packet)
         self.assertEqual(len(packets), 1)
-        steer, accel, brake, buttons = packets[0]
+        steer, accel, brake, buttons, clutch = packets[0]
         self.assertEqual(steer, 512)
         self.assertEqual(accel, 256)
         self.assertEqual(brake, 128)
         self.assertEqual(buttons[0], 1)
+        self.assertEqual(clutch, 0)
 
     def test_stream_parser_fragmented_and_noise(self):
         parser = StreamParser()
 
         axes_val = 1023 | (512 << 10) | (0 << 20)
         buttons_val = 0x07  # botones 0, 1, 2 activos
-        payload = axes_val.to_bytes(4, byteorder="little") + buttons_val.to_bytes(2, byteorder="little")
-        packet = bytes([0xAA, 0x55]) + payload
+        clutch_val = 0
+        payload = axes_val.to_bytes(4, byteorder="little") + buttons_val.to_bytes(2, byteorder="little") + clutch_val.to_bytes(2, byteorder="little")
 
         # Alimentar con ruido previo y byte por byte
         noisy_stream = bytes([0x00, 0xFF, 0xAA, 0x12, 0xAA, 0xAA, 0x55]) + payload
@@ -93,11 +139,12 @@ class TestProtocol(unittest.TestCase):
             all_packets.extend(res)
 
         self.assertEqual(len(all_packets), 1)
-        steer, accel, brake, buttons = all_packets[0]
+        steer, accel, brake, buttons, clutch = all_packets[0]
         self.assertEqual(steer, 1023)
         self.assertEqual(accel, 512)
         self.assertEqual(brake, 0)
         self.assertEqual(buttons[:3], [1, 1, 1])
+        self.assertEqual(clutch, 0)
 
     def test_pin_names_and_keys_consistency(self):
         self.assertEqual(len(PIN_NAMES), 11)

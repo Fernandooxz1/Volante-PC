@@ -34,6 +34,7 @@ from core.gamepad import BUTTON_MAPPING_TABLE, VirtualGamepadManager
 from core.protocol import (
     CONFIG_BUTTON_KEYS,
     LED_COLORS,
+    PAYLOAD_LEN_EXT,
     PIN_NAMES,
     StreamParser,
     encode_led_command,
@@ -167,6 +168,11 @@ class TelemetrySnapshot:
     f1_speed: int = 0
     f1_rev_lights: int = 0
 
+    # Embrague / Clutch
+    raw_clutch: int = 0
+    mapped_clutch: int = 0
+    clutch_pct: float = 0.0
+
     def to_dict(self) -> Dict[str, Any]:
         """Convierte la telemetría a formato compatible con JSON y APIs de UI."""
         return {
@@ -180,12 +186,14 @@ class TelemetrySnapshot:
                 "steer": self.raw_steer,
                 "accel": self.raw_accel,
                 "brake": self.raw_brake,
+                "clutch": self.raw_clutch,
                 "buttons": list(self.raw_buttons),
             },
             "mapped": {
                 "steer": self.mapped_steer,
                 "accel": self.mapped_accel,
                 "brake": self.mapped_brake,
+                "clutch": self.mapped_clutch,
                 "buttons": list(self.mapped_buttons),
             },
             "steer_angle": self.steer_angle,
@@ -193,6 +201,7 @@ class TelemetrySnapshot:
             "steer_out_norm": self.steer_out_norm,
             "throttle_pct": self.throttle_pct,
             "brake_pct": self.brake_pct,
+            "clutch_pct": self.clutch_pct,
             "gamepad": {
                 "steer": self.gamepad_steer,
                 "accel": self.gamepad_accel,
@@ -287,8 +296,8 @@ class Engine:
 
         # Estado previo de hardware para detección de eventos y flancos
         self._prev_raw_buttons: List[int] = [0] * len(PIN_NAMES)
-        self._prev_event_axis_values: Dict[str, int] = {"steer": 512, "accel": 0, "brake": 0}
-        self._last_raw_axes: Dict[str, int] = {"steer": 512, "accel": 0, "brake": 0}
+        self._prev_event_axis_values: Dict[str, int] = {"steer": 512, "accel": 0, "brake": 0, "clutch": 0}
+        self._last_raw_axes: Dict[str, int] = {"steer": 512, "accel": 0, "brake": 0, "clutch": 0}
         self._last_btn_cycle_state: int = 0
 
         # Seguimiento de giro multi-vuelta (AS5600 360° unwrapping)
@@ -343,6 +352,9 @@ class Engine:
             f1_gear=0,
             f1_speed=0,
             f1_rev_lights=0,
+            raw_clutch=0,
+            mapped_clutch=0,
+            clutch_pct=0.0,
         )
 
     # Ciclo de Vida y Control del Hilo
@@ -838,8 +850,7 @@ class Engine:
         if chunk:
             packets = self._parser.parse_bytes(chunk)
             for packet in packets:
-                steer_raw, accel_raw, brake_raw, buttons = packet
-                self.process_packet(steer_raw, accel_raw, brake_raw, buttons)
+                self.process_packet(*packet)
 
     def _determine_active_led_color(self) -> str:
         """
@@ -916,9 +927,9 @@ class Engine:
             self.process_packet(*packet)
         return packets
 
-    def process_packet(self, steer_raw: int, accel_raw: int, brake_raw: int, buttons: List[int]) -> None:
+    def process_packet(self, steer_raw: int, accel_raw: int, brake_raw: int, buttons: List[int], clutch_raw: int = 0) -> None:
         """
-        Procesa un paquete de datos completo recibido de Arduino:
+        Procesa un paquete de datos completo recibido de Arduino / ESP32:
         aplica inversión, DSP, calibración exponencial, mapeo de botones,
         detecta eventos reactivos y actualiza el gamepad virtual y la telemetría.
         """
@@ -929,7 +940,7 @@ class Engine:
             buttons = buttons[: len(PIN_NAMES)]
 
         # Guardar lecturas crudas del hardware
-        self._last_raw_axes = {"steer": steer_raw, "accel": accel_raw, "brake": brake_raw}
+        self._last_raw_axes = {"steer": steer_raw, "accel": accel_raw, "brake": brake_raw, "clutch": clutch_raw}
 
         # 1. Bus Reactivo de Eventos de Entrada (Press-to-Map)
 
@@ -960,11 +971,13 @@ class Engine:
         invert_steer = bool(self.config_manager.get("invert_steer", False))
         invert_accel = bool(self.config_manager.get("invert_accel", False))
         invert_brake = bool(self.config_manager.get("invert_brake", False))
+        invert_clutch = bool(self.config_manager.get("invert_clutch", False))
 
         # Clamping de seguridad
         steer_calc = max(0, min(1023, steer_raw))
         accel_calc = max(0, min(1023, accel_raw))
         brake_calc = max(0, min(1023, brake_raw))
+        clutch_calc = max(0, min(1023, clutch_raw))
 
         # 4. Cálculo de Dirección con soporte Multi-Vuelta continuo (AS5600: 360° = 1024 cuentas)
         steer_lock_deg = float(self.config_manager.get("steer_lock_deg", 360.0))
@@ -1006,7 +1019,7 @@ class Engine:
             steer_lock_deg=steer_lock_deg,
         )
 
-        # Pedales (acelerador y freno)
+        # Pedales (acelerador, freno y embrague)
         deadzone = float(self.config_manager.get("deadzone", 0.13))
 
         accel_val_trigger, accel_norm = calculate_pedal(
@@ -1027,15 +1040,26 @@ class Engine:
             invert=invert_brake,
         )
 
+        clutch_val_trigger, clutch_norm = calculate_pedal(
+            raw_val=clutch_calc,
+            val_min=int(self.config_manager.get("clutch_min", 0)),
+            val_max=int(self.config_manager.get("clutch_max", 1023)),
+            deadzone=deadzone,
+            max_output=255,
+            invert=invert_clutch,
+        )
+
         # Indicadores mapeados para interfaz (0..1023)
         gui_steer = max(0, min(1023, int(round(((steer_out_norm + 1.0) / 2.0) * 1023))))
         gui_accel = max(0, min(1023, int(round(accel_norm * 1023))))
         gui_brake = max(0, min(1023, int(round(brake_norm * 1023))))
+        gui_clutch = max(0, min(1023, int(round(clutch_norm * 1023))))
 
         # Ángulo visual real del volante en grados físicos (ej. -180.0° a +180.0°, o -450.0° a +450.0°)
         steer_angle = round(-physical_deg if invert_steer else physical_deg, 1)
         throttle_pct = round(accel_norm * 100.0, 1)
         brake_pct = round(brake_norm * 100.0, 1)
+        clutch_pct = round(clutch_norm * 100.0, 1)
 
         # 6. Mapeo de Botones Activos y Modo Crucetas
 
@@ -1132,6 +1156,9 @@ class Engine:
             f1_gear=int(f1_data.get("gear", 0)),
             f1_speed=int(f1_data.get("speed", 0)),
             f1_rev_lights=int(f1_data.get("rev_lights_percent", 0)),
+            raw_clutch=clutch_raw,
+            mapped_clutch=gui_clutch,
+            clutch_pct=clutch_pct,
         )
 
         with self._telemetry_lock:

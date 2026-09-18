@@ -32,7 +32,7 @@ from ui.i18n import tr
 
 class CalibrationDispatcher(QObject):
     """Thread-safe event bridge between hardware engine callbacks and Qt GUI thread."""
-    telemetry_received = pyqtSignal(int, int, int)
+    telemetry_received = pyqtSignal(int, int, int, int)
 
 
 class SensorBarWidget(QWidget):
@@ -161,6 +161,7 @@ class CalibrationWizardDialog(QDialog):
         self._current_steer: int = 512
         self._current_accel: int = 0
         self._current_brake: int = 0
+        self._current_clutch: int = 0
         if self.engine and hasattr(self.engine, "get_telemetry"):
             try:
                 snap = self.engine.get_telemetry()
@@ -168,6 +169,7 @@ class CalibrationWizardDialog(QDialog):
                     self._current_steer = snap.raw_steer
                     self._current_accel = snap.raw_accel
                     self._current_brake = snap.raw_brake
+                    self._current_clutch = getattr(snap, "raw_clutch", 0)
             except Exception:
                 pass
 
@@ -180,6 +182,8 @@ class CalibrationWizardDialog(QDialog):
         self.saved_accel_max: Optional[int] = None
         self.saved_brake_min: Optional[int] = None
         self.saved_brake_max: Optional[int] = None
+        self.saved_clutch_min: Optional[int] = None
+        self.saved_clutch_max: Optional[int] = None
 
         # Auto-detect tracking on pedal step
         self._auto_detect_pedals: bool = False
@@ -187,6 +191,8 @@ class CalibrationWizardDialog(QDialog):
         self._observed_accel_max: int = 0
         self._observed_brake_min: int = 1023
         self._observed_brake_max: int = 0
+        self._observed_clutch_min: int = 1023
+        self._observed_clutch_max: int = 0
 
         # Dispatcher for thread safety
         self._dispatcher = CalibrationDispatcher()
@@ -274,6 +280,9 @@ class CalibrationWizardDialog(QDialog):
         self.bar_brake = SensorBarWidget(tr("calib.axis_brake"), bar_color="#ff3344")
         self.bars_container.addWidget(self.bar_brake)
 
+        self.bar_clutch = SensorBarWidget(tr("calib.axis_clutch"), bar_color="#00e5ff")
+        self.bars_container.addWidget(self.bar_clutch)
+
         self.card_layout.addLayout(self.bars_container)
 
         self.card_layout.addSpacing(6)
@@ -313,6 +322,11 @@ class CalibrationWizardDialog(QDialog):
         self.btn_action_3.clicked.connect(self._on_action_3_clicked)
         self.btn_action_3.setVisible(False)
         self.layout_step_actions.addWidget(self.btn_action_3)
+
+        self.btn_action_4 = QPushButton(tr("calib.btn_save_clutch_max"))
+        self.btn_action_4.clicked.connect(self._on_action_4_clicked)
+        self.btn_action_4.setVisible(False)
+        self.layout_step_actions.addWidget(self.btn_action_4)
 
         self.btn_auto_detect = QPushButton(tr("calib.btn_auto_detect_off"))
         self.btn_auto_detect.clicked.connect(self._toggle_auto_detect)
@@ -370,7 +384,8 @@ class CalibrationWizardDialog(QDialog):
             if hasattr(self.engine, "get_telemetry"):
                 snapshot = self.engine.get_telemetry()
                 if snapshot is not None:
-                    self._on_telemetry_slot(snapshot.raw_steer, snapshot.raw_accel, snapshot.raw_brake)
+                    raw_clutch = getattr(snapshot, "raw_clutch", 0)
+                    self._on_telemetry_slot(snapshot.raw_steer, snapshot.raw_accel, snapshot.raw_brake, raw_clutch)
         except Exception:
             pass
 
@@ -389,15 +404,17 @@ class CalibrationWizardDialog(QDialog):
         """Compatibility method: stops the telemetry polling timer."""
         self._stop_telemetry_timer()
 
-    def _on_telemetry_slot(self, steer: int, accel: int, brake: int) -> None:
+    def _on_telemetry_slot(self, steer: int, accel: int, brake: int, clutch: int = 0) -> None:
         """Slot receiving telemetry updates from engine."""
         self._current_steer = steer
         self._current_accel = accel
         self._current_brake = brake
+        self._current_clutch = clutch
 
         self.bar_steer.set_value(steer)
         self.bar_accel.set_value(accel)
         self.bar_brake.set_value(brake)
+        self.bar_clutch.set_value(clutch)
 
         # Auto-detect pedal travel if active on step 3
         if self._current_step == 3 and self._auto_detect_pedals:
@@ -411,13 +428,21 @@ class CalibrationWizardDialog(QDialog):
             if brake > self._observed_brake_max:
                 self._observed_brake_max = brake
 
+            if clutch < self._observed_clutch_min:
+                self._observed_clutch_min = clutch
+            if clutch > self._observed_clutch_max:
+                self._observed_clutch_max = clutch
+
             self.saved_accel_min = self._observed_accel_min
             self.saved_accel_max = self._observed_accel_max
             self.saved_brake_min = self._observed_brake_min
             self.saved_brake_max = self._observed_brake_max
+            self.saved_clutch_min = self._observed_clutch_min
+            self.saved_clutch_max = self._observed_clutch_max
 
             self.bar_accel.set_markers(min_val=self.saved_accel_min, max_val=self.saved_accel_max)
             self.bar_brake.set_markers(min_val=self.saved_brake_min, max_val=self.saved_brake_max)
+            self.bar_clutch.set_markers(min_val=self.saved_clutch_min, max_val=self.saved_clutch_max)
 
             self.lbl_feedback.setText(
                 tr(
@@ -426,12 +451,14 @@ class CalibrationWizardDialog(QDialog):
                     a_max=self.saved_accel_max,
                     b_min=self.saved_brake_min,
                     b_max=self.saved_brake_max,
+                    c_min=self.saved_clutch_min,
+                    c_max=self.saved_clutch_max,
                 )
             )
 
-    def set_sensor_values(self, steer: int, accel: int, brake: int) -> None:
+    def set_sensor_values(self, steer: int, accel: int, brake: int, clutch: int = 0) -> None:
         """Direct method to set sensor values (useful for tests and manual feeds)."""
-        self._dispatcher.telemetry_received.emit(steer, accel, brake)
+        self._dispatcher.telemetry_received.emit(steer, accel, brake, clutch)
 
     def _update_step_ui(self) -> None:
         """Updates all controls and texts according to current step."""
@@ -445,6 +472,7 @@ class CalibrationWizardDialog(QDialog):
         self.btn_action_1.setVisible(step < 4)
         self.btn_action_2.setVisible(step == 3)
         self.btn_action_3.setVisible(step == 3)
+        self.btn_action_4.setVisible(step == 3)
         self.btn_auto_detect.setVisible(step == 3)
         self.frame_summary.setVisible(step == 4)
         self.btn_save_config.setVisible(step == 4)
@@ -457,6 +485,7 @@ class CalibrationWizardDialog(QDialog):
             self.bar_steer.setVisible(True)
             self.bar_accel.setVisible(False)
             self.bar_brake.setVisible(False)
+            self.bar_clutch.setVisible(False)
             self.btn_action_1.setText(tr("calib.btn_save_left"))
             self._set_feedback_default(tr("calib.step1_feedback"))
 
@@ -467,6 +496,7 @@ class CalibrationWizardDialog(QDialog):
             self.bar_steer.setVisible(True)
             self.bar_accel.setVisible(False)
             self.bar_brake.setVisible(False)
+            self.bar_clutch.setVisible(False)
             self.btn_action_1.setText(tr("calib.btn_save_center"))
             self._set_feedback_default(tr("calib.step2_feedback"))
 
@@ -477,6 +507,7 @@ class CalibrationWizardDialog(QDialog):
             self.bar_steer.setVisible(True)
             self.bar_accel.setVisible(False)
             self.bar_brake.setVisible(False)
+            self.bar_clutch.setVisible(False)
             self.btn_action_1.setText(tr("calib.btn_save_right"))
             self._set_feedback_default(tr("calib.step3_feedback"))
 
@@ -487,9 +518,11 @@ class CalibrationWizardDialog(QDialog):
             self.bar_steer.setVisible(False)
             self.bar_accel.setVisible(True)
             self.bar_brake.setVisible(True)
+            self.bar_clutch.setVisible(True)
             self.btn_action_1.setText(tr("calib.btn_save_rest"))
             self.btn_action_2.setText(tr("calib.btn_save_throttle_max"))
             self.btn_action_3.setText(tr("calib.btn_save_brake_max"))
+            self.btn_action_4.setText(tr("calib.btn_save_clutch_max"))
             self._set_feedback_default(tr("calib.step4_feedback"))
 
         elif step == 4:
@@ -501,6 +534,7 @@ class CalibrationWizardDialog(QDialog):
             self.bar_steer.setVisible(True)
             self.bar_accel.setVisible(True)
             self.bar_brake.setVisible(True)
+            self.bar_clutch.setVisible(True)
             self._generate_summary_text()
 
     def _set_feedback_default(self, message: str) -> None:
@@ -564,9 +598,18 @@ class CalibrationWizardDialog(QDialog):
             # Save Pedal Rest positions
             self.saved_accel_min = self._current_accel
             self.saved_brake_min = self._current_brake
+            self.saved_clutch_min = self._current_clutch
             self.bar_accel.set_markers(min_val=self.saved_accel_min, max_val=self.saved_accel_max)
             self.bar_brake.set_markers(min_val=self.saved_brake_min, max_val=self.saved_brake_max)
-            self._set_feedback_success(tr("calib.feedback_rest_saved", accel=self.saved_accel_min, brake=self.saved_brake_min))
+            self.bar_clutch.set_markers(min_val=self.saved_clutch_min, max_val=self.saved_clutch_max)
+            self._set_feedback_success(
+                tr(
+                    "calib.feedback_rest_saved",
+                    accel=self.saved_accel_min,
+                    brake=self.saved_brake_min,
+                    clutch=self.saved_clutch_min,
+                )
+            )
 
     def _on_action_2_clicked(self) -> None:
         """Step 4: Save Throttle Max."""
@@ -580,6 +623,12 @@ class CalibrationWizardDialog(QDialog):
         self.bar_brake.set_markers(min_val=self.saved_brake_min, max_val=self.saved_brake_max)
         self._set_feedback_success(tr("calib.feedback_brake_saved", val=self.saved_brake_max))
 
+    def _on_action_4_clicked(self) -> None:
+        """Step 4: Save Clutch Max."""
+        self.saved_clutch_max = self._current_clutch
+        self.bar_clutch.set_markers(min_val=self.saved_clutch_min, max_val=self.saved_clutch_max)
+        self._set_feedback_success(tr("calib.feedback_clutch_saved", val=self.saved_clutch_max))
+
     def _toggle_auto_detect(self) -> None:
         """Toggles dynamic pedal travel envelope tracker."""
         self._auto_detect_pedals = not self._auto_detect_pedals
@@ -590,6 +639,8 @@ class CalibrationWizardDialog(QDialog):
             self._observed_accel_max = self._current_accel
             self._observed_brake_min = self._current_brake
             self._observed_brake_max = self._current_brake
+            self._observed_clutch_min = self._current_clutch
+            self._observed_clutch_max = self._current_clutch
             self._set_feedback_default(tr("calib.feedback_pump_pedals"))
         else:
             self.btn_auto_detect.setText(tr("calib.btn_auto_detect_off"))
@@ -601,6 +652,8 @@ class CalibrationWizardDialog(QDialog):
                     a_max=self.saved_accel_max,
                     b_min=self.saved_brake_min,
                     b_max=self.saved_brake_max,
+                    c_min=self.saved_clutch_min,
+                    c_max=self.saved_clutch_max,
                 )
             )
 
@@ -652,13 +705,24 @@ class CalibrationWizardDialog(QDialog):
             invert_brake = True
             b_min, b_max = b_max, b_min
 
+        cfg_c_min = self.config_manager.get("clutch_min", 0)
+        cfg_c_max = self.config_manager.get("clutch_max", 1023)
+        c_min = self.saved_clutch_min if self.saved_clutch_min is not None else cfg_c_min
+        c_max = self.saved_clutch_max if self.saved_clutch_max is not None else cfg_c_max
+        invert_clutch = False
+        if c_min > c_max:
+            invert_clutch = True
+            c_min, c_max = c_max, c_min
+
         span_steer = steer_max - steer_min
         travel_accel = a_max - a_min
         travel_brake = b_max - b_min
+        travel_clutch = c_max - c_min
 
         steer_inv_text = tr("calib.summary_inverted_auto") if invert_steer else tr("calib.summary_normal")
         accel_inv_text = tr("calib.summary_inverted") if invert_accel else tr("calib.summary_normal")
         brake_inv_text = tr("calib.summary_inverted") if invert_brake else tr("calib.summary_normal")
+        clutch_inv_text = tr("calib.summary_inverted") if invert_clutch else tr("calib.summary_normal")
 
         summary = (
             f"{tr('calib.summary_steer_axis')}\n"
@@ -672,7 +736,10 @@ class CalibrationWizardDialog(QDialog):
             f"  - {tr('calib.summary_invert_throttle'):<25} {accel_inv_text}\n\n"
             f"{tr('calib.summary_brake_pedal')}\n"
             f"  - {tr('calib.summary_rest_to_full'):<25} [{b_min}..{b_max}] ({tr('calib.summary_travel')}: {travel_brake} {tr('calib.summary_counts')})\n"
-            f"  - {tr('calib.summary_invert_brake'):<25} {brake_inv_text}"
+            f"  - {tr('calib.summary_invert_brake'):<25} {brake_inv_text}\n\n"
+            f"{tr('calib.summary_clutch_pedal')}\n"
+            f"  - {tr('calib.summary_rest_to_full'):<25} [{c_min}..{c_max}] ({tr('calib.summary_travel')}: {travel_clutch} {tr('calib.summary_counts')})\n"
+            f"  - {tr('calib.summary_invert_clutch'):<25} {clutch_inv_text}"
         )
         self.lbl_summary_content.setText(summary)
 
@@ -688,6 +755,9 @@ class CalibrationWizardDialog(QDialog):
             "brake_min": b_min,
             "brake_max": b_max,
             "invert_brake": invert_brake,
+            "clutch_min": c_min,
+            "clutch_max": c_max,
+            "invert_clutch": invert_clutch,
         }
 
     def _on_save_config_clicked(self) -> None:
@@ -707,6 +777,10 @@ class CalibrationWizardDialog(QDialog):
             errors.append(tr("calib.error_accel_span"))
         if travel_brake < 20:
             errors.append(tr("calib.error_brake_span"))
+        if self.saved_clutch_min is not None or self.saved_clutch_max is not None:
+            travel_clutch = limits["clutch_max"] - limits["clutch_min"]
+            if travel_clutch < 20:
+                errors.append(tr("calib.error_clutch_span"))
 
         if errors:
             self._set_feedback_error(" | ".join(errors))

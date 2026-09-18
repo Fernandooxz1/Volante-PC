@@ -51,15 +51,15 @@ class MockGamepadManager:
         self.reset_called = True
 
 
-def make_raw_packet(steer: int, accel: int, brake: int, buttons: List[int]) -> bytes:
-    """Construye un paquete binario válido de 8 bytes de Arduino (0xAA 0x55 + 6 payload)."""
+def make_raw_packet(steer: int, accel: int, brake: int, buttons: List[int], clutch: int = 0) -> bytes:
+    """Construye un paquete binario válido de 10 bytes de ESP32 (0xAA 0x55 + 8 payload)."""
     axes_val = (steer & 0x3FF) | ((accel & 0x3FF) << 10) | ((brake & 0x3FF) << 20)
     btn_val = 0
     for i, b in enumerate(buttons[:11]):
         if b:
             btn_val |= (1 << i)
 
-    payload = axes_val.to_bytes(4, byteorder="little") + btn_val.to_bytes(2, byteorder="little")
+    payload = axes_val.to_bytes(4, byteorder="little") + btn_val.to_bytes(2, byteorder="little") + (clutch & 0x3FF).to_bytes(2, byteorder="little")
     return bytes([0xAA, 0x55]) + payload
 
 
@@ -449,6 +449,20 @@ class TestEngine(unittest.TestCase):
         self.assertAlmostEqual(snap.steer_angle, 180.0, delta=0.5)
         # Bloqueo total alcanzado a 180°
         self.assertEqual(self.mock_gamepad.last_inputs["steer_val"], 32767)
+
+    def test_clutch_processing_and_telemetry(self):
+        # Probar recepción de paquete con clutch = 800
+        self.engine.process_packet(512, 0, 0, [0] * 11, clutch_raw=800)
+        snap = self.engine.get_telemetry()
+        self.assertEqual(snap.raw_clutch, 800)
+        self.assertGreater(snap.clutch_pct, 70.0)
+        self.assertGreater(snap.mapped_clutch, 700)
+
+        # Probar telemetría to_dict
+        d = snap.to_dict()
+        self.assertEqual(d["raw"]["clutch"], 800)
+        self.assertIn("clutch_pct", d)
+        self.assertAlmostEqual(d["clutch_pct"], snap.clutch_pct)
 
 
 if __name__ == "__main__":

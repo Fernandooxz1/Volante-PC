@@ -130,6 +130,15 @@ def test_pedal_bar_initialization(qapp):
     brake = PedalBar(label="BRAKE", pedal_type="brake")
     assert brake._pedal_type == "brake"
 
+    clutch = PedalBar(label="CLUTCH", pedal_type="clutch")
+    assert clutch._pedal_type == "clutch"
+    assert clutch._bar_color == QColor("#00e5ff")
+
+    # Modificar dinamicamente tipo de pedal
+    throttle.set_pedal_type("clutch")
+    assert throttle._pedal_type == "clutch"
+    assert throttle._bar_color == QColor("#00e5ff")
+
 
 def test_pedal_bar_values_and_deadzone(qapp):
     bar = PedalBar(label="THROTTLE", pedal_type="throttle")

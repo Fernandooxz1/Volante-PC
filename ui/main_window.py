@@ -197,25 +197,10 @@ class MainWindow(QMainWindow):
         self.btn_lang.clicked.connect(self._toggle_language)
         self.toolbar.addWidget(self.btn_lang)
 
-    # Construcción de la Interfaz Central
-
-    def _build_central_ui(self) -> None:
-        main_scroll = QScrollArea(self)
-        main_scroll.setWidgetResizable(True)
-        main_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        main_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        main_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-
-        central_widget = QWidget()
-        main_scroll.setWidget(central_widget)
-        self.setCentralWidget(main_scroll)
-
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(14)
-
-        # Panel Izquierdo: Instrumentación Motorsport DDU (Visualización en Tiempo Real)
-        left_card = QFrame(central_widget)
+    # Construcción de Tarjeta de Telemetría (DDU)
+    def _build_telemetry_card(self, parent: Optional[QWidget] = None) -> QFrame:
+        """Construye la tarjeta DDU de telemetría en vivo con los pedales y el volante."""
+        left_card = QFrame(parent or self)
         left_card.setObjectName("leftCard")
         left_layout = QVBoxLayout(left_card)
         left_layout.setContentsMargins(10, 10, 10, 10)
@@ -234,6 +219,9 @@ class MainWindow(QMainWindow):
 
         gauges_layout = QHBoxLayout()
         gauges_layout.setSpacing(14)
+
+        self.pedal_clutch = PedalBar(label=tr("telemetry.clutch"), pedal_type="clutch", parent=self)
+        gauges_layout.addWidget(self.pedal_clutch)
 
         self.pedal_brake = PedalBar(label=tr("telemetry.brake"), pedal_type="brake", parent=self)
         gauges_layout.addWidget(self.pedal_brake)
@@ -275,6 +263,26 @@ class MainWindow(QMainWindow):
             self._btn_indicators[pin] = lbl
 
         left_layout.addWidget(buttons_box)
+        return left_card
+
+    # Construcción de la Interfaz Central
+    def _build_central_ui(self) -> None:
+        main_scroll = QScrollArea(self)
+        main_scroll.setWidgetResizable(True)
+        main_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        main_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        main_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        central_widget = QWidget()
+        main_scroll.setWidget(central_widget)
+        self.setCentralWidget(main_scroll)
+
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(14)
+
+        # Panel Izquierdo: Instrumentación Motorsport DDU (Visualización en Tiempo Real)
+        left_card = self._build_telemetry_card(central_widget)
         main_layout.addWidget(left_card, stretch=5)
 
         # Panel Derecho: Pestañas de Sintonía Fina y Consola de Eventos
@@ -421,6 +429,11 @@ class MainWindow(QMainWindow):
         self.chk_invert_brake.toggled.connect(lambda c: self._on_checkbox_changed("invert_brake", c))
         invert_layout.addWidget(self.chk_invert_brake)
 
+        self.chk_invert_clutch = QCheckBox(tr("mapping.invert_clutch"), invert_group)
+        self.chk_invert_clutch.setChecked(bool(self.config_manager.get("invert_clutch", False)))
+        self.chk_invert_clutch.toggled.connect(lambda c: self._on_checkbox_changed("invert_clutch", c))
+        invert_layout.addWidget(self.chk_invert_clutch)
+
         layout.addWidget(invert_group)
         layout.addStretch()
 
@@ -504,6 +517,10 @@ class MainWindow(QMainWindow):
     # Actualización en Tiempo Real 
     def _update_telemetry_ui(self) -> None:
         snapshot = self.engine.get_telemetry()
+        self._update_telemetry(snapshot)
+
+    def _update_telemetry(self, snapshot: TelemetrySnapshot) -> None:
+        """Actualiza los componentes de telemetría a partir del snapshot."""
         self._on_telemetry_snapshot(snapshot)
 
     def _on_telemetry_snapshot(self, snapshot: TelemetrySnapshot) -> None:
@@ -534,6 +551,9 @@ class MainWindow(QMainWindow):
         # 3. Actualizar Barras de Pedales
         self.pedal_throttle.set_value(snapshot.throttle_pct / 100.0, snapshot.raw_accel)
         self.pedal_brake.set_value(snapshot.brake_pct / 100.0, snapshot.raw_brake)
+        clutch_pct = getattr(snapshot, "clutch_pct", 0.0)
+        raw_clutch = getattr(snapshot, "raw_clutch", 0)
+        self.pedal_clutch.set_value(clutch_pct / 100.0, raw_clutch)
 
         # 4. Actualizar Curva Matemática
         self.curve_canvas.set_follower(snapshot.steer_phys_norm, snapshot.steer_out_norm)
@@ -669,12 +689,21 @@ class MainWindow(QMainWindow):
             )
         elif key == "deadzone":
             dz = self.config_manager.get("deadzone", 0.13)
-            self.pedal_throttle.set_deadzone(dz)
-            self.pedal_brake.set_deadzone(dz)
+            self._on_deadzone_changed(dz)
         elif key == "steer_lock_deg":
             self.wheel_gauge.set_max_angle(value / 2.0)
             if hasattr(self.engine, "set_steer_lock"):
                 self.engine.set_steer_lock(value)
+
+    def _on_deadzone_changed(self, value: float) -> None:
+        """Ajusta el umbral de zona muerta en pedales (acelerador, freno y embrague)."""
+        dz = float(value)
+        if hasattr(self, "pedal_throttle"):
+            self.pedal_throttle.set_deadzone(dz)
+        if hasattr(self, "pedal_brake"):
+            self.pedal_brake.set_deadzone(dz)
+        if hasattr(self, "pedal_clutch"):
+            self.pedal_clutch.set_deadzone(dz)
 
     def _on_steer_lock_changed(self, v: int) -> None:
         if self._is_updating_ui:
@@ -737,10 +766,10 @@ class MainWindow(QMainWindow):
             self.chk_invert_steer.setChecked(bool(self.config_manager.get("invert_steer", False)))
             self.chk_invert_accel.setChecked(bool(self.config_manager.get("invert_accel", False)))
             self.chk_invert_brake.setChecked(bool(self.config_manager.get("invert_brake", False)))
+            self.chk_invert_clutch.setChecked(bool(self.config_manager.get("invert_clutch", False)))
 
             self.curve_canvas.set_parameters(slope=slope, sensitivity=sens, anti_deadzone=anti_dz)
-            self.pedal_throttle.set_deadzone(dz)
-            self.pedal_brake.set_deadzone(dz)
+            self._on_deadzone_changed(dz)
         finally:
             self._is_updating_ui = False
 
@@ -759,9 +788,15 @@ class MainWindow(QMainWindow):
         finally:
             self._is_updating_ui = False
 
-    def _apply_preset_settings(self) -> None:
+    def _apply_preset_settings(self, preset_data: Optional[Dict[str, Any]] = None) -> None:
         """Aplica los ajustes de grados de giro del preset activo al volante y controles dependientes."""
-        steer_lock = int(self.config_manager.get("steer_lock_deg", 360))
+        if preset_data and isinstance(preset_data, dict):
+            steer_lock = int(preset_data.get("steer_lock_deg", self.config_manager.get("steer_lock_deg", 360)))
+            dz = float(preset_data.get("deadzone", self.config_manager.get("deadzone", 0.13)))
+        else:
+            steer_lock = int(self.config_manager.get("steer_lock_deg", 360))
+            dz = float(self.config_manager.get("deadzone", 0.13))
+
         if hasattr(self, "slider_degrees"):
             self.slider_degrees.setValue(steer_lock)
             self.val_degrees.setText(f"{steer_lock}°")
@@ -769,6 +804,8 @@ class MainWindow(QMainWindow):
             self.wheel_gauge.set_max_angle(steer_lock / 2.0)
         if hasattr(self.engine, "set_steer_lock"):
             self.engine.set_steer_lock(steer_lock)
+
+        self._on_deadzone_changed(dz)
 
     def _on_preset_selected(self, preset_name: str) -> None:
         if self._is_updating_ui or not preset_name:
@@ -865,8 +902,9 @@ class MainWindow(QMainWindow):
         if hasattr(self.config_manager, "set_language"):
             self.config_manager.set_language(new_lang)
 
-    def _on_language_changed(self, lang: str) -> None:
+    def _retranslate_ui(self) -> None:
         """Actualiza todas las etiquetas dinámicas al cambiar de idioma."""
+        lang = get_language()
         self.setWindowTitle(tr("app.title"))
         self.btn_lang.setText(f"[{lang.upper()}]")
         self.status_lbl.setText(tr(f"status.{self._last_status}") if self._last_status else tr("status.disconnected"))
@@ -879,6 +917,18 @@ class MainWindow(QMainWindow):
         self.btn_theme.setText("⚙ " + tr("common.settings"))
         self.ddu_title.setText(tr("telemetry.title").upper())
         self.tabs.setTabText(0, tr("sliders.title"))
+        if hasattr(self, "pedal_clutch"):
+            self.pedal_clutch.set_label(tr("telemetry.clutch"))
+        if hasattr(self, "pedal_brake"):
+            self.pedal_brake.set_label(tr("telemetry.brake"))
+        if hasattr(self, "pedal_throttle"):
+            self.pedal_throttle.set_label(tr("telemetry.throttle"))
+        if hasattr(self, "chk_invert_clutch"):
+            self.chk_invert_clutch.setText(tr("mapping.invert_clutch"))
+
+    def _on_language_changed(self, lang: str) -> None:
+        """Manejador del evento de cambio de idioma."""
+        self._retranslate_ui()
         self._log(f"Idioma cambiado a {lang.upper()}.", "info")
 
     def _apply_current_theme(self, custom_accent: str = "") -> None:
