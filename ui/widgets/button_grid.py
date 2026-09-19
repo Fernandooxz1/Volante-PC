@@ -58,18 +58,24 @@ ACTION_ABBREVIATIONS: Dict[str, str] = {
     "d-pad down": "DPAD DN",
     "d-pad left": "DPAD LF",
     "d-pad right": "DPAD RT",
-    "ninguno": "NONE",
-    "none": "NONE",
+    "ninguno": "-",
+    "none": "-",
+    "-": "-",
+    "": "-",
 }
 
 
 def format_action_label(action: str) -> str:
     """Formatea la acción asignada a una versión compacta de instrumentación."""
-    clean = action.strip().lower()
+    if not action:
+        return "-"
+    clean = str(action).strip().lower()
     if clean in ACTION_ABBREVIATIONS:
         return ACTION_ABBREVIATIONS[clean]
+    if clean in ("-", "none", "ninguno"):
+        return "-"
     # Si contiene D-Pad o Button, simplificar
-    clean_upper = action.upper()
+    clean_upper = str(action).strip().upper()
     clean_upper = clean_upper.replace("BUTTON ", "BTN ")
     clean_upper = clean_upper.replace("D-PAD ", "DPAD ")
     return clean_upper
@@ -241,7 +247,7 @@ class ButtonPill(QWidget):
 
         if self._is_pressed:
             painter.setPen(COLOR_TEXT_DARK if self._accent_color.lightness() > 160 else COLOR_TEXT_PRIMARY)
-        elif self._action_label == "NONE":
+        elif self._action_label in ("NONE", "-"):
             painter.setPen(COLOR_TEXT_MUTED)
         else:
             painter.setPen(COLOR_TEXT_PRIMARY)

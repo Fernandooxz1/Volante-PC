@@ -53,11 +53,19 @@ from core.engine import (
     TelemetrySnapshot,
     find_available_ports,
 )
-from core.protocol import PIN_NAMES
+from core.protocol import CONFIG_BUTTON_KEYS, PIN_NAMES
 from ui.dialogs import CalibrationWizardDialog, MappingWizardDialog, ThemeDialog
 from ui.i18n import get_language, set_language, subscribe, tr, unsubscribe
 from ui.themes import get_stylesheet
-from ui.widgets import ARDUINO_LED_COLORS, CurveCanvas, PedalBar, SteerLockSelector, WheelGauge, parse_color
+from ui.widgets import (
+    ARDUINO_LED_COLORS,
+    CurveCanvas,
+    PedalBar,
+    SteerLockSelector,
+    WheelGauge,
+    format_action_label,
+    parse_color,
+)
 
 logger = logging.getLogger("VolantePC.UI")
 
@@ -83,6 +91,14 @@ class MainWindow(QMainWindow):
         self._last_status: str = ""
         self._last_active_preset: str = self.config_manager.get("active_preset", "Personalizado")
         self._btn_indicators: Dict[str, QLabel] = {}
+        self._btn_pressed_states: Dict[str, bool] = {}
+
+        # Dummy attributes for backwards compatibility
+        self.curve_canvas: Optional[Any] = None
+        self.slider_sens: Optional[Any] = None
+        self.val_sens: Optional[Any] = None
+        self.slider_slope: Optional[Any] = None
+        self.val_slope: Optional[Any] = None
 
         self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(860, 520)
@@ -235,18 +251,15 @@ class MainWindow(QMainWindow):
         gauges_layout.addWidget(self.pedal_throttle)
 
         left_layout.addLayout(gauges_layout, stretch=3)
+        self.curve_canvas = None
 
-        self.curve_canvas = CurveCanvas(parent=self)
-        self.curve_canvas.setMinimumHeight(150)
-        left_layout.addWidget(self.curve_canvas, stretch=2)
-
-        buttons_box = QGroupBox(tr("mapping.digital_pins"), self)
-        buttons_layout = QGridLayout(buttons_box)
+        self.buttons_box = QGroupBox(tr("mapping.assigned_buttons"), self)
+        buttons_layout = QGridLayout(self.buttons_box)
         buttons_layout.setContentsMargins(8, 12, 8, 8)
         buttons_layout.setSpacing(6)
 
         for idx, pin in enumerate(PIN_NAMES):
-            lbl = QLabel(pin, buttons_box)
+            lbl = QLabel("-", self.buttons_box)
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setFixedHeight(24)
             lbl.setStyleSheet("""
@@ -262,7 +275,8 @@ class MainWindow(QMainWindow):
             buttons_layout.addWidget(lbl, row, col)
             self._btn_indicators[pin] = lbl
 
-        left_layout.addWidget(buttons_box)
+        self._update_button_labels()
+        left_layout.addWidget(self.buttons_box)
         return left_card
 
     # Construcción de la Interfaz Central
@@ -346,27 +360,11 @@ class MainWindow(QMainWindow):
         self.slider_steer_lock = self.slider_degrees
         self.steer_lock_selector = self.slider_degrees
 
-        self.slider_sens, self.val_sens = self._create_slider_row(
-            layout,
-            title_key="sliders.sensitivity",
-            desc_key="sliders.sensitivity_desc",
-            min_val=10,
-            max_val=200,
-            initial=int(self.config_manager.get("sensitivity", 1.0) * 100),
-            format_fn=lambda v: f"{v / 100.0:.2f}x",
-            on_change=lambda v: self._on_slider_changed("sensitivity", v / 100.0),
-        )
-
-        self.slider_slope, self.val_slope = self._create_slider_row(
-            layout,
-            title_key="sliders.slope",
-            desc_key="sliders.slope_desc",
-            min_val=50,
-            max_val=300,
-            initial=int(self.config_manager.get("slope", 1.0) * 100),
-            format_fn=lambda v: f"{v / 100.0:.2f}",
-            on_change=lambda v: self._on_slider_changed("slope", v / 100.0),
-        )
+        # Dummy attributes for backwards compatibility
+        self.slider_sens = None
+        self.val_sens = None
+        self.slider_slope = None
+        self.val_slope = None
 
         self.slider_anti_dz, self.val_anti_dz = self._create_slider_row(
             layout,
@@ -580,8 +578,9 @@ class MainWindow(QMainWindow):
         raw_clutch = getattr(snapshot, "raw_clutch", 0)
         self.pedal_clutch.set_value(clutch_pct / 100.0, raw_clutch)
 
-        # 4. Actualizar Curva Matemática
-        self.curve_canvas.set_follower(snapshot.steer_phys_norm, snapshot.steer_out_norm)
+        # 4. Actualizar Curva Matemática (si está activo)
+        if hasattr(self, "curve_canvas") and self.curve_canvas is not None:
+            self.curve_canvas.set_follower(snapshot.steer_phys_norm, snapshot.steer_out_norm)
 
         # 5. Actualizar Indicadores de Pulsadores Físicos
         raw_buttons = snapshot.raw_buttons
@@ -590,24 +589,27 @@ class MainWindow(QMainWindow):
             lbl = self._btn_indicators.get(pin)
             if lbl and i < len(raw_buttons):
                 pressed = raw_buttons[i] == 1
-                if pressed:
-                    lbl.setStyleSheet(f"""
-                        background-color: {accent};
-                        color: #0a0c10;
-                        border: 1px solid #ffffff;
-                        border-radius: 4px;
-                        font-weight: 800;
-                        font-size: 10px;
-                    """)
-                else:
-                    lbl.setStyleSheet("""
-                        background-color: #161c24;
-                        color: #94a3b8;
-                        border: 1px solid #202736;
-                        border-radius: 4px;
-                        font-weight: 700;
-                        font-size: 10px;
-                    """)
+                prev_state = self._btn_pressed_states.get(pin)
+                if prev_state != pressed:
+                    self._btn_pressed_states[pin] = pressed
+                    if pressed:
+                        lbl.setStyleSheet(f"""
+                            background-color: {accent};
+                            color: #0a0c10;
+                            border: 1px solid #ffffff;
+                            border-radius: 4px;
+                            font-weight: 800;
+                            font-size: 10px;
+                        """)
+                    else:
+                        lbl.setStyleSheet("""
+                            background-color: #161c24;
+                            color: #94a3b8;
+                            border: 1px solid #202736;
+                            border-radius: 4px;
+                            font-weight: 700;
+                            font-size: 10px;
+                        """)
 
         if hasattr(snapshot, "preset") and snapshot.preset and snapshot.preset != self.preset_combo.currentText():
             self._is_updating_ui = True
@@ -705,20 +707,20 @@ class MainWindow(QMainWindow):
         self.config_manager.set(key, value)
         self.config_manager.save()
 
-        # Actualizar widget de curva en vivo si corresponde
-        if key in ("slope", "sensitivity", "anti_deadzone"):
-            self.curve_canvas.set_parameters(
-                slope=self.config_manager.get("slope", 1.85),
-                sensitivity=self.config_manager.get("sensitivity", 1.0),
-                anti_deadzone=self.config_manager.get("anti_deadzone", 0.0),
-            )
-        elif key == "deadzone":
+        if key == "deadzone":
             dz = self.config_manager.get("deadzone", 0.13)
             self._on_deadzone_changed(dz)
         elif key == "steer_lock_deg":
             self.wheel_gauge.set_max_angle(value / 2.0)
             if hasattr(self.engine, "set_steer_lock"):
                 self.engine.set_steer_lock(value)
+        elif hasattr(self, "curve_canvas") and self.curve_canvas is not None:
+            if key in ("slope", "sensitivity", "anti_deadzone"):
+                self.curve_canvas.set_parameters(
+                    slope=self.config_manager.get("slope", 1.85),
+                    sensitivity=self.config_manager.get("sensitivity", 1.0),
+                    anti_deadzone=self.config_manager.get("anti_deadzone", 0.0),
+                )
 
     def _on_deadzone_changed(self, value: float) -> None:
         """Ajusta el umbral de zona muerta en pedales (acelerador, freno y embrague)."""
@@ -775,11 +777,15 @@ class MainWindow(QMainWindow):
             if hasattr(self, "wheel_gauge"):
                 self.wheel_gauge.set_max_angle(self.slider_degrees.value() / 2.0)
 
-            self.slider_sens.setValue(int(sens * 100))
-            self.val_sens.setText(f"{sens:.2f}x")
+            if hasattr(self, "slider_sens") and self.slider_sens is not None:
+                self.slider_sens.setValue(int(sens * 100))
+            if hasattr(self, "val_sens") and self.val_sens is not None:
+                self.val_sens.setText(f"{sens:.2f}x")
 
-            self.slider_slope.setValue(int(slope * 100))
-            self.val_slope.setText(f"{slope:.2f}")
+            if hasattr(self, "slider_slope") and self.slider_slope is not None:
+                self.slider_slope.setValue(int(slope * 100))
+            if hasattr(self, "val_slope") and self.val_slope is not None:
+                self.val_slope.setText(f"{slope:.2f}")
 
             self.slider_anti_dz.setValue(int(anti_dz * 100))
             self.val_anti_dz.setText(f"{int(anti_dz * 100)}%")
@@ -795,8 +801,10 @@ class MainWindow(QMainWindow):
             self.chk_invert_brake.setChecked(bool(self.config_manager.get("invert_brake", False)))
             self.chk_invert_clutch.setChecked(bool(self.config_manager.get("invert_clutch", False)))
 
-            self.curve_canvas.set_parameters(slope=slope, sensitivity=sens, anti_deadzone=anti_dz)
+            if hasattr(self, "curve_canvas") and self.curve_canvas is not None:
+                self.curve_canvas.set_parameters(slope=slope, sensitivity=sens, anti_deadzone=anti_dz)
             self._on_deadzone_changed(dz)
+            self._update_button_labels()
         finally:
             self._is_updating_ui = False
 
@@ -836,6 +844,48 @@ class MainWindow(QMainWindow):
             self.engine.set_steer_lock(lock_val)
 
         self._on_deadzone_changed(dz)
+        self._update_button_labels()
+
+    def _update_button_labels(self) -> None:
+        """Actualiza los textos y tooltips de los indicadores según el botón de Xbox configurado."""
+        for i, pin in enumerate(PIN_NAMES):
+            lbl = self._btn_indicators.get(pin)
+            if not lbl:
+                continue
+            cfg_key = CONFIG_BUTTON_KEYS[i] if i < len(CONFIG_BUTTON_KEYS) else ""
+            action = self.config_manager.get(cfg_key, "Ninguno") if cfg_key else "Ninguno"
+            fmt = format_action_label(str(action))
+            display_text = "-" if fmt in ("-", "NONE", "NINGUNO", "") else fmt
+            lbl.setText(display_text)
+            lbl.setToolTip(f"Pin {pin}: {action}")
+
+    def _apply_button_styles(self) -> None:
+        """Aplica la paleta de colores y estilos a los indicadores de botones."""
+        accent = (
+            self.config_manager.get_theme_accent()
+            if hasattr(self.config_manager, "get_theme_accent")
+            else "#00e5ff"
+        )
+        for pin, lbl in self._btn_indicators.items():
+            pressed = self._btn_pressed_states.get(pin, False)
+            if pressed:
+                lbl.setStyleSheet(f"""
+                    background-color: {accent};
+                    color: #0a0c10;
+                    border: 1px solid #ffffff;
+                    border-radius: 4px;
+                    font-weight: 800;
+                    font-size: 10px;
+                """)
+            else:
+                lbl.setStyleSheet("""
+                    background-color: #161c24;
+                    color: #94a3b8;
+                    border: 1px solid #202736;
+                    border-radius: 4px;
+                    font-weight: 700;
+                    font-size: 10px;
+                """)
 
     def _on_preset_selected(self, preset_name: str) -> None:
         if self._is_updating_ui or not preset_name:
@@ -910,7 +960,8 @@ class MainWindow(QMainWindow):
         dlg.wizard_finished.connect(lambda: (
             self._sync_presets_from_config(),
             self._sync_sliders_from_config(),
-            self._on_preset_selected(self.config_manager.get("active_preset", "Personalizado"))
+            self._on_preset_selected(self.config_manager.get("active_preset", "Personalizado")),
+            self._update_button_labels(),
         ))
         dlg.exec()
 
@@ -922,7 +973,10 @@ class MainWindow(QMainWindow):
     def _on_theme_changed(self, accent_hex: str, lang: str) -> None:
         self._apply_current_theme(custom_accent=accent_hex)
         self.wheel_gauge.set_accent_color(accent_hex)
-        self.curve_canvas.set_accent_color(accent_hex)
+        if hasattr(self, "curve_canvas") and self.curve_canvas is not None:
+            self.curve_canvas.set_accent_color(accent_hex)
+        self._apply_button_styles()
+        self._update_button_labels()
         if lang != get_language():
             set_language(lang)
 
@@ -961,6 +1015,10 @@ class MainWindow(QMainWindow):
             self.lbl_steer_lock_desc.setText(tr("sliders.steer_lock_desc"))
         if hasattr(self, "steer_lock_selector"):
             self.steer_lock_selector.retranslate()
+        if hasattr(self, "buttons_box"):
+            self.buttons_box.setTitle(tr("mapping.assigned_buttons"))
+        if hasattr(self, "_update_button_labels"):
+            self._update_button_labels()
 
     def _on_language_changed(self, lang: str) -> None:
         """Manejador del evento de cambio de idioma."""
@@ -974,6 +1032,8 @@ class MainWindow(QMainWindow):
             else "#00e5ff"
         )
         self.setStyleSheet(get_stylesheet(custom_accent=accent))
+        if hasattr(self, "_apply_button_styles"):
+            self._apply_button_styles()
 
     def _log(self, text: str, level: str = "info") -> None:
         timestamp = time.strftime("%H:%M:%S")

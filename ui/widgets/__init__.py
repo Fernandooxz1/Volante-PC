@@ -3,7 +3,7 @@ Volante-PC Motorsport PyQt6 Custom Widgets.
 Componentes de instrumentación de carreras de alto rendimiento y estética DDU.
 """
 
-from ui.widgets.button_grid import ButtonGrid, ButtonPill
+from ui.widgets.button_grid import ButtonGrid, ButtonPill, format_action_label
 from ui.widgets.curve_canvas import CurveCanvas
 from ui.widgets.led_indicator import LedIndicator
 from ui.widgets.pedal_bar import PedalBar
@@ -38,6 +38,7 @@ __all__ = [
     "CurveCanvas",
     "ButtonGrid",
     "ButtonPill",
+    "format_action_label",
     "LedIndicator",
     # Constantes y utilidades de tema
     "COLOR_BG_DEEP",
