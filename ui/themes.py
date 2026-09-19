@@ -196,6 +196,38 @@ QPushButton#primaryButton:hover, QPushButton[primary="true"]:hover {{
     color: {bg_deep};
 }}
 
+/* Segmented Control - Selector Discreto de Grados de Giro */
+QFrame#steerLockContainer {{
+    background-color: {bg_surface};
+    border: 1px solid {border_subtle};
+    border-radius: 8px;
+    padding: 3px;
+}}
+
+QFrame#steerLockContainer QPushButton {{
+    background-color: transparent;
+    color: {text_secondary};
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}}
+
+QFrame#steerLockContainer QPushButton:hover:!checked {{
+    background-color: {bg_hover};
+    color: {text_primary};
+    border-color: {border_active};
+}}
+
+QFrame#steerLockContainer QPushButton:checked {{
+    background-color: {accent};
+    color: {bg_deep};
+    border: 1px solid {accent};
+    font-weight: 800;
+}}
+
 /* Campos de selección (ComboBox) */
 QComboBox {{
     background-color: {bg_surface};

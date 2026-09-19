@@ -16,6 +16,7 @@ from ui.widgets import (
     CurveCanvas,
     LedIndicator,
     PedalBar,
+    SteerLockSelector,
     WheelGauge,
 )
 from core.protocol import PIN_NAMES
@@ -274,7 +275,64 @@ def test_led_indicator_render(qapp):
 
 
 # =============================================================================
-# 6. Verificación de cero emojis en todos los widgets
+# 6. Pruebas de SteerLockSelector
+# =============================================================================
+
+def test_steer_lock_selector_initialization(qapp):
+    selector = SteerLockSelector()
+    assert selector.value() == 360
+    assert selector.minimum() == 360
+    assert selector.maximum() == 900
+    assert selector.btn_360.isChecked()
+    assert not selector.btn_540.isChecked()
+    assert not selector.btn_900.isChecked()
+
+
+def test_steer_lock_selector_setValue_snapping(qapp):
+    selector = SteerLockSelector()
+    emitted = []
+    selector.valueChanged.connect(lambda v: emitted.append(v))
+
+    # Snap a 360
+    selector.setValue(270)
+    assert selector.value() == 360
+    assert selector.btn_360.isChecked()
+
+    # Snap a 540
+    selector.setValue(500)
+    assert selector.value() == 540
+    assert selector.btn_540.isChecked()
+
+    # Snap a 900
+    selector.setValue(1080)
+    assert selector.value() == 900
+    assert selector.btn_900.isChecked()
+
+    assert emitted == [540, 900]
+
+
+def test_steer_lock_selector_button_clicks(qapp):
+    selector = SteerLockSelector()
+    emitted = []
+    selector.valueChanged.connect(lambda v: emitted.append(v))
+
+    selector.btn_540.click()
+    assert selector.value() == 540
+    assert selector.btn_540.isChecked()
+
+    selector.btn_900.click()
+    assert selector.value() == 900
+    assert selector.btn_900.isChecked()
+
+    selector.btn_360.click()
+    assert selector.value() == 360
+    assert selector.btn_360.isChecked()
+
+    assert emitted == [540, 900, 360]
+
+
+# =============================================================================
+# 7. Verificación de cero emojis en todos los widgets
 # =============================================================================
 
 def test_no_emojis_in_widgets():

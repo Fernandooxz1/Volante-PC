@@ -60,6 +60,10 @@ class VirtualGamepadManager:
         self.is_connected: bool = False
         self.error_message: Optional[str] = None
         self._pressed_buttons: Set[vg.XUSB_BUTTON] = set()
+        self._current_lx: int = 0
+        self._current_ly: int = 0
+        self._current_rx: int = 0
+        self._current_ry: int = 0
 
     def initialize(self) -> Tuple[bool, str]:
         """Inicializa el gamepad virtual de Xbox 360."""
@@ -74,6 +78,10 @@ class VirtualGamepadManager:
             self.is_connected = True
             self.error_message = None
             self._pressed_buttons.clear()
+            self._current_lx = 0
+            self._current_ly = 0
+            self._current_rx = 0
+            self._current_ry = 0
             return True, "Gamepad virtual Xbox 360 inicializado correctamente."
         except Exception as e:
             self.is_connected = False
@@ -88,7 +96,9 @@ class VirtualGamepadManager:
         accel_val: int,
         brake_target: str,
         brake_val: int,
-        active_buttons: Set[str]
+        active_buttons: Set[str],
+        clutch_target: Optional[str] = None,
+        clutch_val: int = 0,
     ) -> None:
         """
         Aplica los ejes, gatillos y botones al gamepad virtual en un único lote atómico.
@@ -105,7 +115,11 @@ class VirtualGamepadManager:
         # 3. Aplicar Freno
         self._apply_pedal(brake_target, brake_val)
 
-        # 4. Reconciliación de botones
+        # 4. Aplicar Embrague (si está configurado)
+        if clutch_target and clutch_target != "Ninguno":
+            self._apply_pedal(clutch_target, clutch_val)
+
+        # 5. Reconciliación de botones
         target_buttons: Set[vg.XUSB_BUTTON] = set()
         for btn_name in active_buttons:
             mapped_btn = BUTTON_MAPPING_TABLE.get(btn_name)
@@ -123,7 +137,7 @@ class VirtualGamepadManager:
 
         self._pressed_buttons = target_buttons
 
-        # 5. Enviar actualización al driver del SO
+        # 6. Enviar actualización al driver del SO
         self.gamepad.update()
 
     def _apply_axis(self, target: str, value: int) -> None:
@@ -131,41 +145,64 @@ class VirtualGamepadManager:
             return
         # value: -32768 a 32767
         if target == "Left Stick X":
-            self.gamepad.left_joystick(x_value=value, y_value=self._get_current_ly())
+            self._current_lx = value
+            self.gamepad.left_joystick(x_value=self._current_lx, y_value=self._current_ly)
         elif target == "Right Stick X":
-            self.gamepad.right_joystick(x_value=value, y_value=self._get_current_ry())
+            self._current_rx = value
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
         elif target == "Left Stick Y":
-            self.gamepad.left_joystick(x_value=self._get_current_lx(), y_value=-value)
+            self._current_ly = -value
+            self.gamepad.left_joystick(x_value=self._current_lx, y_value=self._current_ly)
         elif target == "Right Stick Y":
-            self.gamepad.right_joystick(x_value=self._get_current_rx(), y_value=-value)
+            self._current_ry = -value
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
 
     def _apply_pedal(self, target: str, value: int) -> None:
         if not self.gamepad:
             return
+        # value: 0 a 255
         if target == "Right Trigger (RT)":
             self.gamepad.right_trigger(min(255, max(0, value)))
         elif target == "Left Trigger (LT)":
             self.gamepad.left_trigger(min(255, max(0, value)))
         elif target == "Right Stick Y+ (UP)":
-            self.gamepad.right_joystick(x_value=self._get_current_rx(), y_value=-int(value * 128.5))
+            self._current_ry = -int(value * 128.5)
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
         elif target == "Right Stick Y- (DOWN)":
-            self.gamepad.right_joystick(x_value=self._get_current_rx(), y_value=int(value * 128.5))
+            self._current_ry = int(value * 128.5)
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
+        elif target == "Right Stick X+ (RIGHT)":
+            self._current_rx = int(value * 128.5)
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
+        elif target == "Right Stick X- (LEFT)":
+            self._current_rx = -int(value * 128.5)
+            self.gamepad.right_joystick(x_value=self._current_rx, y_value=self._current_ry)
         elif target == "Left Stick Y+ (UP)":
-            self.gamepad.left_joystick(x_value=self._get_current_lx(), y_value=-int(value * 128.5))
+            self._current_ly = -int(value * 128.5)
+            self.gamepad.left_joystick(x_value=self._current_lx, y_value=self._current_ly)
         elif target == "Left Stick Y- (DOWN)":
-            self.gamepad.left_joystick(x_value=self._get_current_lx(), y_value=int(value * 128.5))
+            self._current_ly = int(value * 128.5)
+            self.gamepad.left_joystick(x_value=self._current_lx, y_value=self._current_ly)
+        elif target in BUTTON_MAPPING_TABLE and BUTTON_MAPPING_TABLE[target] is not None:
+            btn = BUTTON_MAPPING_TABLE[target]
+            if value > 75:
+                self.gamepad.press_button(btn)
+                self._pressed_buttons.add(btn)
+            else:
+                self.gamepad.release_button(btn)
+                self._pressed_buttons.discard(btn)
 
     def _get_current_lx(self) -> int:
-        return 0
+        return self._current_lx
 
     def _get_current_ly(self) -> int:
-        return 0
+        return self._current_ly
 
     def _get_current_rx(self) -> int:
-        return 0
+        return self._current_rx
 
     def _get_current_ry(self) -> int:
-        return 0
+        return self._current_ry
 
     def trigger_button_pulse(self, button_name: str, duration_ms: int = 200) -> None:
         """Pulsa temporalmente un botón virtual (ej. D-Pad) para mapeo en juegos."""

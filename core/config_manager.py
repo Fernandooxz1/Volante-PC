@@ -15,13 +15,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "language": "es",
     "theme_accent": "#00F2FE",
     "sensitivity": 1.0,
-    "slope": 1.85,
+    "slope": 1.0,
     "anti_deadzone": 0.0,
     "deadzone": 0.13,
     "filter": 0.0,
     "steer_target": "Left Stick X",
     "accel_target": "Right Trigger (RT)",
     "brake_target": "Left Trigger (LT)",
+    "clutch_target": "Right Stick Y- (DOWN)",
     "steer_min": 0,
     "steer_center": 512,
     "steer_max": 1023,
@@ -64,13 +65,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "f1_telemetry": True,
             "steer_lock_deg": 360,
             "sensitivity": 1.0,
-            "slope": 2.2,
+            "slope": 1.0,
             "anti_deadzone": 0.0,
             "deadzone": 0.08,
             "filter": 0.2,
             "steer_target": "Left Stick X",
             "accel_target": "Right Trigger (RT)",
             "brake_target": "Left Trigger (LT)",
+            "clutch_target": "Right Stick Y- (DOWN)",
             "led_color": "Verde",
             "btn_map_p2": "Ninguno",
             "btn_map_p3": "Button Start",
@@ -90,13 +92,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "f1_telemetry": False,
             "steer_lock_deg": 360,
             "sensitivity": 1.0,
-            "slope": 1.85,
+            "slope": 1.0,
             "anti_deadzone": 0.0,
             "deadzone": 0.13,
             "filter": 0.0,
             "steer_target": "Left Stick X",
             "accel_target": "Right Trigger (RT)",
             "brake_target": "Left Trigger (LT)",
+            "clutch_target": "Right Stick Y- (DOWN)",
             "led_color": "Naranja",
             "btn_map_p2": "Ninguno",
             "btn_map_p3": "Button Start",
@@ -120,22 +123,36 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "steer_target": "Left Stick X",
             "accel_target": "Right Trigger (RT)",
             "brake_target": "Left Trigger (LT)",
+            "clutch_target": "Right Stick Y- (DOWN)",
             "led_color": "Amarillo"
         },
         "SIMULADOR CAMIONES": {
             "steer_lock_deg": 900,
-            "sensitivity": 0.7,
-            "slope": 1.4,
+            "sensitivity": 1.0,
+            "slope": 1.0,
             "anti_deadzone": 0.0,
             "deadzone": 0.15,
             "filter": 0.4,
             "steer_target": "Left Stick X",
             "accel_target": "Right Trigger (RT)",
             "brake_target": "Left Trigger (LT)",
+            "clutch_target": "Right Stick Y- (DOWN)",
             "led_color": "Verde"
         }
     }
 }
+
+ALLOWED_STEER_LOCKS = (360, 540, 900)
+
+
+def snap_steer_lock(degrees: int | float) -> int:
+    """Ajusta cualquier ángulo continuo a los tres estándares de simracing (360°, 540°, 900°)."""
+    deg = float(degrees)
+    if deg <= 450:
+        return 360
+    elif deg <= 720:
+        return 540
+    return 900
 
 
 def get_config_dir() -> str:
@@ -267,6 +284,8 @@ class ConfigManager:
                         self.config["steer_lock_deg"] = 540
                     else:
                         self.config["steer_lock_deg"] = 360
+                else:
+                    self.config["steer_lock_deg"] = snap_steer_lock(preset_data["steer_lock_deg"])
                 self.config["previous_preset"] = self.config.get("active_preset", "Personalizado")
                 self.config["active_preset"] = preset_name
                 return True

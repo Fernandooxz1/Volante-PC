@@ -28,10 +28,12 @@ from ui.widgets.theme import (
     COLOR_WARNING_YELLOW,
     parse_color,
 )
+from ui.widgets.steer_lock_selector import SteerLockSelector
 from ui.widgets.wheel_gauge import WheelGauge
 
 __all__ = [
     "WheelGauge",
+    "SteerLockSelector",
     "PedalBar",
     "CurveCanvas",
     "ButtonGrid",

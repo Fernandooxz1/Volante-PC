@@ -26,6 +26,8 @@
 #define PIN_HALL_CLUTCH 35  // Pedal Embrague / Clutch (ADC1)
 #define PIN_HALL_VCC    33  // Alimentación 3.3V para pedales Hall
 #define PIN_HALL_GND    25  // Masa GND para pedales Hall
+#define PIN_GND_P14     14  // Masa GND virtual adicional (GPIO 14 / P14)
+#define PIN_GND_P12     12  // Masa GND virtual adicional (GPIO 12 / P12)
 #define PIN_NEOPIXEL        13
 #define NUM_PIXELS          8
 #define NEOPIXEL_BRIGHTNESS 40  // CAMBIAR BRILLO DE NEOPIXELS
@@ -211,6 +213,12 @@ void setup() {
   digitalWrite(PIN_HALL_VCC, HIGH);
   pinMode(PIN_HALL_GND, OUTPUT);
   digitalWrite(PIN_HALL_GND, LOW);
+
+  // Masas GND virtuales adicionales (GPIO 14 / P14 y GPIO 12 / P12 a 0V)
+  pinMode(PIN_GND_P14, OUTPUT);
+  digitalWrite(PIN_GND_P14, LOW);
+  pinMode(PIN_GND_P12, OUTPUT);
+  digitalWrite(PIN_GND_P12, LOW);
 
   // Configuración de resolución y atenuación ADC1 (0..3.3V) para los 3 pedales Hall
   analogReadResolution(12);

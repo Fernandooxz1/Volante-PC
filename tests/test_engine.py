@@ -33,7 +33,7 @@ class MockGamepadManager:
         self.is_connected = True
         return True, "Mock OK"
 
-    def apply_inputs(self, steer_target, steer_val, accel_target, accel_val, brake_target, brake_val, active_buttons):
+    def apply_inputs(self, steer_target, steer_val, accel_target, accel_val, brake_target, brake_val, active_buttons, clutch_target=None, clutch_val=0):
         self.last_inputs = {
             "steer_target": steer_target,
             "steer_val": steer_val,
@@ -42,6 +42,8 @@ class MockGamepadManager:
             "brake_target": brake_target,
             "brake_val": brake_val,
             "active_buttons": set(active_buttons),
+            "clutch_target": clutch_target,
+            "clutch_val": clutch_val,
         }
 
     def trigger_button_pulse(self, button_name, duration_ms=200):
@@ -463,6 +465,10 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(d["raw"]["clutch"], 800)
         self.assertIn("clutch_pct", d)
         self.assertAlmostEqual(d["clutch_pct"], snap.clutch_pct)
+
+        # Probar que se transmitió al gamepad manager
+        self.assertEqual(self.mock_gamepad.last_inputs["clutch_target"], "Right Stick Y- (DOWN)")
+        self.assertGreater(self.mock_gamepad.last_inputs["clutch_val"], 150)
 
 
 if __name__ == "__main__":

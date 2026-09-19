@@ -1107,6 +1107,7 @@ class Engine:
         steer_target = str(self.config_manager.get("steer_target", "Left Stick X"))
         accel_target = str(self.config_manager.get("accel_target", "Right Trigger (RT)"))
         brake_target = str(self.config_manager.get("brake_target", "Left Trigger (LT)"))
+        clutch_target = str(self.config_manager.get("clutch_target", "Right Stick Y- (DOWN)"))
 
         if self.gamepad_manager.is_connected:
             self.gamepad_manager.apply_inputs(
@@ -1117,6 +1118,8 @@ class Engine:
                 brake_target=brake_target,
                 brake_val=final_brake,
                 active_buttons=active_buttons,
+                clutch_target=clutch_target,
+                clutch_val=clutch_val_trigger,
             )
 
         # 8. Creación de Instantánea Atómica de Telemetría

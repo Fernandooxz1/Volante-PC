@@ -25,7 +25,7 @@ def run_daemon(port: str | None = None) -> None:
     from core.engine import Engine, auto_detect_arduino_port
     from core.gamepad import check_gamepad_prerequisites
 
-    print("[Volante-PC] Iniciando en modo Daemon / Headless...")
+    print("[Volante-PC] Iniciando en modo Daemon...")
     can_init, msg = check_gamepad_prerequisites()
     if not can_init:
         print(f"[ADVERTENCIA] {msg}")
@@ -119,7 +119,7 @@ def run_cli_dashboard(port: str | None = None) -> None:
             dashboard = (
                 "\033[H"  # Volver al inicio de pantalla sin parpadear
                 "================================================================================\n"
-                "           🏎️  VOLANTE-PC // TERMINAL TELEMETRY DASHBOARD (100 HZ)\n"
+                "             VOLANTE-PC // TERMINAL TELEMETRY DASHBOARD (100 HZ)\n"
                 "================================================================================\n"
                 f" Estado: {status_color}[{snap.status.upper()}]{reset_color} en {snap.active_port or '--'} | Modo: {snap.mode} | Preset: {snap.preset}\n"
                 f" Gamepad Virtual: [{'OK' if snap.gamepad_connected else 'ERROR'}] | Frecuencia: {snap.loop_hz:.0f} Hz\n"
@@ -169,13 +169,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Volante-PC Simracing Controller - Panel de Control y Emulador de Hardware",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Ejemplos de uso:
-  python main.py                  # Inicia la interfaz gráfica completa PyQt6
-  python main.py --daemon         # Ejecuta solo el motor de baja latencia sin GUI (<15MB RAM)
-  python main.py --cli            # Muestra el panel interactivo en terminal ASCII
-  python main.py --port /dev/ttyACM0  # Conecta directamente al puerto indicado
-        """,
     )
     parser.add_argument(
         "--daemon",

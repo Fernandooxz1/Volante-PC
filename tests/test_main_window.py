@@ -49,8 +49,8 @@ def test_main_window_steer_lock_initialization(qapp, engine, config_manager):
     win = MainWindow(engine=engine, config_manager=config_manager)
     try:
         assert hasattr(win, "slider_degrees")
-        assert win.slider_degrees.minimum() == 180
-        assert win.slider_degrees.maximum() == 1080
+        assert win.slider_degrees.minimum() == 360
+        assert win.slider_degrees.maximum() == 900
         assert win.slider_degrees.value() == 360
         assert win.val_degrees.text() == "360°"
         assert win.wheel_gauge._max_angle == 180.0
@@ -72,6 +72,12 @@ def test_main_window_slider_steer_lock_change(qapp, engine, config_manager):
         assert config_manager.get("steer_lock_deg") == 540
         assert win.val_degrees.text() == "540°"
         assert win.wheel_gauge._max_angle == 270.0
+
+        # Cambiar mediante click directo en el botón de 360 grados (F1)
+        win.steer_lock_selector.btn_360.click()
+        assert config_manager.get("steer_lock_deg") == 360
+        assert win.val_degrees.text() == "360°"
+        assert win.wheel_gauge._max_angle == 180.0
     finally:
         win.close()
 

@@ -57,7 +57,7 @@ from core.protocol import PIN_NAMES
 from ui.dialogs import CalibrationWizardDialog, MappingWizardDialog, ThemeDialog
 from ui.i18n import get_language, set_language, subscribe, tr, unsubscribe
 from ui.themes import get_stylesheet
-from ui.widgets import ARDUINO_LED_COLORS, CurveCanvas, PedalBar, WheelGauge, parse_color
+from ui.widgets import ARDUINO_LED_COLORS, CurveCanvas, PedalBar, SteerLockSelector, WheelGauge, parse_color
 
 logger = logging.getLogger("VolantePC.UI")
 
@@ -342,17 +342,9 @@ class MainWindow(QMainWindow):
         self.btn_quick_center.clicked.connect(self._on_quick_center_clicked)
         layout.addWidget(self.btn_quick_center)
 
-        self.slider_degrees, self.val_degrees = self._create_slider_row(
-            layout,
-            title_key="sliders.steer_lock",
-            desc_key="sliders.steer_lock_desc",
-            min_val=180,
-            max_val=1080,
-            initial=int(self.config_manager.get("steer_lock_deg", 360)),
-            format_fn=lambda v: f"{v}°",
-            on_change=lambda v: self._on_steer_lock_changed(v),
-        )
+        self.slider_degrees, self.val_degrees = self._create_steer_lock_row(layout)
         self.slider_steer_lock = self.slider_degrees
+        self.steer_lock_selector = self.slider_degrees
 
         self.slider_sens, self.val_sens = self._create_slider_row(
             layout,
@@ -371,7 +363,7 @@ class MainWindow(QMainWindow):
             desc_key="sliders.slope_desc",
             min_val=50,
             max_val=300,
-            initial=int(self.config_manager.get("slope", 1.85) * 100),
+            initial=int(self.config_manager.get("slope", 1.0) * 100),
             format_fn=lambda v: f"{v / 100.0:.2f}",
             on_change=lambda v: self._on_slider_changed("slope", v / 100.0),
         )
@@ -436,6 +428,39 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(invert_group)
         layout.addStretch()
+
+    def _create_steer_lock_row(
+        self,
+        layout: QVBoxLayout,
+    ) -> Tuple[SteerLockSelector, QLabel]:
+        header_layout = QHBoxLayout()
+        self.lbl_steer_lock_title = QLabel(tr("sliders.steer_lock"))
+        self.lbl_steer_lock_title.setStyleSheet("font-weight: 700;")
+        initial = int(self.config_manager.get("steer_lock_deg", 360))
+        val_lbl = QLabel(f"{initial}°")
+        val_lbl.setObjectName("valueLabel")
+        val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+        header_layout.addWidget(self.lbl_steer_lock_title)
+        header_layout.addStretch()
+        header_layout.addWidget(val_lbl)
+        layout.addLayout(header_layout)
+
+        selector = SteerLockSelector()
+        selector.setValue(initial)
+
+        def handle_change(val: int):
+            val_lbl.setText(f"{val}°")
+            self._on_steer_lock_changed(val)
+
+        selector.valueChanged.connect(handle_change)
+        layout.addWidget(selector)
+
+        self.lbl_steer_lock_desc = QLabel(tr("sliders.steer_lock_desc"))
+        self.lbl_steer_lock_desc.setObjectName("descLabel")
+        self.lbl_steer_lock_desc.setWordWrap(True)
+        layout.addWidget(self.lbl_steer_lock_desc)
+
+        return selector, val_lbl
 
     def _create_slider_row(
         self,
@@ -711,6 +736,8 @@ class MainWindow(QMainWindow):
         self.config_manager.set("steer_lock_deg", v)
         self.config_manager.save()
         self.wheel_gauge.set_max_angle(v / 2.0)
+        if hasattr(self, "val_degrees"):
+            self.val_degrees.setText(f"{v}°")
         if hasattr(self.engine, "set_steer_lock"):
             self.engine.set_steer_lock(v)
 
@@ -737,16 +764,16 @@ class MainWindow(QMainWindow):
         try:
             steer_lock = int(self.config_manager.get("steer_lock_deg", 360))
             sens = self.config_manager.get("sensitivity", 1.0)
-            slope = self.config_manager.get("slope", 1.85)
+            slope = self.config_manager.get("slope", 1.0)
             anti_dz = self.config_manager.get("anti_deadzone", 0.0)
             dz = self.config_manager.get("deadzone", 0.13)
             filt = self.config_manager.get("filter", 0.0)
 
             if hasattr(self, "slider_degrees"):
                 self.slider_degrees.setValue(steer_lock)
-                self.val_degrees.setText(f"{steer_lock}°")
+                self.val_degrees.setText(f"{self.slider_degrees.value()}°")
             if hasattr(self, "wheel_gauge"):
-                self.wheel_gauge.set_max_angle(steer_lock / 2.0)
+                self.wheel_gauge.set_max_angle(self.slider_degrees.value() / 2.0)
 
             self.slider_sens.setValue(int(sens * 100))
             self.val_sens.setText(f"{sens:.2f}x")
@@ -799,11 +826,14 @@ class MainWindow(QMainWindow):
 
         if hasattr(self, "slider_degrees"):
             self.slider_degrees.setValue(steer_lock)
-            self.val_degrees.setText(f"{steer_lock}°")
+            lock_val = self.slider_degrees.value()
+            self.val_degrees.setText(f"{lock_val}°")
+        else:
+            lock_val = steer_lock
         if hasattr(self, "wheel_gauge"):
-            self.wheel_gauge.set_max_angle(steer_lock / 2.0)
+            self.wheel_gauge.set_max_angle(lock_val / 2.0)
         if hasattr(self.engine, "set_steer_lock"):
-            self.engine.set_steer_lock(steer_lock)
+            self.engine.set_steer_lock(lock_val)
 
         self._on_deadzone_changed(dz)
 
@@ -925,6 +955,12 @@ class MainWindow(QMainWindow):
             self.pedal_throttle.set_label(tr("telemetry.throttle"))
         if hasattr(self, "chk_invert_clutch"):
             self.chk_invert_clutch.setText(tr("mapping.invert_clutch"))
+        if hasattr(self, "lbl_steer_lock_title"):
+            self.lbl_steer_lock_title.setText(tr("sliders.steer_lock"))
+        if hasattr(self, "lbl_steer_lock_desc"):
+            self.lbl_steer_lock_desc.setText(tr("sliders.steer_lock_desc"))
+        if hasattr(self, "steer_lock_selector"):
+            self.steer_lock_selector.retranslate()
 
     def _on_language_changed(self, lang: str) -> None:
         """Manejador del evento de cambio de idioma."""
