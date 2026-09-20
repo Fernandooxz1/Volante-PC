@@ -186,7 +186,7 @@ def main() -> None:
         "-p",
         type=str,
         default=None,
-        help="Puerto serie específico del Arduino (ej. /dev/ttyUSB0, /dev/ttyACM0 o COM3).",
+        help="Puerto serie específico del microcontrolador.",
     )
 
     args = parser.parse_args()

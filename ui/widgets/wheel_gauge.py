@@ -56,7 +56,8 @@ class WheelGauge(QWidget):
         self._raw_value: Optional[int] = 512
 
         # Configuración de widget
-        self.setMinimumSize(180, 180)
+        self.setMinimumSize(200, 200)
+        self.setMaximumSize(520, 520)
         self.setSizePolicy(
             self.sizePolicy().horizontalPolicy(),
             self.sizePolicy().verticalPolicy(),
@@ -120,7 +121,7 @@ class WheelGauge(QWidget):
         self.update()
 
     def sizeHint(self) -> QSize:
-        return QSize(260, 260)
+        return QSize(500, 500)
 
     # -------------------------------------------------------------------------
     # Renderizado vectorial

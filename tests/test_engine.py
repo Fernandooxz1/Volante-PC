@@ -4,6 +4,8 @@ import os
 import tempfile
 import time
 import unittest
+from unittest.mock import MagicMock
+import serial
 from typing import List, Tuple
 
 from core.config_manager import ConfigManager
@@ -470,6 +472,73 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(self.mock_gamepad.last_inputs["clutch_target"], "Right Stick Y- (DOWN)")
         self.assertGreater(self.mock_gamepad.last_inputs["clutch_val"], 150)
 
+    def test_engine_save_preset_syncs_counterpart(self):
+        # Cargar F1 RACING en el engine
+        self.engine.load_preset("F1 RACING")
+        self.assertEqual(self.engine.mode, MODE_CONDUCCION)
+
+        # Modificar calibración de pedales/volante
+        self.config_manager.set("deadzone", 0.06)
+        self.config_manager.set("steer_lock_deg", 540)
+        self.config_manager.set("filter", 0.18)
+
+        # Guardar preset mediante el engine
+        saved = self.engine.save_preset("F1 RACING")
+        self.assertTrue(saved)
+
+        # Verificar que el gemelo "F1 RACING CRUCETAS" se actualizó pero conservó su modo y LED
+        crucetas = self.config_manager.config["custom_presets"]["F1 RACING CRUCETAS"]
+        self.assertEqual(crucetas["deadzone"], 0.06)
+        self.assertEqual(crucetas["steer_lock_deg"], 540)
+        self.assertEqual(crucetas["filter"], 0.18)
+        self.assertEqual(crucetas["mode"], MODE_CRUCETAS)
+        self.assertEqual(crucetas["led_color"], "Naranja")
+        self.assertFalse(crucetas["f1_telemetry"])
+
+    def test_load_and_save_preset_updates_telemetry_snapshot(self):
+        # 1. Cargar preset debe reflejarse de inmediato en get_telemetry() sin esperar paquetes serie
+        self.engine.load_preset("F1 RACING")
+        self.assertEqual(self.engine.get_telemetry().preset, "F1 RACING")
+
+        # 2. Cargar otro preset debe actualizar el snapshot inmediatamente
+        self.engine.load_preset("RALLY / DRIFT")
+        self.assertEqual(self.engine.get_telemetry().preset, "RALLY / DRIFT")
+
+        # 3. Guardar preset debe actualizar el snapshot inmediatamente
+        self.engine.save_preset("CUSTOM_TEST")
+        self.assertEqual(self.engine.get_telemetry().preset, "CUSTOM_TEST")
+
+    def test_serial_disconnect_no_deadlock(self):
+        """Verifica que una desconexión física abrupta (SerialException) no bloquee el hilo ni la UI."""
+        # Configurar un mock de puerto serie que falle al leer simulando desconexión física de USB
+        mock_serial = MagicMock()
+        mock_serial.is_open = True
+        mock_serial.in_waiting = 5
+        mock_serial.read.side_effect = serial.SerialException("device reports readiness to read but returned no data")
+
+        self.engine._serial = mock_serial
+        self.engine._status = "connected"
+
+        # Ejecutar tick: debe detectar el error sin causar deadlock en el lock reentrante
+        self.engine._tick()
+
+        # Debe haber pasado a estado reconnecting y cerrado el puerto serie
+        self.assertIn(self.engine._status, ("reconnecting", "disconnected"))
+        self.assertIsNone(self.engine._serial)
+
+        # Telemetría debe haber reseteado valores de entrada para no congelar la UI
+        telemetry = self.engine.get_telemetry()
+        self.assertEqual(telemetry.loop_hz, 0.0)
+        self.assertEqual(telemetry.throttle_pct, 0.0)
+        self.assertEqual(telemetry.brake_pct, 0.0)
+        self.assertEqual(telemetry.clutch_pct, 0.0)
+        self.assertEqual(telemetry.raw_buttons, (0,) * 11)
+
+        # Desconexión manual posterior no debe bloquearse ni fallar
+        self.engine.disconnect()
+        self.assertEqual(self.engine._status, "disconnected")
+
 
 if __name__ == "__main__":
     unittest.main()
+

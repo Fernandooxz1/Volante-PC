@@ -1,46 +1,52 @@
-# Volante para PC con Arduino UNO y Python (Nativo / Multiplataforma)
+# Volante-PC (DIY Sim Racing Wheel & Pedals)
 
 [![Platform](https://img.shields.io/badge/Platform-Linux%20(Wayland%2FX11)%20%7C%20Windows-blue.svg)](https://github.com)
-[![Hardware](https://img.shields.io/badge/Hardware-Arduino%20UNO-00979D.svg)](https://www.arduino.cc)
+[![Hardware](https://img.shields.io/badge/Hardware-ESP32-E7352C.svg)](https://www.espressif.com/)
 [![Emulation](https://img.shields.io/badge/Emulation-Xbox%20360%20Virtual%20Controller-107C41.svg)](https://github.com)
-[![UI](https://img.shields.io/badge/UI-PyQt6%20Motorsport%20DDU-black.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![UI](https://img.shields.io/badge/UI-PyQt6-black.svg)](https://www.riverbankcomputing.com/software/pyqt/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow.svg)](https://www.python.org)
 
-Aplicacion nativa de emulación de **volante de carreras y pedaler para PC** utilizando un **Arduino UNO**, potenciómetros lineales de 10k $\Omega$, botones digitales, LED RGB de telemetría y un panel de control nativo en **PyQt6 (Qt 6)** de ultra baja latencia (100 Hz).
+Custom DIY sim racing wheel and pedal set built with an **ESP32**, an **AS5600 magnetic angle sensor**, **SS49E Hall-effect sensors** for the pedals, mechanical keyboard switches for wheel buttons, and WS2812B RGB shift lights for telemetry.
 
-El motor central está completamente desacoplado de la interfaz gráfica y emula un mando virtual de Xbox 360 de con curva de dirección exponencial, filtrado DSP anti-ruido y asistentes interactivos de calibración y mapeo.
-
----
-
-## Características Principales
-
-- **100% Nativo**: Desarrollado en PyQt6 con aceleración por hardware. Fluidez a 144+ FPS nativos en Linux (Testeado en Hyprland y GNOME) y compatibilidad total con Windows.
-- **Motor desacoplado a 100 Hz**: Bucle serial de hardware en hilo independiente sincronizado con `time.perf_counter()`. Cero input lag aunque la ventana esté minimizada.
-- **Estética de Competición (Driver DDU)**: Fondo OLED Black (`#0B0E14`), diseño limpio, sobrio y sin sobrecargas visuales.
-- **Personalización de Temas**: Paletas de acento predefinidas (*Cyan Neon, Racing Red, Porsche Acid Green, McLaren Orange, Tokyo Night Violet*) o selector libre de color hexadecimal.
-- **Soporte Bilingüe Nativo [EN | ES]**: Alternador instantáneo entre Inglés y Español en la barra superior con persistencia en configuración.
-- **Asistente de Mapeo Interactivo ("Mapeo dinamico")**:
-  - **Asistente Completo**: Guía paso a paso por todos los controles (*"Presiona el botón para LT"*, detecta el pin en el Arduino y avanza).
-  - **Mapeo Individual**: Botón para reasignar cualquier control con una sola pulsación.
-- **Asistente de Calibración de Topes**: Calibración visual de topes físicos (Tope Izquierdo, Centro Neutro, Tope Derecho) y recorrido de pedales con detección de potenciómetros invertidos.
-- **Widgets Vectoriales**:
-  - Volante con rotación suave y lectura digital precisa de grados (`-90.0°` a `+90.0°`).
-  - Barras verticales de acelerador y freno con línea punteada de zona muerta y porcentaje.
-  - Gráfico cartesiano de la curva exponencial con punto seguidor en tiempo real.
-  - Matriz de estado de los 11 pulsadores físicos.
-- **Modos de Operación**:
-  - **Modo Conducción**: Pedales y dirección operan con control progresivo.
-  - **Modo Crucetas / D-Pad**: El volante y pedales se convierten en cruceta digital para navegar cómodamente los menús de cualquier juego.
-- **Múltiples Modos de Ejecución**:
-  - Interfaz gráfica completa: `volante-pc` o `python main.py`
-  - Servicio en segundo plano (Headless): `volante-pc --daemon` (< 15 MB RAM)
-  - Consola interactiva: `volante-pc --cli`
+The PC side runs a **PyQt6** control panel with a dedicated **100 Hz real-time engine** running in a separate thread. It handles serial communication, filters sensor noise (DSP), applies customizable exponential steering curves, and emulates an **Xbox 360 controller** so it works out of the box with games like Assetto Corsa, F1, and Forza on both **Linux** (Wayland / X11 via `/dev/uinput`) and **Windows** (via ViGEmBus).
 
 ---
 
-## Instalación Automática en Linux (Arch / Debian / Fedora)
+## What it does
 
-Clona el repositorio y ejecuta el instalador como usuario normal:
+- **100 Hz Threaded Engine**: Serial communication runs in its own thread synchronized with `time.perf_counter()` to keep input latency under 10 ms, even if the window is minimized or busy.
+- **Hardware-Accelerated UI**: Built in PyQt6 with clean dark styling, running smoothly on both Linux (Wayland / X11) and Windows.
+- **Noise Filtering (DSP)**: Slew-rate limiting combined with an adaptive Exponential Moving Average (EMA) filter to remove sensor jitter without adding noticeable input lag.
+- **Steering Curves & Calibration**:
+  - Continuous multi-turn tracking with selectable steering lock (from 180° up to 900° / -450° to +450°).
+  - Exponential response curves to keep center steering fine and stable while keeping full lock reachable.
+  - Interactive calibration wizard for center and physical steering limits, plus pedal deadzones.
+- **Button Mapping**: Step-by-step wizard to map physical switches (keyboard switches wired to the ESP32) directly to Xbox controller buttons.
+- **Operation Modes**:
+  - **Driving Mode**: Standard analog steering, pedals, and mapped wheel buttons.
+  - **D-Pad Mode**: Switches steering or side buttons into D-Pad navigation for game menus.
+- **Flexible Execution**:
+  - Full GUI: `python main.py` or `volante-pc`
+  - Background daemon: `volante-pc --daemon` (~15 MB RAM)
+  - ASCII Terminal dashboard: `volante-pc --cli`
+
+---
+
+## Hardware Setup
+
+- **Microcontroller**: ESP32 Dev Module
+- **Steering**: AS5600 12-bit magnetic angle sensor (I2C: SDA -> GPIO 21, SCL -> GPIO 22)
+- **Pedals**: SS49E Hall sensors for throttle (GPIO 32), brake (GPIO 34), and clutch (GPIO 35)
+- **Wheel Buttons**: 10 mechanical switches wired to ESP32 GPIO pins
+- **Shift Lights**: WS2812B NeoPixel strip (GPIO 13) for RPM / redline shift indicator
+
+Firmware source is located in `microcontroller/esp32/` and can be compiled and flashed with PlatformIO or the Arduino IDE.
+
+---
+
+## Linux Installation (Arch / Debian / Ubuntu / Fedora)
+
+Run the included install script:
 
 ```bash
 git clone https://github.com/Fernandooxz1/Volante-PC.git
@@ -49,111 +55,77 @@ chmod +x install.sh
 ./install.sh
 ```
 
-El instalador:
-1. Detecta tu distribución e instala automáticamente paquetes del sistema (`python-pyqt6` en Arch, `python3-pyqt6` en Debian/Ubuntu/Fedora).
-2. Configura reglas `udev` con `MODE="0666"` y `TAG+="uaccess"` para `/dev/uinput` y el puerto serie de Arduino.
-3. Prepara el entorno virtual de Python con todas las dependencias.
-4. Genera el acceso directo en tu menú de aplicaciones y el comando `volante-pc`.
+The script:
+1. Detects your distro and installs required system packages (`python3-pyqt6`, `python3-venv`, etc.).
+2. Sets up `udev` rules so your user can access `/dev/uinput` and USB serial devices without needing `sudo`.
+3. Creates the Python virtual environment and installs dependencies.
+4. Adds the desktop application launcher and the `volante-pc` command.
 
 ---
 
-## Modos de Uso
+## Usage
 
-### 1. Panel de Control Nativo (Recomendado)
+### 1. GUI Panel (Default)
 ```bash
 volante-pc
-# O directamente:
+# or directly:
 python main.py
 ```
 
-### 2. Modo Segundo Plano (Daemon / Headless)
-Ideal para correr el volante sin ventana abierta mientras juegas:
+### 2. Background Daemon
+Runs just the 100 Hz input engine without a GUI:
 ```bash
 volante-pc --daemon
 ```
 
-### 3. Modo Terminal (ASCII Dashboard)
-Para terminales sin entorno gráfico:
+### 3. Terminal Dashboard
+Real-time ASCII meters inside your terminal:
 ```bash
 volante-pc --cli
 ```
 
 ---
 
-## Requisitos de Hardware y Conexiones (ESP32 Standalone)
-
-La rama `testESP32` utiliza un microcontrolador **ESP32 Dev Module** a 240 MHz con transmisión serie USB directa a 100 Hz (`arduino/esp32_wheel` compilable con PlatformIO):
-
-1. **Volante Multi-Vuelta (Sensor Magnético AS5600)**:
-   - Comunicación I2C directa: **SDA $\to$ GPIO 21**, **SCL $\to$ GPIO 22**.
-   - Resolución de 12 bits reducida a 10 bits (`0..1023`), con desenrollado multi-vuelta universal (*Continuous Angle Tracking*) en la app.
-   - Soporte de 180° a 1080° de giro físico y virtual (360° F1, 540° Rally, 900° Camiones).
-2. **Pedalera de 3 Pedales Hall (Sensores SS49E en bloque consecutivo de 5 pines)**:
-   - **Freno (Señal)**: **GPIO 34** (ADC1).
-   - **Embrague (Señal)**: **GPIO 35** (ADC1).
-   - **Acelerador (Señal)**: **GPIO 32** (ADC1).
-   - **Alimentación Común (+)**: **GPIO 33 (3.3V)**.
-   - **Masa Común (GND)**: **GPIO 25 (0V)**.
-3. **Shift Lights de Telemetría (8x NeoPixel WS2812B SMD en cascada)**:
-   - Pin de datos `DIN`: **GPIO 13**.
-   - Escala progresiva de F1: 4 Rojos (20%, 35%, 50%, 65%) + 4 Azules (75%, 83%, 90%, 95%) con destello de corte Shift Flash ($\ge$ 97%).
-4. **Matriz de Botones 4x3 (12 botones físicos)**:
-   - **3 Columnas (Salidas con resistencias en serie)**: **GPIO 23, GPIO 26, GPIO 27**.
-   - **4 Filas (Entradas con diodos apuntando a filas)**: **GPIO 16, GPIO 17, GPIO 18, GPIO 19** con `INPUT_PULLDOWN`.
-
----
-
-## Roadmap / Pendientes
-
-- [ ] **Sensores Hall Restantes (2 pedales)**: Implementar y calibrar los otros 2 sensores de efecto Hall SS49E para el **Pedal de Freno** (asignado en GPIO 34) y el **Pedal de Embrague (Clutch)**. *Actualmente solo está operativo el pedal de acelerador.*
-- [ ] **Display de 7 Segmentos**: Implementar visualizador de 7 segmentos en la ESP32 para indicador de marcha actual (*Gear: R, N, 1..8*) y velocímetro digital en KM/H con datos de telemetría de juegos (F1 2021 / Assetto Corsa / ETS2).
-
----
-
-## Arquitectura del Código
+## Project Structure
 
 ```
 Volante-PC/
-├── arduino/
-│   └── esp32_wheel/                     # Firmware unificado ESP32 (PlatformIO / Arduino C++)
-│       ├── platformio.ini               # Configuración de build PlatformIO para esp32dev
-│       └── esp32_wheel.ino              # Firmware 100 Hz (AS5600, SS49E, Matriz 4x3, 8 NeoPixels)
-├── core/                                # Motor agnóstico de hardware y matemáticas
-│   ├── protocol.py                      # Parser binario de 8 bytes y emisor serie/UDP
-│   ├── dsp.py                           # Slew-rate limiter y filtro EMA adaptativo continuo
-│   ├── calibration.py                   # Curva exponencial, normalización continua, bloqueo de grados
-│   ├── gamepad.py                       # Abstracción vgamepad (uinput / ViGEmBus)
-│   ├── config_manager.py                # Persistencia atómica de configuración JSON y presets
-│   └── engine.py                        # Bucle a 100 Hz, desenrollado multi-vuelta y calibración
-├── ui/                                  # Capa de interfaz gráfica nativa PyQt6
-│   ├── i18n.py                          # Sistema de internacionalización bilingüe (EN / ES)
-│   ├── themes.py                        # Paleta black, temas de acento y generador QSS
-│   ├── widgets/                         # Widgets de telemetría de competición
-│   │   ├── wheel_gauge.py               # Volante vectorial multi-vuelta con marcas dinámicas
-│   │   ├── pedal_bar.py                 # Barras verticales con línea de deadzone
-│   │   ├── curve_canvas.py              # Gráfico cartesiano interactivo de curva expo
-│   │   └── button_grid.py               # Píldoras de estado de pines físicos
-│   ├── dialogs/                         # Asistentes interactivos
-│   │   ├── mapping_wizard.py            # Asistente de mapeo de botones
-│   │   ├── calibration_wizard.py        # Asistente de calibración de límites
-│   │   └── theme_dialog.py              # Selector visual de colores y temas
-│   └── main_window.py                   # Ventana principal integrada estilo DDU con centrado rápido
-├── scripts/                             # Scripts de diagnóstico y prueba de hardware
-│   └── test_esp32_hardware.py           # Monitor interactivo en consola para ESP32
-├── tests/                               # Suite de pruebas automatizadas (101 tests)
-└── main.py                              # Punto de entrada unificado (--gui, --daemon, --cli)
+├── microcontroller/
+│   └── esp32/                           # ESP32 C++ firmware (PlatformIO / Arduino IDE)
+│       ├── esp32_wheel.ino              # 100 Hz loop, AS5600, Hall sensors, buttons, NeoPixels
+│       └── platformio.ini               # PlatformIO board configuration
+├── core/                                # Real-time engine, DSP & gamepad logic
+│   ├── protocol.py                      # Binary packet parser (8 bytes at 100 Hz)
+│   ├── dsp.py                           # Slew-rate limiter & EMA filter
+│   ├── calibration.py                   # Exponential curves, deadzones, multi-turn lock
+│   ├── gamepad.py                       # Virtual Xbox 360 gamepad (/dev/uinput & ViGEmBus)
+│   ├── config_manager.py                # JSON config persistence & presets
+│   ├── engine.py                        # 100 Hz main thread loop
+│   ├── f1_telemetry.py                  # UDP telemetry receiver for F1 games
+│   └── esp32_bridge.py                  # Telemetry sender to ESP32
+├── ui/                                  # PyQt6 user interface
+│   ├── widgets/                         # Custom vector widgets (wheel, pedal bars, curve)
+│   ├── dialogs/                         # Calibration & mapping wizards
+│   ├── themes.py                        # Dark theme styling
+│   └── main_window.py                   # Main window
+├── tests/                               # Automated test suite (130 tests)
+├── install.sh                           # Automatic Linux installer (udev rules & dependencies)
+├── requirements.txt                     # Python dependencies
+└── main.py                              # Entry point (--gui, --daemon, --cli)
 ```
 
 ---
 
-## Ejecutar Pruebas Automatizadas
+## Running Tests
+
+All core logic, protocol unpacking, DSP filtering, and UI widgets are covered by automated unit tests:
 
 ```bash
-./python/venv/bin/pytest tests/ -v
+pytest tests/
 ```
 
 ---
 
-## Licencia
+## License
 
-Proyecto de código abierto bajo licencia MIT.
+MIT License.

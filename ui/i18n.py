@@ -125,6 +125,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # Presets
         "presets.title": "Gestor de Presets",
         "presets.save": "Guardar",
+        "presets.save_as": "Guardar como...",
         "presets.save_preset": "Guardar Preset",
         "presets.load": "Cargar",
         "presets.load_preset": "Cargar Preset",
@@ -534,6 +535,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         # Presets
         "presets.title": "Configuration Presets",
         "presets.save": "Save",
+        "presets.save_as": "Save As...",
         "presets.save_preset": "Save Preset",
         "presets.load": "Load",
         "presets.load_preset": "Load Preset",

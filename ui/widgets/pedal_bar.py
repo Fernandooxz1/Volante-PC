@@ -66,7 +66,8 @@ class PedalBar(QWidget):
         else:
             self._bar_color = COLOR_THROTTLE_GREEN
 
-        self.setMinimumSize(75, 180)
+        self.setMinimumSize(75, 220)
+        self.setMaximumSize(120, 520)
 
     # -------------------------------------------------------------------------
     # API Pública
@@ -138,7 +139,7 @@ class PedalBar(QWidget):
         return self._deadzone
 
     def sizeHint(self) -> QSize:
-        return QSize(95, 240)
+        return QSize(100, 480)
 
     # -------------------------------------------------------------------------
     # Renderizado vectorial

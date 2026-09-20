@@ -19,7 +19,7 @@ import logging
 import sys
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import serial
@@ -251,7 +251,7 @@ class Engine:
         self._steer_filter = SteeringFilter()
 
         # Conexión serie
-        self._serial_lock = threading.Lock()
+        self._serial_lock = threading.RLock()
         self._serial: Optional[serial.Serial] = serial_instance
         self._active_port: Optional[str] = port
         self._last_reconnect_attempt: float = 0.0
@@ -451,39 +451,35 @@ class Engine:
     def _update_telemetry_status(self, status: str) -> None:
         """Actualiza atómicamente el estado de la conexión en la instantánea de telemetría."""
         with self._telemetry_lock:
-            snap = self._telemetry_snapshot
-            self._telemetry_snapshot = TelemetrySnapshot(
+            active_preset = str(self.config_manager.get("active_preset", "Personalizado"))
+            is_inactive = status in ("disconnected", "reconnecting", "stopped", "error")
+            self._telemetry_snapshot = replace(
+                self._telemetry_snapshot,
                 timestamp=time.time(),
                 status=status,
                 active_port=self._active_port,
                 mode=self._mode,
-                preset=snap.preset,
-                led_color=snap.led_color,
-                raw_steer=snap.raw_steer,
-                raw_accel=snap.raw_accel,
-                raw_brake=snap.raw_brake,
-                raw_buttons=snap.raw_buttons,
-                mapped_steer=snap.mapped_steer,
-                mapped_accel=snap.mapped_accel,
-                mapped_brake=snap.mapped_brake,
-                mapped_buttons=snap.mapped_buttons,
-                steer_angle=snap.steer_angle,
-                steer_phys_norm=snap.steer_phys_norm,
-                steer_out_norm=snap.steer_out_norm,
-                throttle_pct=snap.throttle_pct,
-                brake_pct=snap.brake_pct,
-                gamepad_steer=snap.gamepad_steer,
-                gamepad_accel=snap.gamepad_accel,
-                gamepad_brake=snap.gamepad_brake,
-                active_gamepad_buttons=snap.active_gamepad_buttons,
-                loop_hz=0.0 if status == "disconnected" else snap.loop_hz,
+                preset=active_preset,
+                led_color=self._current_led_color,
+                loop_hz=0.0 if is_inactive else self._telemetry_snapshot.loop_hz,
+                raw_buttons=(0,) * len(PIN_NAMES) if is_inactive else self._telemetry_snapshot.raw_buttons,
+                throttle_pct=0.0 if is_inactive else self._telemetry_snapshot.throttle_pct,
+                brake_pct=0.0 if is_inactive else self._telemetry_snapshot.brake_pct,
+                clutch_pct=0.0 if is_inactive else self._telemetry_snapshot.clutch_pct,
                 gamepad_connected=self.gamepad_manager.is_connected,
                 error_message=self._last_error,
-                f1_telemetry_active=snap.f1_telemetry_active,
-                f1_rpm=snap.f1_rpm,
-                f1_gear=snap.f1_gear,
-                f1_speed=snap.f1_speed,
-                f1_rev_lights=snap.f1_rev_lights,
+            )
+
+    def _update_snapshot_metadata(self) -> None:
+        """Actualiza atómicamente modo, preset activo y color de LED en la instantánea de telemetría."""
+        with self._telemetry_lock:
+            active_preset = str(self.config_manager.get("active_preset", "Personalizado"))
+            self._telemetry_snapshot = replace(
+                self._telemetry_snapshot,
+                timestamp=time.time(),
+                mode=self._mode,
+                preset=active_preset,
+                led_color=self._current_led_color,
             )
 
     def connect(self, port: Optional[str] = None) -> bool:
@@ -518,7 +514,10 @@ class Engine:
 
     def _attempt_connection(self) -> bool:
         """Intenta abrir la conexión serie con timeout de bajo retardo."""
-        port = self.target_port or auto_detect_arduino_port()
+        target = self.target_port
+        if target and not os.path.exists(target):
+            target = auto_detect_arduino_port()
+        port = target or auto_detect_arduino_port()
         if not port:
             self._status = "disconnected"
             self._last_error = "No se detectó ningún puerto Arduino disponible."
@@ -592,6 +591,8 @@ class Engine:
         # Transmitir color de LED según el modo y preset seleccionado
         self._update_led_color_from_config()
         self.send_led_color(self._current_led_color)
+        self.config_manager.save()
+        self._update_snapshot_metadata()
 
     def set_steer_lock(self, degrees: float) -> None:
         """Configura el rango de bloqueo de dirección de tope a tope en grados."""
@@ -620,14 +621,26 @@ class Engine:
 
             self._update_led_color_from_config()
             self.send_led_color(self._current_led_color)
+            self.config_manager.save()
+            self._update_snapshot_metadata()
         return success
 
     def save_preset(self, preset_name: str) -> bool:
         """Guarda el estado actual (incluyendo modo y botón de ciclo) como preset."""
         self.config_manager.set("mode", self._mode)
-        success = self.config_manager.save_current_as_preset(preset_name)
+        counterpart = self.config_manager.get_preset_counterpart(preset_name)
+        success = self.config_manager.save_current_as_preset(preset_name, sync_counterpart=True)
         if success:
-            logger.info("Preset guardado con éxito: %s (Modo: %s)", preset_name, self._mode)
+            self._update_snapshot_metadata()
+            if counterpart:
+                logger.info(
+                    "Preset guardado con éxito: %s (Modo: %s) [Sincronizado con preset gemelo: %s]",
+                    preset_name,
+                    self._mode,
+                    counterpart,
+                )
+            else:
+                logger.info("Preset guardado con éxito: %s (Modo: %s)", preset_name, self._mode)
         return success
 
     def cycle_presets(self) -> str:
@@ -829,6 +842,7 @@ class Engine:
 
         # 3. Lectura de bytes entrantes del puerto serie
         chunk = b""
+        disconnect_reason: Optional[str] = None
         with self._serial_lock:
             ser = self._serial
             if ser is None or not ser.is_open:
@@ -843,8 +857,11 @@ class Engine:
                     if chunk and ser.in_waiting > 0:
                         chunk += ser.read(ser.in_waiting)
             except (serial.SerialException, OSError, TypeError, AttributeError, ValueError) as e:
-                self._handle_disconnect(str(e))
-                return
+                disconnect_reason = str(e)
+
+        if disconnect_reason is not None:
+            self._handle_disconnect(disconnect_reason)
+            return
 
         # 4. Parsear paquetes binarios (0xAA 0x55)
         if chunk:
@@ -881,6 +898,7 @@ class Engine:
 
     def _manage_led_transmission(self, now: float) -> None:
         """Envía comandos de LED o el latido de presencia cada 2 segundos."""
+        disconnect_reason: Optional[str] = None
         with self._serial_lock:
             ser = self._serial
             if not ser or not ser.is_open:
@@ -916,9 +934,11 @@ class Engine:
             if cmd_to_send:
                 try:
                     ser.write(cmd_to_send)
-                    ser.flush()
                 except (serial.SerialException, OSError, TypeError, AttributeError, ValueError) as e:
-                    self._handle_disconnect(f"Error transmitiendo LED: {e}")
+                    disconnect_reason = f"Error transmitiendo LED: {e}"
+
+        if disconnect_reason is not None:
+            self._handle_disconnect(disconnect_reason)
 
     def process_bytes(self, chunk: bytes) -> List[Tuple[int, int, int, List[int]]]:
         """Inyecta y procesa bytes crudos directamente (ideal para pruebas y simulación)."""

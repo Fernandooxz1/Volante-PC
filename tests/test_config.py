@@ -141,3 +141,53 @@ def test_config_thread_safety(temp_config_path):
         t.join()
 
     assert len(errors) == 0
+
+
+def test_preset_counterpart_detection(temp_config_path):
+    """Verifica la detección bidireccional e insensible a mayúsculas de presets contraparte."""
+    manager = ConfigManager(custom_path=temp_config_path)
+    assert manager.get_preset_counterpart("F1 RACING") == "F1 RACING CRUCETAS"
+    assert manager.get_preset_counterpart("F1 RACING CRUCETAS") == "F1 RACING"
+    assert manager.get_preset_counterpart("f1 racing") == "F1 RACING CRUCETAS"
+    assert manager.get_preset_counterpart("f1 racing crucetas") == "F1 RACING"
+    assert manager.get_preset_counterpart("RALLY / DRIFT") is None
+    assert manager.get_preset_counterpart("SIMULADOR CAMIONES") is None
+    assert manager.get_preset_counterpart("INEXISTENTE") is None
+    assert manager.get_preset_counterpart("") is None
+    assert manager.get_preset_counterpart("   ") is None
+
+
+def test_save_preset_syncs_counterpart_steering_and_pedals(temp_config_path):
+    """Verifica la sincronización de sintonía compartida preservando modo y color LED en el gemelo."""
+    manager = ConfigManager(custom_path=temp_config_path)
+
+    # Configurar valores específicos de dirección y pedales
+    manager.set("deadzone", 0.05)
+    manager.set("steer_lock_deg", 360)
+    manager.set("filter", 0.25)
+
+    # Guardar en "F1 RACING"
+    success = manager.save_current_as_preset("F1 RACING")
+    assert success is True
+
+    # Verificar que el gemelo "F1 RACING CRUCETAS" fue actualizado pero preserva modo y LED
+    crucetas = manager.config["custom_presets"]["F1 RACING CRUCETAS"]
+    assert crucetas["deadzone"] == 0.05
+    assert crucetas["steer_lock_deg"] == 360
+    assert crucetas["filter"] == 0.25
+    assert crucetas["mode"] == "Crucetas / D-Pad"
+    assert crucetas["led_color"] == "Naranja"
+    assert crucetas["f1_telemetry"] is False
+
+    # Modificar deadzone a 0.09 y guardar como "F1 RACING CRUCETAS"
+    manager.set("deadzone", 0.09)
+    success2 = manager.save_current_as_preset("F1 RACING CRUCETAS")
+    assert success2 is True
+
+    # Verificar sincronización hacia "F1 RACING" preservando modo y LED
+    f1 = manager.config["custom_presets"]["F1 RACING"]
+    assert f1["deadzone"] == 0.09
+    assert f1["mode"] == "Conducción"
+    assert f1["led_color"] == "Verde"
+    assert f1["f1_telemetry"] is True
+

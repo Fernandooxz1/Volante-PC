@@ -11,6 +11,8 @@ import sys
 import threading
 from typing import Any, Dict, List, Optional
 
+from core.protocol import CONFIG_BUTTON_KEYS
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "language": "es",
     "theme_accent": "#00F2FE",
@@ -274,6 +276,10 @@ class ConfigManager:
                                 "accel_min", "accel_max", "brake_min", "brake_max",
                                 "invert_steer", "invert_accel", "invert_brake"):
                         self.config[k] = v
+                has_button_mapping = any(k.startswith("btn_map_") for k in preset_data)
+                if has_button_mapping:
+                    for btn_key in CONFIG_BUTTON_KEYS:
+                        self.config[btn_key] = preset_data.get(btn_key, "Ninguno")
                 if "mode" not in preset_data:
                     self.config["mode"] = "Crucetas / D-Pad" if "CRUCETA" in preset_name.upper() else "Conducción"
                 if "steer_lock_deg" not in preset_data:
@@ -295,21 +301,77 @@ class ConfigManager:
                 return True
             return False
 
-    def save_current_as_preset(self, preset_name: str) -> bool:
+    def get_preset_counterpart(self, preset_name: str) -> Optional[str]:
+        """
+        Retorna el nombre exacto del preset contraparte/gemelo si existe registrado, o None.
+        - Si el preset termina en ' CRUCETAS' (insensible a mayúsculas), su contraparte es el nombre base.
+        - Si no termina en ' CRUCETAS', su contraparte es f'{preset_name} CRUCETAS'.
+        """
+        clean_name = preset_name.strip()
+        if not clean_name:
+            return None
+
+        suffix = " CRUCETAS"
+        if clean_name.upper().endswith(suffix):
+            target = clean_name[:-len(suffix)].strip()
+        else:
+            target = f"{clean_name} CRUCETAS"
+
+        if not target:
+            return None
+
+        target_upper = target.upper()
+        with self._lock:
+            custom_presets = self.config.get("custom_presets")
+            if isinstance(custom_presets, dict):
+                for key in custom_presets:
+                    if key.strip().upper() == target_upper:
+                        return key
+        return None
+
+    def save_current_as_preset(self, preset_name: str, sync_counterpart: bool = True) -> bool:
         """Guarda la configuración actual de sintonía, botones y modo como un preset nombrado."""
         clean_name = preset_name.strip()
         if not clean_name or clean_name == "Personalizado":
             return False
 
         with self._lock:
-            if "custom_presets" not in self.config:
+            if "custom_presets" not in self.config or not isinstance(self.config["custom_presets"], dict):
                 self.config["custom_presets"] = {}
 
+            existing_target = self.config["custom_presets"].get(clean_name, {})
+
+            # Determinar modo para clean_name
+            if "CRUCETA" in clean_name.upper():
+                preset_mode = "Crucetas / D-Pad"
+            elif existing_target.get("mode"):
+                preset_mode = existing_target["mode"]
+            else:
+                preset_mode = self.config.get("mode", "Conducción")
+
+            # Determinar led_color para clean_name
+            if self.config.get("active_preset") == clean_name:
+                preset_led = self.config.get("led_color", existing_target.get("led_color", "Azul"))
+            elif existing_target.get("led_color"):
+                preset_led = existing_target["led_color"]
+            elif "CRUCETA" in clean_name.upper():
+                preset_led = "Naranja"
+            else:
+                preset_led = self.config.get("led_color", "Azul")
+
+            # Determinar f1_telemetry para clean_name
+            if "CRUCETA" in clean_name.upper():
+                preset_f1 = False
+            elif "f1_telemetry" in existing_target:
+                preset_f1 = existing_target["f1_telemetry"]
+            else:
+                preset_f1 = True if "F1" in clean_name.upper() and preset_mode == "Conducción" else False
+
             preset_dict: Dict[str, Any] = {
-                "mode": self.config.get("mode", "Conducción"),
+                "mode": preset_mode,
                 "preset_cycle_btn": self.config.get("preset_cycle_btn", "Pin D2"),
                 "sensitivity": self.config.get("sensitivity", 1.0),
-                "slope": self.config.get("slope", 1.85),
+                "slope": self.config.get("slope", 1.0),
                 "anti_deadzone": self.config.get("anti_deadzone", 0.0),
                 "deadzone": self.config.get("deadzone", 0.13),
                 "filter": self.config.get("filter", 0.0),
@@ -317,16 +379,60 @@ class ConfigManager:
                 "steer_target": self.config.get("steer_target", "Left Stick X"),
                 "accel_target": self.config.get("accel_target", "Right Trigger (RT)"),
                 "brake_target": self.config.get("brake_target", "Left Trigger (LT)"),
-                "led_color": self.config.get("led_color", "Azul"),
-                "f1_telemetry": self.config.get("f1_telemetry", True if "F1" in clean_name.upper() and self.config.get("mode") == "Conducción" else False)
+                "clutch_target": self.config.get("clutch_target", "Right Stick Y- (DOWN)"),
+                "invert_steer": self.config.get("invert_steer", False),
+                "invert_accel": self.config.get("invert_accel", False),
+                "invert_brake": self.config.get("invert_brake", False),
+                "invert_clutch": self.config.get("invert_clutch", False),
+                "led_color": preset_led,
+                "f1_telemetry": preset_f1,
             }
             # Guardar botones
+            for btn_key in CONFIG_BUTTON_KEYS:
+                preset_dict[btn_key] = self.config.get(btn_key, "Ninguno")
             for key in self.config:
                 if key.startswith("btn_map_"):
                     preset_dict[key] = self.config[key]
 
             self.config["custom_presets"][clean_name] = preset_dict
             self.config["active_preset"] = clean_name
+
+            if sync_counterpart:
+                counterpart_name = self.get_preset_counterpart(clean_name)
+                if counterpart_name and counterpart_name in self.config["custom_presets"]:
+                    counterpart_data = self.config["custom_presets"][counterpart_name]
+                    # Preservar estrictamente modo, led_color y f1_telemetry de la contraparte
+                    if "mode" not in counterpart_data:
+                        counterpart_data["mode"] = "Crucetas / D-Pad" if "CRUCETA" in counterpart_name.upper() else "Conducción"
+                    if "led_color" not in counterpart_data:
+                        counterpart_data["led_color"] = "Naranja" if counterpart_data["mode"] == "Crucetas / D-Pad" else "Verde"
+                    if "f1_telemetry" not in counterpart_data:
+                        counterpart_data["f1_telemetry"] = True if "F1" in counterpart_name.upper() and counterpart_data["mode"] == "Conducción" else False
+
+                    # Propagar configuraciones compartidas de hardware, pedales y dirección.
+                    # IMPORTANTE: NO propagar mapeos de botones (btn_map_*), ya que el modo crucetas
+                    # usa flechas direccionales y el modo conducción usa botones de acción (LB, RB, etc.).
+                    shared_keys = (
+                        "steer_lock_deg",
+                        "deadzone",
+                        "anti_deadzone",
+                        "filter",
+                        "sensitivity",
+                        "slope",
+                        "accel_target",
+                        "brake_target",
+                        "clutch_target",
+                        "steer_target",
+                        "invert_steer",
+                        "invert_accel",
+                        "invert_brake",
+                        "invert_clutch",
+                        "preset_cycle_btn",
+                    )
+                    for k in shared_keys:
+                        if k in preset_dict:
+                            counterpart_data[k] = preset_dict[k]
+
         self.save()
         return True
 

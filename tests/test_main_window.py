@@ -647,3 +647,180 @@ def test_main_window_button_box_retranslation(qapp, engine, config_manager):
         set_language("es")
         win.close()
 
+
+def test_main_window_save_preset_direct_overwrite(qapp, engine, config_manager, monkeypatch):
+    """Verifica que btn_save_preset sobreescriba directamente sin abrir ningún diálogo si hay un preset nombrado."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        # Seleccionar preset F1 RACING en el combo
+        win.preset_combo.setCurrentText("F1 RACING")
+        assert win.preset_combo.currentText() == "F1 RACING"
+
+        # Modificar un ajuste (ej. steer_lock a 540)
+        win.slider_degrees.setValue(540)
+
+        # Asegurarse de que QInputDialog.getText NO sea llamado
+        dialog_called = []
+        def mock_get_text(*args, **kwargs):
+            dialog_called.append(True)
+            return ("", False)
+
+        from PyQt6.QtWidgets import QInputDialog
+        monkeypatch.setattr(QInputDialog, "getText", mock_get_text)
+
+        # Pulsar Guardar (Sobreescribir)
+        win.btn_save_preset.click()
+
+        # Verificar que no se abrió ningún diálogo
+        assert len(dialog_called) == 0
+
+        # Verificar que los ajustes se guardaron en F1 RACING
+        preset_data = config_manager.config.get("custom_presets", {}).get("F1 RACING")
+        assert preset_data is not None
+        assert preset_data.get("steer_lock_deg") == 540
+        assert "Ajustes guardados en preset 'F1 RACING'" in win.log_console.toPlainText()
+    finally:
+        win.close()
+
+
+def test_main_window_save_preset_delegates_to_save_as_on_personalizado(qapp, engine, config_manager, monkeypatch):
+    """Verifica que si el preset es 'Personalizado', btn_save_preset delegue a Guardar como..."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        win.preset_combo.setCurrentText("Personalizado")
+
+        dialog_called = []
+        from PyQt6.QtWidgets import QInputDialog
+        def mock_get_text(parent, title, label, text=""):
+            dialog_called.append(text)
+            return ("PRESET MOTORSPORT", True)
+
+        monkeypatch.setattr(QInputDialog, "getText", mock_get_text)
+
+        win.btn_save_preset.click()
+
+        assert len(dialog_called) == 1
+        assert dialog_called[0] == ""  # Sugerencia vacía si es Personalizado
+        assert "PRESET MOTORSPORT" in config_manager.get_presets_list()
+        assert win.preset_combo.currentText() == "PRESET MOTORSPORT"
+    finally:
+        win.close()
+
+
+def test_main_window_save_as_preset_creates_new_template(qapp, engine, config_manager, monkeypatch):
+    """Verifica que btn_save_as_preset solicite un nombre y guarde una nueva plantilla."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        win.preset_combo.setCurrentText("F1 RACING")
+        win.slider_degrees.setValue(900)
+
+        from PyQt6.QtWidgets import QInputDialog
+        def mock_get_text(parent, title, label, text=""):
+            assert text == "F1 RACING"  # Nombre sugerido prellenado
+            return ("F1 SUPER GT", True)
+
+        monkeypatch.setattr(QInputDialog, "getText", mock_get_text)
+
+        win.btn_save_as_preset.click()
+
+        assert "F1 SUPER GT" in config_manager.get_presets_list()
+        assert win.preset_combo.currentText() == "F1 SUPER GT"
+        saved = config_manager.config.get("custom_presets", {}).get("F1 SUPER GT")
+        assert saved is not None
+        assert saved["steer_lock_deg"] == 900
+        assert "Preset 'F1 SUPER GT' guardado" in win.log_console.toPlainText()
+    finally:
+        win.close()
+
+
+def test_main_window_save_as_preset_validation(qapp, engine, config_manager, monkeypatch):
+    """Verifica que Guardar como... no permita 'Personalizado' ni nombres vacíos."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        warnings = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args))
+
+        # 1. Cancelado
+        monkeypatch.setattr(QInputDialog, "getText", lambda *args, **kwargs: ("", False))
+        win.btn_save_as_preset.click()
+        assert len(warnings) == 0
+
+        # 2. Nombre 'Personalizado'
+        monkeypatch.setattr(QInputDialog, "getText", lambda *args, **kwargs: ("Personalizado", True))
+        win.btn_save_as_preset.click()
+        assert len(warnings) == 1
+    finally:
+        win.close()
+
+
+def test_main_window_wheel_gauge_size_and_card_layout(qapp, engine, config_manager):
+    """Verifica la cota máxima del WheelGauge y el espaciado/proporción de los paneles central y sintonía."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        # 1. WheelGauge and PedalBar maximum size bounds
+        assert win.wheel_gauge.maximumSize().width() == 520
+        assert win.wheel_gauge.maximumSize().height() == 520
+        assert win.pedal_clutch.maximumHeight() == 520
+        assert win.pedal_brake.maximumHeight() == 520
+        assert win.pedal_throttle.maximumHeight() == 520
+
+        # 2. Central UI main_layout
+        central_widget = win.centralWidget().widget()
+        main_layout = central_widget.layout()
+        assert main_layout.spacing() >= 18
+
+        # Verificar stretches 5 y 5
+        assert main_layout.stretch(0) == 5
+        assert main_layout.stretch(1) == 5
+
+        # 3. Pedales y volante en gauges_layout
+        left_card = main_layout.itemAt(0).widget()
+        assert left_card is not None
+        assert win.wheel_gauge.parent() is not None
+    finally:
+        win.close()
+
+
+def test_main_window_preset_buttons_retranslation(qapp, engine, config_manager):
+    """Verifica que btn_save_preset y btn_save_as_preset se traduzcan reactivamente sin emojis."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        set_language("es")
+        assert win.btn_save_preset.text() == "Guardar"
+        assert win.btn_save_as_preset.text() == "Guardar como..."
+
+        set_language("en")
+        assert win.btn_save_preset.text() == "Save"
+        assert win.btn_save_as_preset.text() == "Save As..."
+    finally:
+        set_language("es")
+        win.close()
+
+
+def test_main_window_preset_combo_switch_not_reverted_by_telemetry(qapp, engine, config_manager):
+    """Verifica que al cambiar de preset en el combo, la telemetría no revierta el texto a F1 RACING."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        config_manager.set("active_preset", "F1 RACING")
+        win._sync_presets_from_config()
+        assert win.preset_combo.currentText() == "F1 RACING"
+
+        target_preset = "RALLY / DRIFT"
+        idx = win.preset_combo.findText(target_preset)
+        if idx < 0:
+            config_manager.save_current_as_preset(target_preset)
+            win._sync_presets_from_config()
+            idx = win.preset_combo.findText(target_preset)
+
+        win.preset_combo.setCurrentIndex(idx)
+        assert win.preset_combo.currentText() == target_preset
+        assert config_manager.get("active_preset") == target_preset
+
+        snap = engine.get_telemetry()
+        win._on_telemetry_snapshot(snap)
+        assert win.preset_combo.currentText() == target_preset
+    finally:
+        win.close()
+
+

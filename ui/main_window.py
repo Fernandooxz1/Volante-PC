@@ -176,10 +176,17 @@ class MainWindow(QMainWindow):
         self.preset_combo.currentTextChanged.connect(self._on_preset_selected)
         self.toolbar.addWidget(self.preset_combo)
 
-        # Botón Guardar Preset
+        # Botón Guardar Preset (Sobreescribir)
         self.btn_save_preset = QPushButton(tr("presets.save"), self)
-        self.btn_save_preset.clicked.connect(self._save_new_preset)
+        self.btn_save_preset.setToolTip(tr("presets.save"))
+        self.btn_save_preset.clicked.connect(self._on_save_preset_clicked)
         self.toolbar.addWidget(self.btn_save_preset)
+
+        # Botón Guardar como... Preset (Nueva plantilla)
+        self.btn_save_as_preset = QPushButton(tr("presets.save_as"), self)
+        self.btn_save_as_preset.setToolTip(tr("presets.save_as"))
+        self.btn_save_as_preset.clicked.connect(self._on_save_as_preset_clicked)
+        self.toolbar.addWidget(self.btn_save_as_preset)
 
         # Botón Eliminar Preset
         self.btn_delete_preset = QPushButton(tr("presets.delete"), self)
@@ -219,8 +226,8 @@ class MainWindow(QMainWindow):
         left_card = QFrame(parent or self)
         left_card.setObjectName("leftCard")
         left_layout = QVBoxLayout(left_card)
-        left_layout.setContentsMargins(10, 10, 10, 10)
-        left_layout.setSpacing(12)
+        left_layout.setContentsMargins(12, 12, 12, 12)
+        left_layout.setSpacing(14)
 
         # 1. Cabecera DDU
         ddu_header = QHBoxLayout()
@@ -234,23 +241,27 @@ class MainWindow(QMainWindow):
         left_layout.addLayout(ddu_header)
 
         gauges_layout = QHBoxLayout()
-        gauges_layout.setSpacing(14)
+        gauges_layout.setSpacing(16)
 
         self.pedal_clutch = PedalBar(label=tr("telemetry.clutch"), pedal_type="clutch", parent=self)
-        gauges_layout.addWidget(self.pedal_clutch)
+        self.pedal_clutch.setMaximumHeight(520)
+        gauges_layout.addWidget(self.pedal_clutch, stretch=0, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         self.pedal_brake = PedalBar(label=tr("telemetry.brake"), pedal_type="brake", parent=self)
-        gauges_layout.addWidget(self.pedal_brake)
+        self.pedal_brake.setMaximumHeight(520)
+        gauges_layout.addWidget(self.pedal_brake, stretch=0, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         self.wheel_gauge = WheelGauge(parent=self)
+        self.wheel_gauge.setMaximumSize(520, 520)
         initial_steer_lock = float(self.config_manager.get("steer_lock_deg", 360))
         self.wheel_gauge.set_max_angle(initial_steer_lock / 2.0)
-        gauges_layout.addWidget(self.wheel_gauge, stretch=2)
+        gauges_layout.addWidget(self.wheel_gauge, stretch=1, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.pedal_throttle = PedalBar(label=tr("telemetry.throttle"), pedal_type="throttle", parent=self)
-        gauges_layout.addWidget(self.pedal_throttle)
+        self.pedal_throttle.setMaximumHeight(520)
+        gauges_layout.addWidget(self.pedal_throttle, stretch=0, alignment=Qt.AlignmentFlag.AlignVCenter)
 
-        left_layout.addLayout(gauges_layout, stretch=3)
+        left_layout.addLayout(gauges_layout, stretch=1)
         self.curve_canvas = None
 
         self.buttons_box = QGroupBox(tr("mapping.assigned_buttons"), self)
@@ -292,8 +303,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_scroll)
 
         main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(14, 14, 14, 14)
+        main_layout.setSpacing(20)
 
         # Panel Izquierdo: Instrumentación Motorsport DDU (Visualización en Tiempo Real)
         left_card = self._build_telemetry_card(central_widget)
@@ -324,13 +335,14 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(tab_logs, "Logs / Telemetría")
 
         right_layout.addWidget(self.tabs)
-        main_layout.addWidget(right_card, stretch=4)
+        main_layout.addWidget(right_card, stretch=5)
 
     # Pestaña de Sintonía Dinámica y Filtros
 
     def _build_tuning_tab(self, parent: QWidget) -> None:
         layout = QVBoxLayout(parent)
-        layout.setContentsMargins(12, 14, 12, 12)
+        layout.setContentsMargins(14, 16, 14, 14)
+        layout.setSpacing(14)
         self.btn_quick_center = QPushButton(tr("calib.btn_quick_center"), parent)
         self.btn_quick_center.setFixedHeight(34)
         self.btn_quick_center.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -401,8 +413,8 @@ class MainWindow(QMainWindow):
 
         invert_group = QGroupBox(tr("mapping.title"), parent)
         invert_layout = QVBoxLayout(invert_group)
-        invert_layout.setContentsMargins(8, 10, 8, 8)
-        invert_layout.setSpacing(6)
+        invert_layout.setContentsMargins(12, 14, 12, 12)
+        invert_layout.setSpacing(8)
 
         self.chk_invert_steer = QCheckBox(tr("mapping.invert_steer"), invert_group)
         self.chk_invert_steer.setChecked(bool(self.config_manager.get("invert_steer", False)))
@@ -557,7 +569,7 @@ class MainWindow(QMainWindow):
                 self.btn_connect.setText(tr("status.disconnect"))
                 self.lbl_sb_port.setText(f"{tr('status.port')}: {snapshot.active_port or '--'}")
                 self._log(f"Arduino conectado en {snapshot.active_port}.", "success")
-            elif status == "connecting":
+            elif status in ("connecting", "reconnecting"):
                 self.status_dot.setStyleSheet("color: #ff9100; font-size: 16px; margin-right: 4px;")
                 self.status_lbl.setText(tr("status.connecting"))
                 self.btn_connect.setText(tr("status.disconnect"))
@@ -612,18 +624,15 @@ class MainWindow(QMainWindow):
                         """)
 
         if hasattr(snapshot, "preset") and snapshot.preset and snapshot.preset != self.preset_combo.currentText():
-            self._is_updating_ui = True
-            try:
-                idx = self.preset_combo.findText(snapshot.preset)
-                if idx >= 0:
+            idx = self.preset_combo.findText(snapshot.preset)
+            if idx >= 0 and idx != self.preset_combo.currentIndex():
+                self._is_updating_ui = True
+                try:
                     self.preset_combo.setCurrentIndex(idx)
-                else:
-                    self.preset_combo.addItem(snapshot.preset)
-                    self.preset_combo.setCurrentText(snapshot.preset)
-            finally:
-                self._is_updating_ui = False
-            self._sync_sliders_from_config()
-            self._apply_preset_settings()
+                finally:
+                    self._is_updating_ui = False
+                self._sync_sliders_from_config()
+                self._apply_preset_settings()
 
         if hasattr(snapshot, "mode") and snapshot.mode and snapshot.mode != self.mode_combo.currentText():
             self._is_updating_ui = True
@@ -675,7 +684,7 @@ class MainWindow(QMainWindow):
             self.port_combo.setCurrentText(self.engine.target_port)
 
     def _toggle_connection(self) -> None:
-        if self._last_status in ("connected", "connecting"):
+        if self._last_status in ("connected", "connecting", "reconnecting"):
             self.engine.disconnect()
             self._last_status = "disconnected"
             self.status_dot.setStyleSheet("color: #ff3344; font-size: 16px; margin-right: 4px;")
@@ -897,28 +906,67 @@ class MainWindow(QMainWindow):
             self.config_manager.save()
 
         if success:
+            self.config_manager.set("active_preset", preset_name)
+            self.config_manager.save()
             self._sync_sliders_from_config()
             self._apply_preset_settings()
             self._log(f"Preset '{preset_name}' cargado con éxito.", "success")
 
-    def _save_new_preset(self) -> None:
+    def _on_save_preset_clicked(self) -> None:
+        """Guarda/sobrescribe la configuración actual en el preset seleccionado (sin diálogo de reescritura)."""
+        current = self.preset_combo.currentText().strip()
+        if not current or current == "Personalizado":
+            self._on_save_as_preset_clicked()
+            return
+
+        if hasattr(self.engine, "save_preset"):
+            success = self.engine.save_preset(current)
+        else:
+            success = self.config_manager.save_current_as_preset(current)
+
+        if success:
+            self.config_manager.set("active_preset", current)
+            self.config_manager.save()
+            self._sync_presets_from_config()
+            self._log(f"Ajustes guardados en preset '{current}'.", "success")
+        else:
+            QMessageBox.warning(self, tr("common.warning"), tr("presets.invalid_name"))
+
+    def _on_save_as_preset_clicked(self) -> None:
+        """Solicita un nombre y guarda la configuración como una nueva plantilla o preset."""
+        current = self.preset_combo.currentText().strip()
+        suggested = "" if current in ("", "Personalizado") else current
         name, ok = QInputDialog.getText(
             self,
-            tr("presets.save_preset"),
+            tr("presets.save_as"),
             tr("presets.enter_name"),
+            text=suggested,
         )
         if ok and name.strip():
             clean = name.strip()
+            if clean == "Personalizado":
+                QMessageBox.warning(self, tr("common.warning"), tr("presets.invalid_name"))
+                return
+
             if hasattr(self.engine, "save_preset"):
                 success = self.engine.save_preset(clean)
             else:
                 success = self.config_manager.save_current_as_preset(clean)
 
             if success:
+                self.config_manager.set("active_preset", clean)
+                self.config_manager.save()
                 self._sync_presets_from_config()
+                idx = self.preset_combo.findText(clean)
+                if idx >= 0:
+                    self.preset_combo.setCurrentIndex(idx)
                 self._log(f"Preset '{clean}' guardado.", "success")
             else:
                 QMessageBox.warning(self, tr("common.warning"), tr("presets.invalid_name"))
+
+    def _save_new_preset(self) -> None:
+        """Compatibilidad hacia atrás: redirige a _on_save_as_preset_clicked."""
+        self._on_save_as_preset_clicked()
 
     def _delete_current_preset(self) -> None:
         current = self.preset_combo.currentText()
@@ -995,6 +1043,10 @@ class MainWindow(QMainWindow):
         self.btn_connect.setText(tr("status.disconnect") if self._last_status == "connected" else tr("status.connect"))
         self.preset_lbl.setText(tr("presets.title") + ":")
         self.btn_save_preset.setText(tr("presets.save"))
+        self.btn_save_preset.setToolTip(tr("presets.save"))
+        if hasattr(self, "btn_save_as_preset"):
+            self.btn_save_as_preset.setText(tr("presets.save_as"))
+            self.btn_save_as_preset.setToolTip(tr("presets.save_as"))
         self.btn_delete_preset.setText(tr("presets.delete"))
         self.btn_calib_wizard.setText(tr("common.calibration"))
         self.btn_map_wizard.setText(tr("common.controls"))
