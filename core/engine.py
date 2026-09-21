@@ -1,16 +1,16 @@
 """
-Motor central de baja latencia para Volante-PC.
+Low latency engine
 
-Ejecuta un bucle en tiempo real a 100 Hz (intervalo estricto de 10 ms con time.perf_counter()),
-gestionando:
-1. Comunicación serie binaria con Arduino UNO (115200 baud, 8N1, reconexión automática).
-2. Filtrado DSP anti-jitter (Slew Rate Limiter + EMA) mediante SteeringFilter.
-3. Modelado matemático de respuesta (Steering Expo, anti-deadzone, rest-deadzone, pedales).
-4. Abstracción multiplataforma de Gamepad Virtual (Xbox 360 vía vgamepad / uinput / ViGEmBus).
-5. Buffer de estado de telemetría atómico y thread-safe (TelemetrySnapshot).
-6. Bus reactivo de eventos de entrada (Press-to-Map wizard).
-7. Modos de operación: "Conducción" vs "Crucetas / D-Pad".
-8. Transmisión periódica y reactiva de comandos LED RGB (0xBB 0x66 <código>).
+Execute a loop in real time at 100hz (estricted interval of 10 ms with time.perf_counter()),
+managing:
+1. Binary serial comunication with ESP32s (115200 baud, 8N1, auto reconecction ).
+2. DSP anti-jitter filter (Slew Rate Limiter + EMA) with SteeringFilter.
+3. Matematic answer modeler (Steering Expo, anti-deadzone, rest-deadzone, pedales).
+4. Multiplatform abstraction of the virtual gamepad (Xbox 360 vía vgamepad / uinput / ViGEmBus).
+5. Telemetry buffer state and thread-safe (TelemetrySnapshot).
+6. Reactive Bus of entry events (Press-to-Map wizard).
+7. Operation modes: "Steering" vs "D-Pad".
+8. Periodical transmition and reactive of comands to LED RGB (0xBB 0x66 <código>).
 """
 
 from __future__ import annotations
@@ -43,15 +43,15 @@ from core.protocol import (
 
 logger = logging.getLogger("VolantePC.Engine")
 
-# Constantes del motor
+# Engine const
 TARGET_INTERVAL: float = 0.010  # 10 ms = 100 Hz
 DEFAULT_BAUD_RATE: int = 115200
-DEFAULT_AXIS_THRESHOLD: int = 50  # ~5% de cambio en ADC 0..1023 para disparar evento reactivo
-HEARTBEAT_INTERVAL: float = 2.0  # Segundos entre latidos LED para mantener conectado el Arduino
+DEFAULT_AXIS_THRESHOLD: int = 50  # ~5% to change the state
+HEARTBEAT_INTERVAL: float = 2.0  # In secornd for the leds
 
-# Modos de operación
-MODE_CONDUCCION: str = "Conducción"
-MODE_CRUCETAS: str = "Crucetas / D-Pad"
+# Operational modes
+MODE_CONDUCCION: str = "Drive"
+MODE_CRUCETAS: str = "D-Pad"
 AVAILABLE_MODES: Tuple[str, ...] = (MODE_CONDUCCION, MODE_CRUCETAS)
 
 # Mapeo de pines a claves de configuración y nombres legibles
@@ -127,7 +127,7 @@ class TelemetrySnapshot:
     timestamp: float
     status: str  # "connected", "connecting", "reconnecting", "disconnected", "stopped"
     active_port: Optional[str]
-    mode: str  # "Conducción" | "Crucetas / D-Pad"
+    mode: str  # "Drive" | "D-Pad"
     preset: str
     led_color: str
 
@@ -267,7 +267,7 @@ class Engine:
         # Modo de operación
         self._mode: str = MODE_CONDUCCION
 
-        # D-Pad en modo Crucetas
+        # D-Pad en modo  
         self._dpad_from_axes: bool = True
         self._dpad_suppress_axes: bool = True
 
@@ -577,7 +577,7 @@ class Engine:
 
     # Modos de Operación y Presets
     def set_mode(self, mode: str) -> None:
-        """Cambia el modo de operación ('Conducción' vs 'Crucetas / D-Pad')."""
+        """Cambia el modo de operación ('Drive' vs 'D-Pad')."""
         if mode not in AVAILABLE_MODES:
             raise ValueError(f"Modo inválido '{mode}'. Opciones disponibles: {AVAILABLE_MODES}")
 
@@ -600,7 +600,7 @@ class Engine:
         logger.info("Rango de giro configurado a: %.1f°", degrees)
 
     def toggle_mode(self) -> str:
-        """Alterna entre 'Conducción' y 'Crucetas / D-Pad' y retorna el nuevo modo."""
+        """Alterna entre 'Drive' y 'D-Pad' y retorna el nuevo modo."""
         new_mode = MODE_CRUCETAS if self._mode == MODE_CONDUCCION else MODE_CONDUCCION
         self.set_mode(new_mode)
         return new_mode
@@ -872,8 +872,8 @@ class Engine:
     def _determine_active_led_color(self) -> str:
         """
         Determina el color LED efectivo en tiempo real.
-        - En modo Crucetas o durante mapeo: usa siempre el color configurado en el preset.
-        - En modo Conducción y si el preset tiene telemetría activa (ej. F1 RACING):
+        - En modo   o durante mapeo: usa siempre el color configurado en el preset.
+        - En modo Drive y si el preset tiene telemetría activa (ej. F1 RACING):
           usa el color dinámico de luces de cambio (Verde -> Amarillo -> Rojo -> Azul).
           Si no hay telemetría activa o rev lights == 0, mantiene el color base del preset.
         """
@@ -1081,7 +1081,7 @@ class Engine:
         brake_pct = round(brake_norm * 100.0, 1)
         clutch_pct = round(clutch_norm * 100.0, 1)
 
-        # 6. Mapeo de Botones Activos y Modo Crucetas
+        # 6. Mapeo de Botones Activos y Modo  
 
         active_buttons: Set[str] = set()
 
@@ -1093,7 +1093,7 @@ class Engine:
                     if target_action and target_action != "Ninguno":
                         active_buttons.add(target_action)
 
-        # Lógica de Crucetas / D-Pad y Gatillos Digitales
+        # Lógica de  D-Pad y Gatillos Digitales
         final_steer = val_steer
         final_accel = accel_val_trigger
         final_brake = brake_val_trigger
