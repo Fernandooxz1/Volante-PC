@@ -50,8 +50,8 @@ DEFAULT_AXIS_THRESHOLD: int = 50  # ~5% to change the state
 HEARTBEAT_INTERVAL: float = 2.0  # In secornd for the leds
 
 # Operational modes
-MODE_CONDUCCION: str = "Drive"
-MODE_CRUCETAS: str = "D-Pad"
+MODE_CONDUCCION: str = "Conducción"
+MODE_CRUCETAS: str = "Crucetas / D-Pad"
 AVAILABLE_MODES: Tuple[str, ...] = (MODE_CONDUCCION, MODE_CRUCETAS)
 
 # Mapeo de pines a claves de configuración y nombres legibles
@@ -577,7 +577,12 @@ class Engine:
 
     # Modos de Operación y Presets
     def set_mode(self, mode: str) -> None:
-        """Cambia el modo de operación ('Drive' vs 'D-Pad')."""
+        """Cambia el modo de operación ('Conducción'/'Drive' vs 'Crucetas / D-Pad'/'D-Pad')."""
+        if mode == "Drive":
+            mode = MODE_CONDUCCION
+        elif mode in ("D-Pad", "DPad", "D-PAD"):
+            mode = MODE_CRUCETAS
+
         if mode not in AVAILABLE_MODES:
             raise ValueError(f"Modo inválido '{mode}'. Opciones disponibles: {AVAILABLE_MODES}")
 
@@ -600,7 +605,7 @@ class Engine:
         logger.info("Rango de giro configurado a: %.1f°", degrees)
 
     def toggle_mode(self) -> str:
-        """Alterna entre 'Drive' y 'D-Pad' y retorna el nuevo modo."""
+        """Alterna entre 'Conducción' y 'Crucetas / D-Pad' y retorna el nuevo modo."""
         new_mode = MODE_CRUCETAS if self._mode == MODE_CONDUCCION else MODE_CONDUCCION
         self.set_mode(new_mode)
         return new_mode
@@ -612,9 +617,14 @@ class Engine:
             logger.info("Preset cargado: %s", preset_name)
             # Sincronizar modo si el preset lo define o por nombre
             preset_mode = self.config_manager.get("mode")
+            if preset_mode == "Drive":
+                preset_mode = MODE_CONDUCCION
+            elif preset_mode in ("D-Pad", "DPad", "D-PAD"):
+                preset_mode = MODE_CRUCETAS
+
             if preset_mode in AVAILABLE_MODES:
                 self._mode = preset_mode
-            elif "CRUCETA" in preset_name.upper():
+            elif "CRUCETA" in preset_name.upper() or "D-PAD" in preset_name.upper():
                 self._mode = MODE_CRUCETAS
             else:
                 self._mode = MODE_CONDUCCION

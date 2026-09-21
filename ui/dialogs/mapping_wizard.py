@@ -136,6 +136,21 @@ def get_control_description(control_name: str) -> str:
     return descriptions.get(control_name, tr("mapping_wizard.desc_default"))
 
 
+CONTROL_DISPLAY_NAMES: Dict[str, str] = {
+    "Botón PRESET (Alternar Presets)": "mapping_wizard.control_preset_btn",
+    "Embrague (Pedalera)": "mapping_wizard.control_clutch_pedal",
+    "Color del LED RGB": "mapping_wizard.control_led_color",
+}
+
+
+def get_control_display_name(control_name: str) -> str:
+    """Retorna el nombre localizado del control para mostrar en la interfaz."""
+    key = CONTROL_DISPLAY_NAMES.get(control_name)
+    if key:
+        return tr(key)
+    return control_name
+
+
 class ClutchTargetDialog(QDialog):
     """Modal motorsport para consultar a qué botón virtual de Xbox desea mapear el Embrague."""
 
@@ -150,7 +165,7 @@ class ClutchTargetDialog(QDialog):
         self.accent_color = accent_color
         self.selected_action: str = "Button LB (Left Shoulder)"
 
-        self.setWindowTitle("MAPEAR EMBRAGUE // BOTÓN VIRTUAL")
+        self.setWindowTitle(tr("mapping_wizard.clutch_dialog_title"))
         self.setFixedSize(520, 310)
         self.setModal(True)
         self._build_ui()
@@ -161,12 +176,12 @@ class ClutchTargetDialog(QDialog):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(12)
 
-        title = QLabel(f"EMBRAGUE DETECTADO EN PIN {self.detected_pin.upper()}")
+        title = QLabel(tr("mapping_wizard.clutch_detected_title", pin=self.detected_pin.upper()))
         title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         title.setStyleSheet("color: #00e676; letter-spacing: 0.5px;")
         layout.addWidget(title)
 
-        prompt = QLabel("¿A qué botón virtual desea mapearlo?\n(En simuladores como Forza o Assetto Corsa se suele usar LB, L3 o A)")
+        prompt = QLabel(tr("mapping_wizard.clutch_prompt"))
         prompt.setFont(QFont("Segoe UI", 10))
         prompt.setStyleSheet("color: #94a3b8;")
         layout.addWidget(prompt)
@@ -190,7 +205,7 @@ class ClutchTargetDialog(QDialog):
         quick_layout.addStretch()
         layout.addLayout(quick_layout)
 
-        combo_lbl = QLabel("O elija de la lista / escriba manualmente (ej. LB, L3, A):")
+        combo_lbl = QLabel(tr("mapping_wizard.clutch_combo_label"))
         combo_lbl.setFont(QFont("Segoe UI", 9))
         combo_lbl.setStyleSheet("color: #64748b;")
         layout.addWidget(combo_lbl)
@@ -216,11 +231,11 @@ class ClutchTargetDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_cancel = QPushButton("Cancelar")
+        btn_cancel = QPushButton(tr("common.cancel"))
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_ok = QPushButton("Aceptar")
+        btn_ok = QPushButton(tr("common.ok"))
         btn_ok.setProperty("primary", "true")
         btn_ok.clicked.connect(self._on_accept)
         btn_row.addWidget(btn_ok)
@@ -436,7 +451,8 @@ class MappingWizardDialog(QDialog):
         header_layout.setSpacing(6)
 
         title_row = QHBoxLayout()
-        self.lbl_header_title = QLabel(f"{tr('mapping_wizard.header_title')} // {self.mode.upper()}")
+        mode_display = tr("mode.crucetas") if ("CRUCETA" in self.mode.upper() or "D-PAD" in self.mode.upper()) else tr("mode.conduccion")
+        self.lbl_header_title = QLabel(f"{tr('mapping_wizard.header_title')} // {mode_display.upper()}")
         self.lbl_header_title.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         self.lbl_header_title.setStyleSheet("color: #94a3b8; letter-spacing: 1px;")
         title_row.addWidget(self.lbl_header_title)
@@ -474,7 +490,7 @@ class MappingWizardDialog(QDialog):
         card_layout.addLayout(type_row)
 
         # Large Target Action Name
-        self.lbl_action_name = QLabel(self.target_controls[0].upper())
+        self.lbl_action_name = QLabel(get_control_display_name(self.target_controls[0]).upper())
         self.lbl_action_name.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
         self.lbl_action_name.setStyleSheet("color: #f1f5f9; letter-spacing: 0.5px;")
         card_layout.addWidget(self.lbl_action_name)
@@ -699,7 +715,7 @@ class MappingWizardDialog(QDialog):
             self.frame_status.setVisible(True)
             self.frame_color_picker.setVisible(False)
 
-        self.lbl_action_name.setText(control_name.upper())
+        self.lbl_action_name.setText(get_control_display_name(control_name).upper())
         self.lbl_instruction.setText(get_control_description(control_name))
 
         # Reset status box styling
@@ -982,7 +998,7 @@ class MappingWizardDialog(QDialog):
         self.table_summary.setRowCount(len(self.target_controls))
         for row, target in enumerate(self.target_controls):
             assigned = self._mapped_results.get(target, tr("mapping_wizard.val_existing"))
-            item_target = QTableWidgetItem(f" {target}")
+            item_target = QTableWidgetItem(f" {get_control_display_name(target)}")
             item_assigned = QTableWidgetItem(f" {assigned}")
             item_status = QTableWidgetItem(f" {tr('mapping_wizard.status_active')}")
 

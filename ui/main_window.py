@@ -75,6 +75,13 @@ class MainWindow(QMainWindow):
     Ventana principal de instrumentación y control para Volante-PC.
     """
 
+    MODE_I18N_KEYS: Dict[str, str] = {
+        MODE_CONDUCCION: "mode.conduccion",
+        MODE_CRUCETAS: "mode.crucetas",
+        "Drive": "mode.conduccion",
+        "D-Pad": "mode.crucetas",
+    }
+
     def __init__(
         self,
         engine: Optional[Engine] = None,
@@ -92,6 +99,7 @@ class MainWindow(QMainWindow):
         self._last_active_preset: str = self.config_manager.get("active_preset", "Personalizado")
         self._btn_indicators: Dict[str, QLabel] = {}
         self._btn_pressed_states: Dict[str, bool] = {}
+        self._retranslatable_sliders: List[Tuple[QLabel, str, QLabel, str]] = []
 
         # Dummy attributes for backwards compatibility
         self.curve_canvas: Optional[Any] = None
@@ -158,11 +166,8 @@ class MainWindow(QMainWindow):
 
         # Selector de Modo de Operación
         self.mode_combo = QComboBox(self)
-        for m in AVAILABLE_MODES:
-            self.mode_combo.addItem(m)
-        current_mode = getattr(self.engine, "mode", MODE_CONDUCCION)
-        self.mode_combo.setCurrentText(current_mode)
-        self.mode_combo.currentTextChanged.connect(self._on_mode_changed)
+        self._populate_mode_combo()
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_combo_index_changed)
         self.toolbar.addWidget(self.mode_combo)
 
         self.toolbar.addSeparator()
@@ -332,7 +337,7 @@ class MainWindow(QMainWindow):
         # Tab 2: Consola de Diagnóstico y Logs
         tab_logs = QWidget()
         self._build_logs_tab(tab_logs)
-        self.tabs.addTab(tab_logs, "Logs / Telemetría")
+        self.tabs.addTab(tab_logs, tr("telemetry.logs_tab"))
 
         right_layout.addWidget(self.tabs)
         main_layout.addWidget(right_card, stretch=5)
@@ -411,32 +416,32 @@ class MainWindow(QMainWindow):
             on_change=lambda v: self._on_slider_changed("filter", v / 100.0),
         )
 
-        invert_group = QGroupBox(tr("mapping.title"), parent)
-        invert_layout = QVBoxLayout(invert_group)
+        self.invert_group = QGroupBox(tr("mapping.invert_axes"), parent)
+        invert_layout = QVBoxLayout(self.invert_group)
         invert_layout.setContentsMargins(12, 14, 12, 12)
         invert_layout.setSpacing(8)
 
-        self.chk_invert_steer = QCheckBox(tr("mapping.invert_steer"), invert_group)
+        self.chk_invert_steer = QCheckBox(tr("mapping.invert_steer"), self.invert_group)
         self.chk_invert_steer.setChecked(bool(self.config_manager.get("invert_steer", False)))
         self.chk_invert_steer.toggled.connect(lambda c: self._on_checkbox_changed("invert_steer", c))
         invert_layout.addWidget(self.chk_invert_steer)
 
-        self.chk_invert_accel = QCheckBox(tr("mapping.invert_accel"), invert_group)
+        self.chk_invert_accel = QCheckBox(tr("mapping.invert_accel"), self.invert_group)
         self.chk_invert_accel.setChecked(bool(self.config_manager.get("invert_accel", False)))
         self.chk_invert_accel.toggled.connect(lambda c: self._on_checkbox_changed("invert_accel", c))
         invert_layout.addWidget(self.chk_invert_accel)
 
-        self.chk_invert_brake = QCheckBox(tr("mapping.invert_brake"), invert_group)
+        self.chk_invert_brake = QCheckBox(tr("mapping.invert_brake"), self.invert_group)
         self.chk_invert_brake.setChecked(bool(self.config_manager.get("invert_brake", False)))
         self.chk_invert_brake.toggled.connect(lambda c: self._on_checkbox_changed("invert_brake", c))
         invert_layout.addWidget(self.chk_invert_brake)
 
-        self.chk_invert_clutch = QCheckBox(tr("mapping.invert_clutch"), invert_group)
+        self.chk_invert_clutch = QCheckBox(tr("mapping.invert_clutch"), self.invert_group)
         self.chk_invert_clutch.setChecked(bool(self.config_manager.get("invert_clutch", False)))
         self.chk_invert_clutch.toggled.connect(lambda c: self._on_checkbox_changed("invert_clutch", c))
         invert_layout.addWidget(self.chk_invert_clutch)
 
-        layout.addWidget(invert_group)
+        layout.addWidget(self.invert_group)
         layout.addStretch()
 
     def _create_steer_lock_row(
@@ -511,6 +516,10 @@ class MainWindow(QMainWindow):
         desc_lbl.setWordWrap(True)
         layout.addWidget(desc_lbl)
 
+        if not hasattr(self, "_retranslatable_sliders"):
+            self._retranslatable_sliders = []
+        self._retranslatable_sliders.append((title_lbl, title_key, desc_lbl, desc_key))
+
         return slider, val_lbl
 
     # Pestaña de Consola y Logs
@@ -526,10 +535,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.log_console)
 
         btn_box = QHBoxLayout()
-        btn_clear = QPushButton(tr("common.reset"), parent)
-        btn_clear.clicked.connect(self.log_console.clear)
+        self.btn_clear_log = QPushButton(tr("common.clear"), parent)
+        self.btn_clear_log.clicked.connect(self.log_console.clear)
         btn_box.addStretch()
-        btn_box.addWidget(btn_clear)
+        btn_box.addWidget(self.btn_clear_log)
         layout.addLayout(btn_box)
 
     # Barra de Estado (Status Bar)
@@ -539,8 +548,8 @@ class MainWindow(QMainWindow):
 
         self.lbl_sb_port = QLabel(f"{tr('status.port')}: --")
         self.lbl_sb_baud = QLabel(f"{tr('status.baudrate')}: 115200")
-        self.lbl_sb_hz = QLabel("Tasa: 0 Hz")
-        self.lbl_sb_f1 = QLabel("F1 UDP: Esperando...")
+        self.lbl_sb_hz = QLabel(f"{tr('status.rate_label')}: 0 Hz")
+        self.lbl_sb_f1 = QLabel(tr("status.f1_waiting"))
         self.lbl_sb_gamepad = QLabel(f"{tr('status.virtual_gamepad')}: OK")
 
         statusbar.addWidget(self.lbl_sb_port, 2)
@@ -634,15 +643,26 @@ class MainWindow(QMainWindow):
                 self._sync_sliders_from_config()
                 self._apply_preset_settings()
 
-        if hasattr(snapshot, "mode") and snapshot.mode and snapshot.mode != self.mode_combo.currentText():
-            self._is_updating_ui = True
-            try:
-                self.mode_combo.setCurrentText(snapshot.mode)
-            finally:
-                self._is_updating_ui = False
+        if hasattr(snapshot, "mode") and snapshot.mode:
+            current_canonical = self.mode_combo.currentData()
+            snap_mode = snapshot.mode
+            if snap_mode == "Drive":
+                snap_mode = MODE_CONDUCCION
+            elif snap_mode in ("D-Pad", "DPad"):
+                snap_mode = MODE_CRUCETAS
+
+            if current_canonical != snap_mode:
+                for i in range(self.mode_combo.count()):
+                    if self.mode_combo.itemData(i) == snap_mode or self.mode_combo.itemText(i) == snapshot.mode:
+                        self._is_updating_ui = True
+                        try:
+                            self.mode_combo.setCurrentIndex(i)
+                        finally:
+                            self._is_updating_ui = False
+                        break
 
         # 7. Barra de estado y métricas
-        self.lbl_sb_hz.setText(f"Tasa: {snapshot.loop_hz:.0f} Hz")
+        self.lbl_sb_hz.setText(f"{tr('status.rate_label')}: {snapshot.loop_hz:.0f} Hz")
         self.hz_badge.setText(f"{snapshot.loop_hz:.0f} HZ // {status.upper()}")
 
         gp_ok = snapshot.gamepad_connected
@@ -663,8 +683,9 @@ class MainWindow(QMainWindow):
         else:
             active_preset = getattr(snapshot, "preset", "")
             mode = getattr(snapshot, "mode", "")
-            if "F1" in active_preset.upper() and mode == "Conducción":
-                self.lbl_sb_f1.setText(f" F1 UDP: Puerto 20777 listo | LED: {snapshot.led_color}")
+            if "F1" in active_preset.upper() and (mode == MODE_CONDUCCION or mode in ("Conducción", "Drive")):
+                f1_text = tr("status.f1_ready", port=20777, led=snapshot.led_color)
+                self.lbl_sb_f1.setText(f" {f1_text}")
                 self.lbl_sb_f1.setStyleSheet("color: #64748b;")
             else:
                 self.lbl_sb_f1.setText(f"LED: {snapshot.led_color}")
@@ -699,6 +720,44 @@ class MainWindow(QMainWindow):
                 return
             self._log(f"Conectando a {port}...", "info")
             self.engine.connect(port)
+
+    def _populate_mode_combo(self) -> None:
+        current_canonical = getattr(self.engine, "mode", MODE_CONDUCCION)
+        if current_canonical == "Drive":
+            current_canonical = MODE_CONDUCCION
+        elif current_canonical in ("D-Pad", "DPad"):
+            current_canonical = MODE_CRUCETAS
+
+        self._is_updating_ui = True
+        try:
+            self.mode_combo.clear()
+            for m in (MODE_CONDUCCION, MODE_CRUCETAS):
+                self.mode_combo.addItem(tr(self.MODE_I18N_KEYS.get(m, m)), m)
+
+            idx = 0
+            for i in range(self.mode_combo.count()):
+                if self.mode_combo.itemData(i) == current_canonical:
+                    idx = i
+                    break
+            self.mode_combo.setCurrentIndex(idx)
+        finally:
+            self._is_updating_ui = False
+
+    def _update_mode_combo_labels(self) -> None:
+        self._is_updating_ui = True
+        try:
+            for i in range(self.mode_combo.count()):
+                m = self.mode_combo.itemData(i)
+                if m in self.MODE_I18N_KEYS:
+                    self.mode_combo.setItemText(i, tr(self.MODE_I18N_KEYS[m]))
+        finally:
+            self._is_updating_ui = False
+
+    def _on_mode_combo_index_changed(self, index: int) -> None:
+        if self._is_updating_ui or index < 0:
+            return
+        canonical_mode = self.mode_combo.itemData(index) or self.mode_combo.currentText()
+        self._on_mode_changed(canonical_mode)
 
     def _on_mode_changed(self, new_mode: str) -> None:
         if self._is_updating_ui or not new_mode:
@@ -1039,8 +1098,15 @@ class MainWindow(QMainWindow):
         lang = get_language()
         self.setWindowTitle(tr("app.title"))
         self.btn_lang.setText(f"[{lang.upper()}]")
+        self.btn_lang.setToolTip(tr("status.lang_tooltip"))
         self.status_lbl.setText(tr(f"status.{self._last_status}") if self._last_status else tr("status.disconnected"))
         self.btn_connect.setText(tr("status.disconnect") if self._last_status == "connected" else tr("status.connect"))
+        self.btn_connect.setToolTip(tr("status.disconnect") if self._last_status == "connected" else tr("status.connect"))
+        self.btn_refresh_ports.setToolTip(tr("status.refresh_ports"))
+
+        if hasattr(self, "mode_combo"):
+            self._update_mode_combo_labels()
+
         self.preset_lbl.setText(tr("presets.title") + ":")
         self.btn_save_preset.setText(tr("presets.save"))
         self.btn_save_preset.setToolTip(tr("presets.save"))
@@ -1048,29 +1114,72 @@ class MainWindow(QMainWindow):
             self.btn_save_as_preset.setText(tr("presets.save_as"))
             self.btn_save_as_preset.setToolTip(tr("presets.save_as"))
         self.btn_delete_preset.setText(tr("presets.delete"))
+        self.btn_delete_preset.setToolTip(tr("presets.delete"))
+
         self.btn_calib_wizard.setText(tr("common.calibration"))
+        self.btn_calib_wizard.setToolTip(tr("common.calibration"))
         self.btn_map_wizard.setText(tr("common.controls"))
+        self.btn_map_wizard.setToolTip(tr("common.controls"))
         self.btn_theme.setText("⚙ " + tr("common.settings"))
+        self.btn_theme.setToolTip(tr("common.settings"))
+
         self.ddu_title.setText(tr("telemetry.title").upper())
+
         self.tabs.setTabText(0, tr("sliders.title"))
-        if hasattr(self, "pedal_clutch"):
-            self.pedal_clutch.set_label(tr("telemetry.clutch"))
-        if hasattr(self, "pedal_brake"):
-            self.pedal_brake.set_label(tr("telemetry.brake"))
-        if hasattr(self, "pedal_throttle"):
-            self.pedal_throttle.set_label(tr("telemetry.throttle"))
-        if hasattr(self, "chk_invert_clutch"):
-            self.chk_invert_clutch.setText(tr("mapping.invert_clutch"))
+        self.tabs.setTabText(1, tr("telemetry.logs_tab"))
+
+        if hasattr(self, "btn_quick_center"):
+            self.btn_quick_center.setText(tr("calib.btn_quick_center"))
+
         if hasattr(self, "lbl_steer_lock_title"):
             self.lbl_steer_lock_title.setText(tr("sliders.steer_lock"))
         if hasattr(self, "lbl_steer_lock_desc"):
             self.lbl_steer_lock_desc.setText(tr("sliders.steer_lock_desc"))
         if hasattr(self, "steer_lock_selector"):
             self.steer_lock_selector.retranslate()
+
+        if hasattr(self, "_retranslatable_sliders"):
+            for title_lbl, title_key, desc_lbl, desc_key in self._retranslatable_sliders:
+                title_lbl.setText(tr(title_key))
+                desc_lbl.setText(tr(desc_key))
+
+        if hasattr(self, "invert_group"):
+            self.invert_group.setTitle(tr("mapping.invert_axes"))
+        if hasattr(self, "chk_invert_steer"):
+            self.chk_invert_steer.setText(tr("mapping.invert_steer"))
+        if hasattr(self, "chk_invert_accel"):
+            self.chk_invert_accel.setText(tr("mapping.invert_accel"))
+        if hasattr(self, "chk_invert_brake"):
+            self.chk_invert_brake.setText(tr("mapping.invert_brake"))
+        if hasattr(self, "chk_invert_clutch"):
+            self.chk_invert_clutch.setText(tr("mapping.invert_clutch"))
+
+        if hasattr(self, "pedal_clutch"):
+            self.pedal_clutch.set_label(tr("telemetry.clutch"))
+        if hasattr(self, "pedal_brake"):
+            self.pedal_brake.set_label(tr("telemetry.brake"))
+        if hasattr(self, "pedal_throttle"):
+            self.pedal_throttle.set_label(tr("telemetry.throttle"))
+
+        if hasattr(self, "btn_clear_log"):
+            self.btn_clear_log.setText(tr("common.clear"))
+
         if hasattr(self, "buttons_box"):
             self.buttons_box.setTitle(tr("mapping.assigned_buttons"))
         if hasattr(self, "_update_button_labels"):
             self._update_button_labels()
+
+        if hasattr(self, "lbl_sb_port"):
+            active_p = self.engine.target_port or "--"
+            if self._last_status != "connected":
+                active_p = "--"
+            self.lbl_sb_port.setText(f"{tr('status.port')}: {active_p}")
+        if hasattr(self, "lbl_sb_baud"):
+            self.lbl_sb_baud.setText(f"{tr('status.baudrate')}: 115200")
+        if hasattr(self, "lbl_sb_gamepad"):
+            snap = self.engine.get_telemetry() if hasattr(self.engine, "get_telemetry") else None
+            gp_ok = snap.gamepad_connected if snap else True
+            self.lbl_sb_gamepad.setText(f"{tr('status.virtual_gamepad')}: {'OK' if gp_ok else 'ERR'}")
 
     def _on_language_changed(self, lang: str) -> None:
         """Manejador del evento de cambio de idioma."""

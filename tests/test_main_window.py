@@ -824,3 +824,33 @@ def test_main_window_preset_combo_switch_not_reverted_by_telemetry(qapp, engine,
         win.close()
 
 
+def test_main_window_invert_controls_retranslation(qapp, engine, config_manager):
+    """Verifica que los controles de inversión (checkboxes y groupbox), pestañas y modos se traduzcan reactivamente."""
+    win = MainWindow(engine=engine, config_manager=config_manager)
+    try:
+        set_language("es")
+        assert win.invert_group.title() == "Invertir Ejes"
+        assert win.chk_invert_steer.text() == "Invertir Eje de Dirección"
+        assert win.chk_invert_accel.text() == "Invertir Eje de Acelerador"
+        assert win.chk_invert_brake.text() == "Invertir Eje de Freno"
+        assert win.chk_invert_clutch.text() == "Invertir Eje de Embrague"
+        assert win.tabs.tabText(1) == "Logs / Telemetría"
+        assert win.btn_clear_log.text() == "Limpiar"
+        assert win.mode_combo.itemText(0) == "Conducción"
+        assert win.mode_combo.itemText(1) == "Crucetas / D-Pad"
+
+        set_language("en")
+        assert win.invert_group.title() == "Invert Axes"
+        assert win.chk_invert_steer.text() == "Invert Steering Axis"
+        assert win.chk_invert_accel.text() == "Invert Throttle Axis"
+        assert win.chk_invert_brake.text() == "Invert Brake Axis"
+        assert win.chk_invert_clutch.text() == "Invert Clutch Axis"
+        assert win.tabs.tabText(1) == "Logs / Telemetry"
+        assert win.btn_clear_log.text() == "Clear"
+        assert win.mode_combo.itemText(0) == "Drive"
+        assert win.mode_combo.itemText(1) == "D-Pad"
+    finally:
+        set_language("es")
+        win.close()
+
+

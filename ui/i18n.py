@@ -76,9 +76,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "status.start_emulation": "Iniciar Emulación",
         "status.stop_emulation": "Detener Emulación",
         "status.refresh_ports": "Actualizar Puertos",
+        "status.rate_label": "Tasa",
+        "status.f1_waiting": "F1 UDP: Esperando...",
+        "status.f1_ready": "F1 UDP: Puerto {port} listo | LED: {led}",
+        "status.lang_tooltip": "Cambiar idioma (ES/EN)",
+
+        # Modos de Operación
+        "mode.conduccion": "Conducción",
+        "mode.crucetas": "Crucetas / D-Pad",
 
         # Telemetría y Ejes
         "telemetry.title": "Telemetría en Vivo",
+        "telemetry.logs_tab": "Logs / Telemetría",
+        "telemetry.hz_active": "{rate} HZ // {status}",
         "telemetry.steering": "DIRECCIÓN",
         "telemetry.throttle": "ACELERADOR",
         "telemetry.brake": "FRENO",
@@ -150,6 +160,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Mapeo de Acciones y Botones Xbox
         "mapping.title": "Asignación de Pines y Gamepad",
+        "mapping.invert_axes": "Invertir Ejes",
         "mapping.steer_target": "Asignación Eje Dirección",
         "mapping.accel_target": "Asignación Eje Acelerador",
         "mapping.brake_target": "Asignación Eje Freno",
@@ -343,6 +354,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.header_title": "CONFIGURACIÓN DEL SISTEMA // ASISTENTE DE ASIGNACIÓN",
         "mapping_wizard.step_counter": "PASO {current:02d} DE {total:02d}",
         "mapping_wizard.completed": "COMPLETADO",
+        "mapping_wizard.clutch_dialog_title": "MAPEAR EMBRAGUE // BOTÓN VIRTUAL",
+        "mapping_wizard.clutch_detected_title": "EMBRAGUE DETECTADO EN PIN {pin}",
+        "mapping_wizard.clutch_prompt": "¿A qué botón virtual desea mapearlo?\n(En simuladores como Forza o Assetto Corsa se suele usar LB, L3 o A)",
+        "mapping_wizard.clutch_combo_label": "O elija de la lista / escriba manualmente (ej. LB, L3, A):",
+        "mapping_wizard.control_preset_btn": "Botón PRESET (Alternar Presets)",
+        "mapping_wizard.control_clutch_pedal": "Embrague (Pedalera)",
+        "mapping_wizard.control_led_color": "Color del LED RGB",
 
         # Insignias de Tipo de Entrada
         "mapping_wizard.badge_analog_steer": "[EJE ANALÓGICO DE DIRECCIÓN]",
@@ -436,6 +454,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "common.save": "Guardar",
         "common.save_and_close": "Guardar y Cerrar",
         "common.reset": "Restablecer",
+        "common.clear": "Limpiar",
         "common.close": "Cerrar",
         "common.delete": "Eliminar",
         "common.edit": "Editar",
@@ -486,9 +505,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "status.start_emulation": "Start Emulation",
         "status.stop_emulation": "Stop Emulation",
         "status.refresh_ports": "Refresh Ports",
+        "status.rate_label": "Rate",
+        "status.f1_waiting": "F1 UDP: Waiting...",
+        "status.f1_ready": "F1 UDP: Port {port} ready | LED: {led}",
+        "status.lang_tooltip": "Toggle language (ES/EN)",
+
+        # Operational Modes
+        "mode.conduccion": "Drive",
+        "mode.crucetas": "D-Pad",
 
         # Telemetry & Axes
         "telemetry.title": "Live Telemetry",
+        "telemetry.logs_tab": "Logs / Telemetry",
+        "telemetry.hz_active": "{rate} HZ // {status}",
         "telemetry.steering": "STEERING",
         "telemetry.throttle": "THROTTLE",
         "telemetry.brake": "BRAKE",
@@ -560,6 +589,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
         # Mapping Actions & Xbox Buttons
         "mapping.title": "Pin Assignment and Gamepad Mapping",
+        "mapping.invert_axes": "Invert Axes",
         "mapping.steer_target": "Steering Axis Assignment",
         "mapping.accel_target": "Throttle Axis Assignment",
         "mapping.brake_target": "Brake Axis Assignment",
@@ -753,6 +783,13 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "mapping_wizard.header_title": "SYSTEM CONFIGURATION // INPUT MAPPING WIZARD",
         "mapping_wizard.step_counter": "STEP {current:02d} OF {total:02d}",
         "mapping_wizard.completed": "COMPLETED",
+        "mapping_wizard.clutch_dialog_title": "MAP CLUTCH // VIRTUAL BUTTON",
+        "mapping_wizard.clutch_detected_title": "CLUTCH DETECTED ON PIN {pin}",
+        "mapping_wizard.clutch_prompt": "Which virtual button do you want to map it to?\n(In simulators like Forza or Assetto Corsa, LB, L3 or A is typically used)",
+        "mapping_wizard.clutch_combo_label": "Or choose from the list / type manually (e.g. LB, L3, A):",
+        "mapping_wizard.control_preset_btn": "PRESET Button (Cycle Presets)",
+        "mapping_wizard.control_clutch_pedal": "Clutch (Pedal)",
+        "mapping_wizard.control_led_color": "RGB LED Color",
 
         # Input Type Badges
         "mapping_wizard.badge_analog_steer": "[ANALOG STEERING AXIS]",
@@ -846,6 +883,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "common.save": "Save",
         "common.save_and_close": "Save & Close",
         "common.reset": "Reset",
+        "common.clear": "Clear",
         "common.close": "Close",
         "common.delete": "Delete",
         "common.edit": "Edit",
